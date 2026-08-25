@@ -1,0 +1,149 @@
+# =============================================================================
+# TransformIQ — Docker Compose (Local Development)
+# =============================================================================
+# Usage:
+#   docker compose up --build        # Start all services
+#   docker compose up --build -d     # Start detached
+#   docker compose down              # Stop all services
+#   docker compose down -v           # Stop and remove volumes
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL with pgvector extension
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: transformiq-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-transformiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-transformiq}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-transformiq} -d ${POSTGRES_DB:-transformiq}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Redis (job queue and cache)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: transformiq-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Backend (FastAPI)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: transformiq-backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
+      DATABASE_SYNC_URL: postgresql://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Worker (RQ background processor)
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: transformiq-worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
+      DATABASE_SYNC_URL: postgresql://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /backend:/app
+    volumes:
+      - ./worker:/app
+      - ./backend:/backend
+      - backend_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: transformiq-frontend
+    env_file:
+      - .env
+    environment:
+      # NEXT_PUBLIC_API_URL: browser-facing URL — set to the host where the
+      # backend is accessible from the user's browser (default: localhost:8000).
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      # INTERNAL_API_URL: server-to-server URL used for Next.js SSR requests
+      # inside the Docker network.
+      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_storage:
+    driver: local

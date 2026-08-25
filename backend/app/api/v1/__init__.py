@@ -10,6 +10,7 @@ from app.api.v1.projects import router as projects_router
 from app.api.v1.sources import project_sources_router, sources_router
 from app.api.v1.configurations import project_configs_router, configs_router
 from app.api.v1.transformations import transformations_router, outputs_router
+from app.api.v1.content_intelligence import router as content_intelligence_router
 
 router = APIRouter()
 
@@ -23,6 +24,7 @@ router.include_router(projects_router, prefix="/projects")
 # ---------------------------------------------------------------------------
 router.include_router(project_sources_router, prefix="/projects")
 router.include_router(sources_router, prefix="/sources")
+router.include_router(content_intelligence_router)
 
 # ---------------------------------------------------------------------------
 # Configurations (nested under projects + standalone)

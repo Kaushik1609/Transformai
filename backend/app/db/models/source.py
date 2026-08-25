@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.db.models.project import Project
     from app.db.models.source_chunk import SourceChunk
     from app.db.models.transformation_job import TransformationJob
+    from app.db.models.canonical_content import CanonicalContent
 
 
 def _utcnow() -> datetime:
@@ -101,6 +102,12 @@ class Source(Base):
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+    canonical_content: Mapped["CanonicalContent | None"] = relationship(
+        "CanonicalContent",
+        back_populates="source",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

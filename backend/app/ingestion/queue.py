@@ -51,3 +51,20 @@ def enqueue_source_embedding(
         result_ttl=86400,
     )
     return str(job.id)
+
+
+def get_content_intelligence_queue() -> Queue:
+    """Create the Redis-backed Phase 4 analysis queue."""
+    connection = redis.from_url(settings.REDIS_URL)
+    return Queue("content_intelligence", connection=connection)
+
+
+def enqueue_content_intelligence(source_id: UUID, *, queue: Queue) -> str:
+    """Enqueue only the authoritative source identifier for analysis."""
+    job = queue.enqueue(
+        "worker.process_content_intelligence",
+        source_id=str(source_id),
+        job_timeout=settings.WORKER_JOB_TIMEOUT,
+        result_ttl=86400,
+    )
+    return str(job.id)

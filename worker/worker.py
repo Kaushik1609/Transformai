@@ -70,6 +70,7 @@ QUEUE_NAMES = [
     "low",      # Background/bulk operations
     "ingestion",  # Source ingestion jobs
     "embedding",  # Embedding generation jobs
+    "content_intelligence",  # Phase 4 source analysis jobs
 ]
 
 
@@ -97,6 +98,24 @@ def process_source_embedding(source_id: str) -> dict[str, str]:
         with Session(engine) as session:
             source = process_source_embeddings_with_session(session, uuid.UUID(source_id))
             return {"source_id": str(source.id), "status": source.status}
+    finally:
+        engine.dispose()
+
+
+def process_content_intelligence(source_id: str) -> dict[str, str]:
+    """RQ handler for validated Phase 4 canonical content analysis."""
+    engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+    try:
+        import uuid
+
+        from app.content_intelligence.fake_provider import FakeContentAnalysisProvider
+        from app.content_intelligence.service import ContentIntelligenceService
+
+        with Session(engine) as session:
+            content = ContentIntelligenceService(
+                provider=FakeContentAnalysisProvider()
+            ).analyze_source(session, uuid.UUID(source_id))
+            return {"source_id": str(content.source_id), "status": content.status}
     finally:
         engine.dispose()
 

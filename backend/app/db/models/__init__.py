@@ -13,6 +13,8 @@ from app.db.models.generation_configuration import GenerationConfiguration
 from app.db.models.transformation_job import TransformationJob
 from app.db.models.output import Output
 from app.db.models.verification_result import VerificationResult
+from app.db.models.canonical_content import CanonicalContent
+from app.db.models.content_analysis_trace import ContentAnalysisTrace
 
 __all__ = [
     "User",
@@ -23,4 +25,6 @@ __all__ = [
     "TransformationJob",
     "Output",
     "VerificationResult",
+    "CanonicalContent",
+    "ContentAnalysisTrace",
 ]

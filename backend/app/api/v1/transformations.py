@@ -31,6 +31,11 @@ from app.api.v1.schemas.transformation import (
 )
 from app.db.session import get_db
 from app.services import project_service, source_service, configuration_service, transformation_service
+from app.transformation.queue import (
+    cancel_transformation_job,
+    enqueue_transformation_job,
+    get_transformation_queue,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -85,6 +90,17 @@ async def create_transformation(
         configuration_id=body.configuration_id,
         output_types=body.output_types,
     )
+    # Enqueue the transformation job for asynchronous processing. Enqueueing is
+    # best-effort: if Redis is unavailable the job record still persists in the
+    # queued state so callers can observe/retry it (resilience, not corruption).
+    try:
+        enqueue_transformation_job(job.id, queue=get_transformation_queue())
+    except Exception as exc:  # pragma: no cover - Redis availability edge
+        logger.warning(
+            "Transformation job could not be enqueued",
+            job_id=str(job.id),
+            error=str(exc),
+        )
     return TransformationJobDetailResponse(
         data=TransformationJobResponse.model_validate(job)
     )
@@ -141,7 +157,7 @@ async def list_job_outputs(
 @transformations_router.post(
     "/{job_id}/cancel",
     response_model=TransformationJobDetailResponse,
-    summary="Cancel a transformation job (stub — Phase 6)",
+    summary="Cancel a transformation job",
 )
 async def cancel_transformation(
     job_id: uuid.UUID,
@@ -149,8 +165,10 @@ async def cancel_transformation(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> TransformationJobDetailResponse:
     """
-    Phase 2 stub: marks the job cancelled in the database.
-    Phase 6 will also revoke the queued Redis task.
+    Cancel a transformation job and revoke any queued Redis task.
+
+    Phase 6 performs real cancellation/revocation where supported by RQ and
+    always marks the job cancelled in the database.
     """
     job = await transformation_service.get_job(
         db, job_id=job_id, user_id=current_user.id
@@ -166,6 +184,17 @@ async def cancel_transformation(
             detail=f"Job {job_id} cannot be cancelled (current status: {job.status}).",
         )
     from datetime import datetime, timezone
+
+    # Revoke the queued Redis task if present (best-effort).
+    try:
+        cancel_transformation_job(job.id, queue=get_transformation_queue())
+    except Exception as exc:  # pragma: no cover - Redis availability edge
+        logger.warning(
+            "Transformation job revocation failed",
+            job_id=str(job_id),
+            error=str(exc),
+        )
+
     job.status = "cancelled"
     job.completed_at = datetime.now(timezone.utc)
     await db.flush()

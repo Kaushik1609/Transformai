@@ -71,6 +71,7 @@ QUEUE_NAMES = [
     "ingestion",  # Source ingestion jobs
     "embedding",  # Embedding generation jobs
     "content_intelligence",  # Phase 4 source analysis jobs
+    "transformation",  # Phase 6 transformation jobs
 ]
 
 
@@ -118,6 +119,65 @@ def process_content_intelligence(source_id: str) -> dict[str, str]:
             return {"source_id": str(content.source_id), "status": content.status}
     finally:
         engine.dispose()
+
+
+def process_transformation(job_id: str) -> dict:
+    """RQ handler for Phase 6 transformation jobs.
+
+    Receives only the authoritative transformation job ID and loads all required
+    state (job, canonical content, configuration, RAG) from the database.
+    """
+    engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+    try:
+        import uuid
+
+        from app.transformation.service import run_transformation_job
+
+        with Session(engine) as session:
+            return run_transformation_job(session, uuid.UUID(job_id))
+    finally:
+        engine.dispose()
+
+
+def transformation_failure_handler(job, connection, type, value, traceback):
+    """Mark a transformation job failed when the RQ job itself fails.
+
+    RQ calls this when a queued transformation job raises an unhandled error.
+    Records a controlled error without corrupting the source or other outputs.
+    """
+    logger = structlog.get_logger(__name__)
+    job_id = None
+    try:
+        args = job.args if job.args is not None else ()
+        if args:
+            job_id = args[0]
+    except Exception:  # pragma: no cover - defensive
+        job_id = None
+
+    engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+    try:
+        import uuid
+        from datetime import datetime, timezone
+
+        from sqlalchemy import select
+
+        from app.db.models.transformation_job import TransformationJob
+
+        if job_id is not None:
+            with Session(engine) as session:
+                job_record = session.execute(
+                    select(TransformationJob).where(TransformationJob.id == uuid.UUID(job_id))
+                ).scalar_one_or_none()
+                if job_record is not None and job_record.status not in ("completed", "cancelled"):
+                    job_record.status = "failed"
+                    job_record.error_message = f"Worker job failed: {value}"[:4000]
+                    job_record.completed_at = datetime.now(timezone.utc)
+                    session.commit()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Could not mark transformation job failed", error=str(exc))
+    finally:
+        engine.dispose()
+    logger.error("Transformation RQ job failed", job_id=job_id, error=str(value))
 
 
 # ---------------------------------------------------------------------------

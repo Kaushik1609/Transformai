@@ -66,6 +66,7 @@ class Output(Base):
     output_metadata: Mapped[dict | None] = mapped_column(
         "metadata", JSONB, nullable=True
     )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

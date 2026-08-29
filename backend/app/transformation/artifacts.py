@@ -1,10 +1,11 @@
-"""Persistence of generated output artifacts (currently PPTX) to storage.
+"""Persistence of generated output artifacts (PPTX, PNG, PDF) to storage.
 
 Follows the approved storage-key structure from docs/API_DATABASE_DESIGN.md:
     projects/{project_id}/jobs/{job_id}/outputs/{output_id}/result.ext
 
-Only binary artifacts (presentation PPTX) are written to object storage; all
-text/structured outputs are persisted in the `outputs` table directly.
+Only binary artifacts (presentation PPTX and infographic PNG/PDF) are written
+to object storage; all text/structured outputs are persisted in the `outputs`
+table directly.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from app.transformation.render.pptx import PPTX_MIME_TYPE
 _MIME_EXT: dict[str, str] = {
     PPTX_MIME_TYPE: ".pptx",
     "application/pdf": ".pdf",
+    "image/png": ".png",
     (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ): ".docx",

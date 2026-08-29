@@ -31,7 +31,13 @@ from app.db.models.transformation_job import TransformationJob
 from app.db.models.verification_result import VerificationResult
 from app.rag.service import RAGService
 from app.transformation.artifacts import get_storage, save_output_artifact
-from app.transformation.output_schemas import PresentationStructure
+from app.transformation.output_schemas import Infographic, PresentationStructure
+from app.transformation.render.infographic import (
+    INF_PNG_MIME_TYPE,
+    PDF_MIME_TYPE,
+    render_infographic_pdf,
+    render_infographic_png,
+)
 from app.transformation.render.pptx import PPTX_MIME_TYPE, render_presentation
 from app.transformation.schemas import TransformationState
 from app.transformation.verification import VerificationHook, run_verification_hook
@@ -288,7 +294,7 @@ class TransformationWorkflow:
                     "provider": "phase7",
                     "generator": type(generator).__name__,
                 }
-                self._persist_presentation_artifact(
+                self._persist_output_artifact(
                     state, output, generated,
                     project_id=uuid.UUID(state["project_id"]),
                     job_id=job_id,
@@ -326,6 +332,39 @@ class TransformationWorkflow:
 
         return {"outputs": outputs, "errors": errors}
 
+    def _persist_output_artifact(
+        self,
+        state: TransformationState,
+        output: Output,
+        generated: dict[str, Any],
+        *,
+        project_id: uuid.UUID,
+        job_id: uuid.UUID,
+    ) -> None:
+        """Render and store binary artifacts for completed outputs.
+
+        Presentation outputs produce a real PPTX; infographic outputs produce a
+        real PNG (primary artifact) plus a PDF (sibling artifact).  All other
+        output types are persisted entirely in the `outputs` table.  Raises on
+        a render/persist failure so the caller's existing generate-stage error
+        handling records a controlled per-output failure without destroying
+        other outputs in the same job.
+        """
+        if output.output_type == "presentation":
+            self._persist_presentation_artifact(
+                state, output, generated,
+                project_id=project_id,
+                job_id=job_id,
+            )
+            return
+        if output.output_type == "infographic":
+            self._persist_infographic_artifact(
+                state, output, generated,
+                project_id=project_id,
+                job_id=job_id,
+            )
+            return
+
     def _persist_presentation_artifact(
         self,
         state: TransformationState,
@@ -335,16 +374,7 @@ class TransformationWorkflow:
         project_id: uuid.UUID,
         job_id: uuid.UUID,
     ) -> None:
-        """Render and store a PPTX artifact for completed presentation outputs.
-
-        Only presentation outputs produce a binary artifact; all other output
-        types are persisted entirely in the `outputs` table.  Raises on a
-        render/persist failure so the caller's existing generate-stage error
-        handling records a controlled per-output failure without destroying
-        other outputs in the same job.
-        """
-        if output.output_type != "presentation":
-            return
+        """Render and store a PPTX artifact for a completed presentation output."""
         structure = PresentationStructure.model_validate(generated)
         pptx_bytes = render_presentation(structure)
         key = save_output_artifact(
@@ -361,6 +391,51 @@ class TransformationWorkflow:
             **(output.output_metadata or {}),
             "artifact": "pptx",
             "bytes": len(pptx_bytes),
+        }
+
+    def _persist_infographic_artifact(
+        self,
+        state: TransformationState,
+        output: Output,
+        generated: dict[str, Any],
+        *,
+        project_id: uuid.UUID,
+        job_id: uuid.UUID,
+    ) -> None:
+        """Render and store PNG (primary) and PDF (sibling) infographic artifacts.
+
+        The PNG image is the primary artifact reflected in ``storage_key`` and
+        ``mime_type``; the PDF twin is saved at a sibling storage key recorded
+        in ``output_metadata["pdf_storage_key"]`` so both PRD target formats
+        (Image/PDF) are preserved.
+        """
+        infographic = Infographic.model_validate(generated)
+        pdf_bytes = render_infographic_pdf(infographic)
+        png_bytes = render_infographic_png(infographic)
+        png_key = save_output_artifact(
+            project_id=project_id,
+            job_id=job_id,
+            output_id=output.id,
+            mime_type=INF_PNG_MIME_TYPE,
+            content=png_bytes,
+            storage=self.deps.storage,
+        )
+        pdf_key = save_output_artifact(
+            project_id=project_id,
+            job_id=job_id,
+            output_id=output.id,
+            mime_type=PDF_MIME_TYPE,
+            content=pdf_bytes,
+            storage=self.deps.storage,
+        )
+        output.mime_type = INF_PNG_MIME_TYPE
+        output.storage_key = png_key
+        output.output_metadata = {
+            **(output.output_metadata or {}),
+            "artifact": "infographic",
+            "pdf_storage_key": pdf_key,
+            "png_bytes": len(png_bytes),
+            "pdf_bytes": len(pdf_bytes),
         }
 
     def validate(self, state: TransformationState) -> TransformationState:

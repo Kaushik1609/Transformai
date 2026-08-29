@@ -122,19 +122,26 @@ def process_content_intelligence(source_id: str) -> dict[str, str]:
 
 
 def process_transformation(job_id: str) -> dict:
-    """RQ handler for Phase 6 transformation jobs.
+    """RQ handler for Phase 6/7 transformation jobs.
 
     Receives only the authoritative transformation job ID and loads all required
-    state (job, canonical content, configuration, RAG) from the database.
+    state (job, canonical content, configuration, RAG) from the database.  The
+    LLM provider is wired from environment settings: the OpenAI provider when a
+    key is configured, otherwise the deterministic fake provider for offline/
+    local execution.
     """
     engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
     try:
         import uuid
 
+        from app.transformation.llm.factory import build_llm_provider
         from app.transformation.service import run_transformation_job
 
+        llm_provider = build_llm_provider()
         with Session(engine) as session:
-            return run_transformation_job(session, uuid.UUID(job_id))
+            return run_transformation_job(
+                session, uuid.UUID(job_id), llm_provider=llm_provider
+            )
     finally:
         engine.dispose()
 

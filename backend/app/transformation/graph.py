@@ -30,6 +30,9 @@ from app.db.models.output import Output
 from app.db.models.transformation_job import TransformationJob
 from app.db.models.verification_result import VerificationResult
 from app.rag.service import RAGService
+from app.transformation.artifacts import get_storage, save_output_artifact
+from app.transformation.output_schemas import PresentationStructure
+from app.transformation.render.pptx import PPTX_MIME_TYPE, render_presentation
 from app.transformation.schemas import TransformationState
 from app.transformation.verification import VerificationHook, run_verification_hook
 
@@ -47,6 +50,8 @@ class TransformationDependencies:
     verification_hook: VerificationHook | None = None
     get_generator: Callable[[str], Any | None] | None = None
     rag_mode: str = "auto"  # "auto" | "always-on" | "off"
+    llm_provider: Any | None = None
+    storage: Any | None = None
     # Optional overrides for deterministic tests.
     requested_output_types_override: list[str] | None = None
     rag_required_override: bool | None = None
@@ -55,9 +60,14 @@ class TransformationDependencies:
         if self.rag_service is None:
             self.rag_service = RAGService()
         if self.get_generator is None:
-            from app.transformation.generators import get_generator
+            from app.transformation.generators import get_generator as _registry
 
-            self.get_generator = get_generator
+            provider = self.llm_provider
+            self.get_generator = lambda output_type: _registry(
+                output_type, llm_provider=provider
+            )
+        if self.storage is None:
+            self.storage = get_storage()
 
 
 class TransformationWorkflow:
@@ -275,9 +285,14 @@ class TransformationWorkflow:
                 output.text_content = text_content
                 output.mime_type = generated.get("mime_type") or "text/plain"
                 output.output_metadata = {
-                    "provider": "phase6-deterministic",
+                    "provider": "phase7",
                     "generator": type(generator).__name__,
                 }
+                self._persist_presentation_artifact(
+                    state, output, generated,
+                    project_id=uuid.UUID(state["project_id"]),
+                    job_id=job_id,
+                )
                 output.status = "completed"
                 session.flush()
 
@@ -310,6 +325,43 @@ class TransformationWorkflow:
                 )
 
         return {"outputs": outputs, "errors": errors}
+
+    def _persist_presentation_artifact(
+        self,
+        state: TransformationState,
+        output: Output,
+        generated: dict[str, Any],
+        *,
+        project_id: uuid.UUID,
+        job_id: uuid.UUID,
+    ) -> None:
+        """Render and store a PPTX artifact for completed presentation outputs.
+
+        Only presentation outputs produce a binary artifact; all other output
+        types are persisted entirely in the `outputs` table.  Raises on a
+        render/persist failure so the caller's existing generate-stage error
+        handling records a controlled per-output failure without destroying
+        other outputs in the same job.
+        """
+        if output.output_type != "presentation":
+            return
+        structure = PresentationStructure.model_validate(generated)
+        pptx_bytes = render_presentation(structure)
+        key = save_output_artifact(
+            project_id=project_id,
+            job_id=job_id,
+            output_id=output.id,
+            mime_type=PPTX_MIME_TYPE,
+            content=pptx_bytes,
+            storage=self.deps.storage,
+        )
+        output.mime_type = PPTX_MIME_TYPE
+        output.storage_key = key
+        output.output_metadata = {
+            **(output.output_metadata or {}),
+            "artifact": "pptx",
+            "bytes": len(pptx_bytes),
+        }
 
     def validate(self, state: TransformationState) -> TransformationState:
         """Light structural validation of completed outputs.

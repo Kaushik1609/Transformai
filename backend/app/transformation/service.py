@@ -32,6 +32,8 @@ def run_transformation_job(
     verification_hook: Any | None = None,
     get_generator: Any | None = None,
     rag_mode: str = "auto",
+    llm_provider: Any | None = None,
+    storage: Any | None = None,
 ) -> dict[str, Any]:
     """Run one transformation job to completion using authoritative DB state.
 
@@ -68,6 +70,8 @@ def run_transformation_job(
         verification_hook=verification_hook,
         get_generator=get_generator,
         rag_mode=rag_mode,
+        llm_provider=llm_provider,
+        storage=storage,
     )
     result = orchestrator.execute(job_id)
     db.commit()

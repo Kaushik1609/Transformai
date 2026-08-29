@@ -33,6 +33,8 @@ class TransformationOrchestrator:
         verification_hook: Any | None = None,
         get_generator: Any | None = None,
         rag_mode: str = "auto",
+        llm_provider: Any | None = None,
+        storage: Any | None = None,
         requested_output_types_override: list[str] | None = None,
         rag_required_override: bool | None = None,
     ):
@@ -42,6 +44,8 @@ class TransformationOrchestrator:
             verification_hook=verification_hook,
             get_generator=get_generator,
             rag_mode=rag_mode,
+            llm_provider=llm_provider,
+            storage=storage,
             requested_output_types_override=requested_output_types_override,
             rag_required_override=rag_required_override,
         )

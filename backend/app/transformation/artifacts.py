@@ -19,6 +19,9 @@ from app.transformation.render.pptx import PPTX_MIME_TYPE
 _MIME_EXT: dict[str, str] = {
     PPTX_MIME_TYPE: ".pptx",
     "application/pdf": ".pdf",
+    (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ): ".docx",
     "text/plain": ".txt",
 }
 

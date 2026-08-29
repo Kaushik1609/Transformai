@@ -1,3 +1,11 @@
-"""Presentation rendering (PPTX) for Phase 7."""
+"""Output rendering for Phase 7+.
+
+* ``pptx``  — validated PresentationStructure -> real .pptx (Phase 8A)
+* ``docx``  — Executive Summary / Advisory -> real .docx (Phase 8B)
+* ``pdf``   — Executive Summary / Advisory -> real .pdf (Phase 8B)
+
+All renderers are deterministic and LLM-free, consuming the validated Pydantic
+schemas directly and returning file bytes for the storage abstraction.
+"""
 
 from __future__ import annotations

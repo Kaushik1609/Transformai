@@ -31,7 +31,11 @@ from app.db.models.transformation_job import TransformationJob
 from app.db.models.verification_result import VerificationResult
 from app.rag.service import RAGService
 from app.transformation.artifacts import get_storage, save_output_artifact
-from app.transformation.output_schemas import Infographic, PresentationStructure
+from app.transformation.output_schemas import (
+    Infographic,
+    PresentationStructure,
+    VideoPackage,
+)
 from app.transformation.render.infographic import (
     INF_PNG_MIME_TYPE,
     PDF_MIME_TYPE,
@@ -39,6 +43,11 @@ from app.transformation.render.infographic import (
     render_infographic_png,
 )
 from app.transformation.render.pptx import PPTX_MIME_TYPE, render_presentation
+from app.transformation.render.video import (
+    SRT_MIME_TYPE,
+    render_video_package_pdf,
+    render_video_package_srt,
+)
 from app.transformation.schemas import TransformationState
 from app.transformation.verification import VerificationHook, run_verification_hook
 
@@ -344,9 +353,11 @@ class TransformationWorkflow:
         """Render and store binary artifacts for completed outputs.
 
         Presentation outputs produce a real PPTX; infographic outputs produce a
-        real PNG (primary artifact) plus a PDF (sibling artifact).  All other
-        output types are persisted entirely in the `outputs` table.  Raises on
-        a render/persist failure so the caller's existing generate-stage error
+        real PNG (primary artifact) plus a PDF (sibling artifact); video
+        outputs produce a structured video-package PDF (primary artifact) plus
+        an SRT subtitle file (sibling artifact).  All other output types are
+        persisted entirely in the `outputs` table.  Raises on a
+        render/persist failure so the caller's existing generate-stage error
         handling records a controlled per-output failure without destroying
         other outputs in the same job.
         """
@@ -359,6 +370,13 @@ class TransformationWorkflow:
             return
         if output.output_type == "infographic":
             self._persist_infographic_artifact(
+                state, output, generated,
+                project_id=project_id,
+                job_id=job_id,
+            )
+            return
+        if output.output_type == "video":
+            self._persist_video_artifact(
                 state, output, generated,
                 project_id=project_id,
                 job_id=job_id,
@@ -436,6 +454,53 @@ class TransformationWorkflow:
             "pdf_storage_key": pdf_key,
             "png_bytes": len(png_bytes),
             "pdf_bytes": len(pdf_bytes),
+        }
+
+    def _persist_video_artifact(
+        self,
+        state: TransformationState,
+        output: Output,
+        generated: dict[str, Any],
+        *,
+        project_id: uuid.UUID,
+        job_id: uuid.UUID,
+    ) -> None:
+        """Render and store the structured video package PDF (primary) and SRT (sibling).
+
+        The video package document is the PRD-defined MVP video deliverable (a
+        structured document, not a playable MP4).  The PDF is the primary
+        artifact reflected in ``storage_key`` and ``mime_type``; the SRT
+        subtitle companion is saved at a sibling storage key recorded in
+        ``output_metadata["subtitle_storage_key"]`` so both target formats are
+        preserved.
+        """
+        video_package = VideoPackage.model_validate(generated)
+        pdf_bytes = render_video_package_pdf(video_package)
+        srt_bytes = render_video_package_srt(video_package)
+        pdf_key = save_output_artifact(
+            project_id=project_id,
+            job_id=job_id,
+            output_id=output.id,
+            mime_type=PDF_MIME_TYPE,
+            content=pdf_bytes,
+            storage=self.deps.storage,
+        )
+        srt_key = save_output_artifact(
+            project_id=project_id,
+            job_id=job_id,
+            output_id=output.id,
+            mime_type=SRT_MIME_TYPE,
+            content=srt_bytes,
+            storage=self.deps.storage,
+        )
+        output.mime_type = PDF_MIME_TYPE
+        output.storage_key = pdf_key
+        output.output_metadata = {
+            **(output.output_metadata or {}),
+            "artifact": "video",
+            "subtitle_storage_key": srt_key,
+            "pdf_bytes": len(pdf_bytes),
+            "srt_bytes": len(srt_bytes),
         }
 
     def validate(self, state: TransformationState) -> TransformationState:

@@ -1,19 +1,22 @@
-"""Persistence of generated output artifacts (PPTX, PNG, PDF) to storage.
+"""Persistence and resolution of generated output artifacts to storage.
 
 Follows the approved storage-key structure from docs/API_DATABASE_DESIGN.md:
     projects/{project_id}/jobs/{job_id}/outputs/{output_id}/result.ext
 
-Only binary artifacts (presentation PPTX and infographic PNG/PDF) are written
-to object storage; all text/structured outputs are persisted in the `outputs`
-table directly.
+Binary artifacts (presentation PPTX, infographic PNG + PDF companion, and the
+video-package PDF + SRT companion) are written to object storage; all
+text/structured outputs are persisted in the `outputs` table directly.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from typing import NamedTuple
 from uuid import UUID
 
 from app.core.config import settings
+from app.db.models.output import Output
 from app.ingestion.storage import LocalStorage
 from app.transformation.render.pptx import PPTX_MIME_TYPE
 
@@ -72,3 +75,63 @@ def storage_root(storage: LocalStorage | None = None) -> Path:
     """Return the storage root path (handy for tests)."""
     storage = storage or get_storage()
     return storage.root
+
+
+class ArtifactFile(NamedTuple):
+    """Resolved artifact download info: storage key, safe filename, MIME type."""
+
+    storage_key: str
+    filename: str
+    mime_type: str
+
+
+_COMPANION_KEYS: dict[str, str] = {
+    "pdf": "pdf_storage_key",
+    "srt": "subtitle_storage_key",
+}
+_COMPANION_FILENAMES: dict[str, str] = {
+    "pdf": "{stem}.pdf",
+    "srt": "{stem}_subtitles.srt",
+}
+_PDF_MIME_TYPE = "application/pdf"
+_SRT_MIME_TYPE = "application/x-subrip"
+
+
+def _safe_filename_stem(value: str) -> str:
+    """Return a header-safe filename stem derived from a known output type."""
+    stem = re.sub(r"[^a-zA-Z0-9_-]", "_", value or "output")
+    return stem or "output"
+
+
+def artifact_file(output: Output, role: str) -> ArtifactFile | None:
+    """Resolve an artifact role to (storage key, safe filename, MIME type).
+
+    Keys are derived exclusively from the authorized ``Output`` record and its
+    ``output_metadata`` — never from client-supplied paths or storage keys.
+    Returns ``None`` when the requested artifact is not available (missing
+    storage key / MIME type / companion metadata, or an unsupported role).
+    """
+    stem = _safe_filename_stem(output.output_type)
+    if role == "primary":
+        if not output.storage_key or not output.mime_type:
+            return None
+        return ArtifactFile(
+            storage_key=output.storage_key,
+            filename=f"{stem}{ext_for_mime(output.mime_type)}",
+            mime_type=output.mime_type,
+        )
+    metadata_key = _COMPANION_KEYS.get(role)
+    if metadata_key is None:
+        return None
+    storage_key = (output.output_metadata or {}).get(metadata_key)
+    if not storage_key:
+        return None
+    if role == "pdf":
+        mime_type = _PDF_MIME_TYPE
+    else:  # "srt"
+        mime_type = _SRT_MIME_TYPE
+    return ArtifactFile(
+        storage_key=storage_key,
+        filename=_COMPANION_FILENAMES[role].format(stem=stem),
+        mime_type=mime_type,
+    )

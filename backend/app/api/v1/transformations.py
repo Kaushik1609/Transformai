@@ -9,13 +9,16 @@ Endpoints:
 
     GET    /api/v1/outputs/{output_id}
     GET    /api/v1/outputs/{output_id}/verification
+    GET    /api/v1/outputs/{output_id}/download
 
 Phase 2: persistence only. No job enqueueing, no AI calls.
 """
 import uuid
+from typing import Literal
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -31,6 +34,7 @@ from app.api.v1.schemas.transformation import (
 )
 from app.db.session import get_db
 from app.services import project_service, source_service, configuration_service, transformation_service
+from app.transformation.artifacts import artifact_file, get_storage
 from app.transformation.queue import (
     cancel_transformation_job,
     enqueue_transformation_job,
@@ -266,4 +270,69 @@ async def list_output_verifications(
     return VerificationListResponse(
         data=[VerificationResultResponse.model_validate(v) for v in verifications],
         count=len(verifications),
+    )
+
+
+@outputs_router.get(
+    "/{output_id}/download",
+    response_class=Response,
+    summary="Download an output artifact",
+)
+async def download_output_artifact(
+    output_id: uuid.UUID,
+    artifact: Literal["primary", "pdf", "srt"] = Query(default="primary"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> Response:
+    """
+    Stream a generated artifact's bytes to the owning user.
+
+    The artifact role is limited to ``primary`` (the output's own file) plus the
+    companion roles persisted in ``output_metadata`` (``pdf`` for the
+    infographic's PDF sibling, ``srt`` for the video package's subtitles).  The
+    storage key is resolved server-side from the authorized Output record — the
+    client never supplies a storage key.
+    """
+    output = await transformation_service.get_output(db, output_id=output_id)
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    # Verify ownership through job → project (same pattern as get_output).
+    job = await transformation_service.get_job(
+        db, job_id=output.job_id, user_id=current_user.id
+    )
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    if output.status != "completed":
+        if output.status == "generating":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Output {output_id} is still generating.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} has no downloadable artifact.",
+        )
+    resolved = artifact_file(output, artifact)
+    if resolved is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Artifact not available for output {output_id}.",
+        )
+    try:
+        content = get_storage().read(resolved.storage_key)
+    except (OSError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Artifact not available for output {output_id}.",
+        ) from None
+    return Response(
+        content=content,
+        media_type=resolved.mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{resolved.filename}"'},
     )

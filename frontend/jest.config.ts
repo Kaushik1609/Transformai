@@ -2,6 +2,7 @@ import type { Config } from "jest";
 
 const config: Config = {
   testEnvironment: "jsdom",
+  setupFilesAfterEnv: ["<rootDir>/src/__tests__/setupJestDom.ts"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
     // Handle CSS imports
@@ -25,6 +26,8 @@ const config: Config = {
     "/node_modules/",
     "/__mocks__/",
     "\\.d\\.ts$",
+    "src/__tests__/helpers\\.ts$",
+    "src/__tests__/setupJestDom\\.ts$",
   ],
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

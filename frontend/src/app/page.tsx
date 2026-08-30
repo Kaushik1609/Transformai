@@ -1,8 +1,8 @@
 /**
- * TransformIQ — Dashboard home page (Phase 1)
+ * TransformIQ — Dashboard home page (Phase 9)
  *
- * Shows platform identity, service connectivity status, and the core workflow
- * description. The transformation workspace will be built in Phase 9.
+ * Shows platform identity, service connectivity status, and a link into the
+ * transformation workspace (projects).
  */
 "use client";
 
@@ -84,7 +84,7 @@ export default function HomePage() {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
               TransformIQ
             </h1>
-            <StatusBadge variant="info">Phase 1 — Application Scaffold</StatusBadge>
+            <StatusBadge variant="info">Phase 9 — Workspace</StatusBadge>
           </div>
           <p className="max-w-2xl text-base text-muted-foreground">
             Gen AI Platform for Automated Content Transformation.{" "}
@@ -94,6 +94,27 @@ export default function HomePage() {
             One source → Content Intelligence → Canonical Content →
             Configurable Transformation → Multiple Outputs → Verification → Export.
           </p>
+          <a
+            href="/projects"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Open transformation workspace
+            <svg
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+              />
+            </svg>
+          </a>
         </section>
 
         {/* ---------------------------------------------------------------- */}
@@ -184,14 +205,17 @@ export default function HomePage() {
         {/* ---------------------------------------------------------------- */}
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            MVP Output Types
+            Supported Output Types
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Executive Summary", phase: "Phase 7" },
-              { label: "LinkedIn Post", phase: "Phase 7" },
-              { label: "Advisory", phase: "Phase 7" },
-              { label: "Presentation", phase: "Phase 7" },
+              { label: "Executive Summary", note: "Text" },
+              { label: "LinkedIn Post", note: "Text" },
+              { label: "Advisory", note: "Text" },
+              { label: "Presentation", note: "PPTX" },
+              { label: "Infographic", note: "PNG + PDF" },
+              { label: "Video", note: "PDF + SRT" },
+              { label: "X Post", note: "Text" },
             ].map((item) => (
               <div
                 key={item.label}
@@ -201,11 +225,14 @@ export default function HomePage() {
                   {item.label}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Coming in {item.phase}
+                  {item.note}
                 </p>
               </div>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground">
+            Open a project to select outputs, generate, and download.
+          </p>
         </section>
 
         {/* ---------------------------------------------------------------- */}

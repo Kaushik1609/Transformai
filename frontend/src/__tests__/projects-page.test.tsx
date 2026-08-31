@@ -20,6 +20,10 @@ jest.mock("next/navigation", () => ({
 
 beforeEach(() => {
   mockFetch.mockReset();
+  // Default for the "recent transformations" fetches on this page.
+  mockFetch.mockResolvedValue(
+    jsonResponse({ success: true, data: [], count: 0 }),
+  );
 });
 
 const projectsPayload = {
@@ -65,14 +69,14 @@ describe("ProjectsPage", () => {
     );
   });
 
-  it("shows a retryable error when loading fails", async () => {
+  it("shows a friendly error when loading fails", async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonResponse({ detail: "Backend unavailable." }, 503),
+      jsonResponse({ detail: "Internal Server Error" }, 503),
     );
     render(<ProjectsPage />);
 
     await waitFor(() =>
-      expect(screen.getByText("Backend unavailable.")).toBeInTheDocument(),
+      expect(screen.getByText("Failed to load projects.")).toBeInTheDocument(),
     );
 
     mockFetch.mockResolvedValueOnce(jsonResponse(projectsPayload));

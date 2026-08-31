@@ -27,7 +27,7 @@ import {
   configurationsApi,
   sourcesApi,
   transformationsApi,
-  ApiError,
+  errorMessage,
 } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import {
@@ -49,6 +49,7 @@ import { SourceAnalysis } from "./SourceAnalysis";
 import { ConfigurationForm } from "@/components/configuration";
 import { OutputSelector } from "@/components/output-selection";
 import { ResultsPanel } from "@/components/results";
+import { HistoryPanel } from "@/components/history";
 
 interface TransformationWorkspaceProps {
   projectId: string;
@@ -105,7 +106,7 @@ export function TransformationWorkspace({
       }
     } catch (err) {
       setProjectError(
-        err instanceof ApiError ? err.detail : "Failed to load workspace.",
+        errorMessage(err, "Failed to load the workspace."),
       );
     } finally {
       setLoading(false);
@@ -142,7 +143,7 @@ export function TransformationWorkspace({
     resetKey: job?.id,
     onError: (err) => {
       setPollErrorMsg(
-        err instanceof ApiError ? err.detail : "Failed to poll job status.",
+        errorMessage(err, "Failed to monitor job progress."),
       );
     },
     onDone: (j) => {
@@ -200,8 +201,18 @@ export function TransformationWorkspace({
       setJob(res.data);
     } catch (err) {
       setFormError(
-        err instanceof ApiError ? err.detail : "Failed to start generation.",
+        errorMessage(err, "Failed to start generation."),
       );
+    }
+  };
+
+  const handleSelectHistoricalJob = (historical: TransformationJobResponse) => {
+    setPollErrorMsg(null);
+    setFormError(null);
+    setOutputs([]);
+    setJob(historical);
+    if (isTerminalJobStatus(historical.status)) {
+      void refreshOutputs(historical.id);
     }
   };
 
@@ -432,6 +443,17 @@ export function TransformationWorkspace({
               Results and verification will appear here after you generate.
             </p>
           )}
+
+          <SectionCard
+            title="6 · History"
+            description="Past transformation jobs for this project."
+          >
+            <HistoryPanel
+              projectId={projectId}
+              currentJobId={job?.id}
+              onSelectJob={handleSelectHistoricalJob}
+            />
+          </SectionCard>
         </div>
       </div>
     </div>

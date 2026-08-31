@@ -55,6 +55,8 @@ export class FakeBackend {
   contentIntelligenceStatus: number;
   /** When set, POST /transformations returns this job instead of a queued one. */
   jobOnCreate: TransformationJobResponse | null;
+  /** Transformations history served for GET /api/v1/projects/{id}/transformations. */
+  history: TransformationJobResponse[];
 
   constructor(projectId = "11111111-1111-1111-1111-111111111111") {
     this.projects = [
@@ -76,6 +78,7 @@ export class FakeBackend {
     this.jobFinalStatus = "completed";
     this.contentIntelligenceStatus = 404;
     this.jobOnCreate = null;
+    this.history = [];
   }
 
   seedSource(source: SourceResponse) {
@@ -161,6 +164,14 @@ export class FakeBackend {
       }
 
       // Transformations
+      const history = /^\/api\/v1\/projects\/([^/]+)\/transformations$/.exec(path);
+      if (history) {
+        return jsonResponse({
+          success: true,
+          data: this.history,
+          count: this.history.length,
+        });
+      }
       if (path === "/api/v1/transformations") {
         this.job =
           this.jobOnCreate ?? {
@@ -207,6 +218,15 @@ export class FakeBackend {
           new Blob(["mock-bytes"], { type: "text/plain" }),
           200,
           { "content-disposition": 'attachment; filename="summary.txt"' },
+        );
+      }
+
+      const exportOut = /^\/api\/v1\/outputs\/([^/]+)\/export/.exec(path);
+      if (exportOut) {
+        return blobResponse(
+          new Blob(["%PDF-mock"], { type: "application/pdf" }),
+          200,
+          { "content-disposition": 'attachment; filename="summary.pdf"' },
         );
       }
 

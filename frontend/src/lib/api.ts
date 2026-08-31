@@ -210,6 +210,12 @@ export interface TransformationJobDetailResponse {
   data: TransformationJobResponse;
 }
 
+export interface TransformationJobListResponse {
+  success: boolean;
+  data: TransformationJobResponse[];
+  count: number;
+}
+
 export interface OutputResponse {
   id: string;
   job_id: string;
@@ -272,6 +278,20 @@ export class ApiError extends Error {
     super(detail);
     this.name = "ApiError";
   }
+}
+
+/**
+ * Map an API failure to a user-friendly message.
+ *
+ * Network failures (status 0) and server errors (5xx) are replaced with the
+ * supplied fallback so the UI never displays raw transport/HTTP noise.
+ */
+export function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 0 || err.status >= 500) return fallback;
+    return err.detail.length > 0 ? err.detail : fallback;
+  }
+  return fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -345,15 +365,18 @@ function parseFilenameFromDisposition(
 async function apiFetchBlob(
   path: string,
   query?: Record<string, string>,
+  init?: { method?: "GET" | "POST" },
 ): Promise<DownloadResult> {
   const search = query
     ? `?${new URLSearchParams(query).toString()}`
     : "";
   const url = `${API_BASE_URL}${path}${search}`;
+  const fetchInit =
+    init?.method === "POST" ? { method: "POST" as const } : undefined;
 
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, fetchInit);
   } catch {
     throw new ApiError(0, `Network error: could not reach ${url}`);
   }
@@ -522,6 +545,12 @@ export const transformationsApi = {
   listOutputs: (jobId: string) =>
     apiFetch<OutputListResponse>(`/api/v1/transformations/${jobId}/outputs`),
 
+  /** List the transformation job history for a project (newest first). */
+  listByProject: (projectId: string) =>
+    apiFetch<TransformationJobListResponse>(
+      `/api/v1/projects/${projectId}/transformations`,
+    ),
+
   /** Cancel a queued/running job. */
   cancel: (jobId: string) =>
     apiFetch<TransformationJobDetailResponse>(
@@ -552,4 +581,15 @@ export const outputsApi = {
    */
   download: (outputId: string, artifact: ArtifactRole = "primary") =>
     apiFetchBlob(`/api/v1/outputs/${outputId}/download`, { artifact }),
+
+  /**
+   * Export a completed Executive Summary / Advisory output to DOCX or PDF.
+   * The document is rendered server-side from the stored structured content.
+   */
+  export: (outputId: string, format: "docx" | "pdf") =>
+    apiFetchBlob(
+      `/api/v1/outputs/${outputId}/export`,
+      { format },
+      { method: "POST" },
+    ),
 };

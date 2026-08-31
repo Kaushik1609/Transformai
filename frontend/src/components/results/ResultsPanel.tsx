@@ -13,7 +13,7 @@ import {
   outputStatusVariant,
 } from "@/lib/outputTypes";
 import { StatusBadge } from "@/components/common";
-import { DownloadButton } from "@/components/export";
+import { DownloadButton, CopyButton, ExportButton } from "@/components/export";
 import { VerificationPanel } from "@/components/verification";
 
 interface ResultsPanelProps {
@@ -93,7 +93,33 @@ function OutputCard({ output }: { output: OutputResponse }) {
         )}
 
         {!failed && (
-          <DownloadButton output={output} label={`Download ${outputTypeLabel(output.output_type)}`} />
+          <div className="flex flex-wrap items-center gap-2">
+            {output.text_content && (
+              <CopyButton
+                text={output.text_content}
+                label={`Copy ${outputTypeLabel(output.output_type)}`}
+              />
+            )}
+            {(output.output_type === "summary" ||
+              output.output_type === "advisory") && (
+              <>
+                <ExportButton
+                  outputId={output.id}
+                  format="docx"
+                  label={`Download ${outputTypeLabel(output.output_type)}`}
+                />
+                <ExportButton
+                  outputId={output.id}
+                  format="pdf"
+                  label={`Download ${outputTypeLabel(output.output_type)}`}
+                />
+              </>
+            )}
+            <DownloadButton
+              output={output}
+              label={`Download ${outputTypeLabel(output.output_type)}`}
+            />
+          </div>
         )}
 
         {!failed && <VerificationPanel outputId={output.id} />}

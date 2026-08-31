@@ -11,7 +11,7 @@ import Link from "next/link";
 import {
   type ProjectResponse,
   projectsApi,
-  ApiError,
+  errorMessage,
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/outputTypes";
 import { DashboardLayout } from "@/components/layout";
@@ -21,6 +21,7 @@ import {
   LoadingSpinner,
   StatusBadge,
 } from "@/components/common";
+import { RecentTransformations } from "@/components/history";
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectResponse[] | null>(null);
@@ -38,7 +39,7 @@ export default function ProjectsPage() {
       setProjects(res.data);
     } catch (err) {
       setLoadError(
-        err instanceof ApiError ? err.detail : "Failed to load projects.",
+        errorMessage(err, "Failed to load projects."),
       );
     }
   }, []);
@@ -58,7 +59,7 @@ export default function ProjectsPage() {
       await loadProjects();
     } catch (err) {
       setCreateError(
-        err instanceof ApiError ? err.detail : "Failed to create the project.",
+        errorMessage(err, "Failed to create the project."),
       );
     } finally {
       setSubmitting(false);
@@ -174,6 +175,21 @@ export default function ProjectsPage() {
             </ul>
           )}
         </section>
+
+        {/* Recent transformations */}
+        {!loadError && projects !== null && projects.length > 0 && (
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Recent transformations
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                The most recent generation for your projects.
+              </p>
+            </div>
+            <RecentTransformations projects={projects} />
+          </section>
+        )}
       </div>
     </DashboardLayout>
   );

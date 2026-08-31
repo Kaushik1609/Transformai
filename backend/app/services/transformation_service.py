@@ -82,6 +82,20 @@ async def get_job(
     return result.scalar_one_or_none()
 
 
+async def list_jobs_by_project(
+    db: AsyncSession,
+    *,
+    project_id: uuid.UUID,
+) -> list[TransformationJob]:
+    """Return all transformation jobs for a project (newest first)."""
+    result = await db.execute(
+        select(TransformationJob)
+        .where(TransformationJob.project_id == project_id)
+        .order_by(TransformationJob.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 async def list_job_outputs(
     db: AsyncSession,
     *,

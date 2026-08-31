@@ -2,6 +2,7 @@
 TransformIQ Backend — Transformation Job API Router
 
 Endpoints:
+    GET    /api/v1/projects/{project_id}/transformations  (job history)
     POST   /api/v1/transformations
     GET    /api/v1/transformations/{job_id}
     GET    /api/v1/transformations/{job_id}/outputs
@@ -10,6 +11,7 @@ Endpoints:
     GET    /api/v1/outputs/{output_id}
     GET    /api/v1/outputs/{output_id}/verification
     GET    /api/v1/outputs/{output_id}/download
+    POST   /api/v1/outputs/{output_id}/export  (DOCX/PDF for text outputs)
 
 Phase 2: persistence only. No job enqueueing, no AI calls.
 """
@@ -19,6 +21,7 @@ from typing import Literal
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -28,6 +31,7 @@ from app.api.v1.schemas.transformation import (
     OutputResponse,
     TransformationJobCreate,
     TransformationJobDetailResponse,
+    TransformationJobListResponse,
     TransformationJobResponse,
     VerificationListResponse,
     VerificationResultResponse,
@@ -35,16 +39,60 @@ from app.api.v1.schemas.transformation import (
 from app.db.session import get_db
 from app.services import project_service, source_service, configuration_service, transformation_service
 from app.transformation.artifacts import artifact_file, get_storage
+from app.transformation.output_schemas import Advisory, ExecutiveSummary
 from app.transformation.queue import (
     cancel_transformation_job,
     enqueue_transformation_job,
     get_transformation_queue,
+)
+from app.transformation.render.docx import (
+    DOCX_MIME_TYPE,
+    render_advisory_docx,
+    render_executive_summary_docx,
+)
+from app.transformation.render.pdf import (
+    PDF_MIME_TYPE,
+    render_advisory_pdf,
+    render_executive_summary_pdf,
 )
 
 logger = structlog.get_logger(__name__)
 
 transformations_router = APIRouter(tags=["transformations"])
 outputs_router = APIRouter(tags=["outputs"])
+project_transformations_router = APIRouter(tags=["transformations"])
+
+
+# ---------------------------------------------------------------------------
+# Project transformation history
+# ---------------------------------------------------------------------------
+
+@project_transformations_router.get(
+    "/{project_id}/transformations",
+    response_model=TransformationJobListResponse,
+    summary="List transformation jobs for a project (history)",
+)
+async def list_project_transformations(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> TransformationJobListResponse:
+    """Return the transformation job history for a project (newest first)."""
+    project = await project_service.get_project(
+        db, project_id=project_id, user_id=current_user.id
+    )
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found.",
+        )
+    jobs = await transformation_service.list_jobs_by_project(
+        db, project_id=project_id
+    )
+    return TransformationJobListResponse(
+        data=[TransformationJobResponse.model_validate(j) for j in jobs],
+        count=len(jobs),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +318,96 @@ async def list_output_verifications(
     return VerificationListResponse(
         data=[VerificationResultResponse.model_validate(v) for v in verifications],
         count=len(verifications),
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/export",
+    response_class=Response,
+    summary="Export a text output to DOCX or PDF",
+)
+async def export_output_document(
+    output_id: uuid.UUID,
+    format: Literal["docx", "pdf"] = Query(default="pdf"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> Response:
+    """
+    Render a completed text output (Executive Summary / Advisory) into DOCX or
+    PDF and stream it to the owning user.
+
+    The export is generated statelessly from the output's stored structured
+    content — no storage write and no new secrets.  Binary outputs
+    (presentation / infographic / video) keep their existing artifact download
+    path via GET /outputs/{id}/download.
+    """
+    output = await transformation_service.get_output(db, output_id=output_id)
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    # Verify ownership through job → project (same pattern as get_output).
+    job = await transformation_service.get_job(
+        db, job_id=output.job_id, user_id=current_user.id
+    )
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    if output.output_type not in ("summary", "advisory"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Export to {format} is not supported for output type "
+                f"{output.output_type!r}. Use the artifact download for "
+                "presentation, infographic and video outputs."
+            ),
+        )
+    if output.status != "completed":
+        if output.status == "generating":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Output {output_id} is still generating.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} has no exportable content.",
+        )
+    structured = output.structured_content
+    if not structured:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} has no exportable content.",
+        )
+    try:
+        if output.output_type == "summary":
+            model = ExecutiveSummary.model_validate(structured)
+            bytes = (
+                render_executive_summary_docx(model)
+                if format == "docx"
+                else render_executive_summary_pdf(model)
+            )
+            mime_type = DOCX_MIME_TYPE if format == "docx" else PDF_MIME_TYPE
+        else:
+            model = Advisory.model_validate(structured)
+            bytes = (
+                render_advisory_docx(model)
+                if format == "docx"
+                else render_advisory_pdf(model)
+            )
+            mime_type = DOCX_MIME_TYPE if format == "docx" else PDF_MIME_TYPE
+    except ValidationError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The stored output content is not in a supported exportable format.",
+        ) from None
+    filename = f"{output.output_type}.{format}"
+    return Response(
+        content=bytes,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -51,7 +51,7 @@ class TestSettings:
         from app.core.config import get_settings
 
         s = get_settings()
-        assert s.LLM_PROVIDER in ("openai", "anthropic", "gemini", "azure_openai")
+        assert s.LLM_PROVIDER in ("openai", "anthropic", "gemini", "azure_openai", "fake")
 
     def test_storage_backend_is_valid(self):
         from app.core.config import get_settings

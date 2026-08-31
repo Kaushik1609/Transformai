@@ -126,6 +126,46 @@ describe("ResultsPanel", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
+  it("shows a copy button and DOCX/PDF export buttons for text outputs", () => {
+    render(
+      <ResultsPanel
+        outputs={[
+          createOutput({
+            id: "o-summary",
+            output_type: "summary",
+            text_content: "The executive summary body.",
+          }),
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Copy to clipboard" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /DOCX/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /PDF/ })).toBeInTheDocument();
+  });
+
+  it("does not render export buttons for non-summary/advisory outputs", async () => {
+    render(
+      <ResultsPanel
+        outputs={[
+          createOutput({
+            id: "o-linkedin",
+            output_type: "linkedin",
+            text_content: "A LinkedIn post draft.",
+          }),
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Copy to clipboard" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /DOCX/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /PDF/ })).not.toBeInTheDocument();
+  });
+
   it("renders binary outputs (infographic/presentation/video) without a text preview", () => {
     render(
       <ResultsPanel

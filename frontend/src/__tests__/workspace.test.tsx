@@ -214,14 +214,14 @@ describe("TransformationWorkspace", () => {
     expect(screen.getByText("No outputs generated yet.")).toBeInTheDocument();
   });
 
-  it("shows a load error and recovers on retry", async () => {
+  it("shows a friendly load error on 5xx and recovers on retry", async () => {
     const backend = new FakeBackend(PROJECT_ID);
     const handler = backend.handler() as unknown as typeof fetch;
     let first = true;
     global.fetch = (async (input: RequestInfo | Request, init?: RequestInit) => {
       if (first) {
         first = false;
-        return jsonResponse({ detail: "Backend unavailable." }, 503);
+        return jsonResponse({ detail: "Internal Server Error" }, 503);
       }
       return handler(input as globalThis.Request, init);
     }) as unknown as typeof fetch;
@@ -229,10 +229,43 @@ describe("TransformationWorkspace", () => {
     renderWorkspace(backend);
 
     await waitFor(() =>
-      expect(screen.getByText("Backend unavailable.")).toBeInTheDocument(),
+      expect(screen.getByText("Failed to load the workspace.")).toBeInTheDocument(),
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("No source yet")).toBeInTheDocument());
+  });
+
+  it("loads outputs for a job selected from the transformation history", async () => {
+    const backend = new FakeBackend(PROJECT_ID);
+    backend.seedSource(readySource);
+    backend.seedConfig(config);
+    backend.seedOutputs(outputs);
+    const historicJob: TransformationJobResponse = {
+      ...queuedJob,
+      id: "c0c0c0c0-c0c0-c0c0-c0c0-c0c0c0c0c0c0",
+      status: "completed",
+      progress: 100,
+      started_at: "2025-01-01T00:00:00Z",
+      completed_at: "2025-01-01T00:02:00Z",
+    };
+    backend.history = [historicJob];
+    global.fetch = backend.handler() as unknown as typeof fetch;
+
+    renderWorkspace(backend);
+
+    await waitFor(() => expect(screen.getByText("Direct text")).toBeInTheDocument());
+
+    // No results before selection.
+    expect(screen.queryByText("The board summary for Q3.")).not.toBeInTheDocument();
+
+    // Select the historical job from the history panel.
+    await userEvent.click(await screen.findByText(/Job c0c0c0c0/));
+
+    await waitFor(
+      () => expect(screen.getByText("The board summary for Q3.")).toBeInTheDocument(),
+      { timeout: 2000 },
+    );
+    expect(screen.getByText("Completed")).toBeInTheDocument();
   });
 });

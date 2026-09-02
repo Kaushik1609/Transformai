@@ -309,17 +309,11 @@ async def get_source(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> SourceDetailResponse:
-    source = await source_service.get_source(db, source_id=source_id)
-    if source is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Source {source_id} not found.",
-        )
-    # Verify through project ownership
-    project = await project_service.get_project(
-        db, project_id=source.project_id, user_id=current_user.id
+    # Authorization resolved at the database level (Source → Project → user).
+    source = await source_service.get_source_owned(
+        db, source_id=source_id, user_id=current_user.id
     )
-    if project is None:
+    if source is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Source {source_id} not found.",
@@ -337,16 +331,11 @@ async def delete_source(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> DeleteResponse:
-    source = await source_service.get_source(db, source_id=source_id)
-    if source is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Source {source_id} not found.",
-        )
-    project = await project_service.get_project(
-        db, project_id=source.project_id, user_id=current_user.id
+    # Authorization resolved at the database level (Source → Project → user).
+    source = await source_service.get_source_owned(
+        db, source_id=source_id, user_id=current_user.id
     )
-    if project is None:
+    if source is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Source {source_id} not found.",

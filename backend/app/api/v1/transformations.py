@@ -270,17 +270,12 @@ async def get_output(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> OutputDetailResponse:
-    output = await transformation_service.get_output(db, output_id=output_id)
-    if output is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} not found.",
-        )
-    # Verify ownership through job → project
-    job = await transformation_service.get_job(
-        db, job_id=output.job_id, user_id=current_user.id
+    # Authorization resolved at the database level:
+    # Output → job → project → user.
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
     )
-    if job is None:
+    if output is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} not found.",
@@ -298,16 +293,10 @@ async def list_output_verifications(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> VerificationListResponse:
-    output = await transformation_service.get_output(db, output_id=output_id)
-    if output is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} not found.",
-        )
-    job = await transformation_service.get_job(
-        db, job_id=output.job_id, user_id=current_user.id
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
     )
-    if job is None:
+    if output is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} not found.",
@@ -341,17 +330,10 @@ async def export_output_document(
     (presentation / infographic / video) keep their existing artifact download
     path via GET /outputs/{id}/download.
     """
-    output = await transformation_service.get_output(db, output_id=output_id)
-    if output is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} not found.",
-        )
-    # Verify ownership through job → project (same pattern as get_output).
-    job = await transformation_service.get_job(
-        db, job_id=output.job_id, user_id=current_user.id
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
     )
-    if job is None:
+    if output is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} not found.",
@@ -431,17 +413,10 @@ async def download_output_artifact(
     storage key is resolved server-side from the authorized Output record — the
     client never supplies a storage key.
     """
-    output = await transformation_service.get_output(db, output_id=output_id)
-    if output is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} not found.",
-        )
-    # Verify ownership through job → project (same pattern as get_output).
-    job = await transformation_service.get_job(
-        db, job_id=output.job_id, user_id=current_user.id
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
     )
-    if job is None:
+    if output is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} not found.",

@@ -120,6 +120,39 @@ async def get_output(
     return result.scalar_one_or_none()
 
 
+async def get_output_owned(
+    db: AsyncSession,
+    *,
+    output_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> Output | None:
+    """
+    Return a single output by ID, scoped to an owning user.
+
+    Enforces the full ownership chain at the database level by joining
+    through the output's job to the owning project. An output that exists but
+    belongs to another user is indistinguishable from a nonexistent output
+    (returns ``None``).
+
+    Chain: Output → job → project → user
+
+    Phase 9A — SQL-level ownership scoping to prevent IDOR / BOLA.
+    """
+    from app.db.models.project import Project  # avoid circular import
+    from app.db.models.transformation_job import TransformationJob
+
+    result = await db.execute(
+        select(Output)
+        .join(TransformationJob, Output.job_id == TransformationJob.id)
+        .join(Project, TransformationJob.project_id == Project.id)
+        .where(
+            Output.id == output_id,
+            Project.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_output_verifications(
     db: AsyncSession,
     *,

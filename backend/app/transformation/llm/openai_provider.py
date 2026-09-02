@@ -12,6 +12,8 @@ from langchain_openai import ChatOpenAI
 from app.core.config import settings
 from app.transformation.llm.provider import LLMProvider
 
+_UNSET = object()
+
 
 class OpenAILLMProvider(LLMProvider):
     """Generate text using an OpenAI-compatible chat model via langchain."""
@@ -21,14 +23,14 @@ class OpenAILLMProvider(LLMProvider):
         *,
         model: str | None = None,
         api_key: str | None = None,
-        base_url: str | None = None,
+        base_url: str | None = _UNSET,
         temperature: float | None = None,
         max_tokens: int | None = None,
         timeout: int | None = None,
     ) -> None:
         self._model = model or settings.LLM_MODEL
         self._api_key = api_key or settings.LLM_API_KEY
-        self._base_url = base_url if base_url is not None else settings.LLM_BASE_URL
+        self._base_url = settings.LLM_BASE_URL if base_url is _UNSET else base_url
         self._temperature = temperature if temperature is not None else settings.LLM_TEMPERATURE
         self._max_tokens = max_tokens if max_tokens is not None else settings.LLM_MAX_TOKENS
         self._timeout = timeout if timeout is not None else settings.LLM_TIMEOUT_SECONDS

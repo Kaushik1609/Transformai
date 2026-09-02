@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.db.models.project import Project
 from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
 from app.ingestion.documents import extract_docx, extract_pdf
@@ -273,6 +274,32 @@ async def get_source(
 ) -> Source | None:
     """Return a single source by ID (no user scope — caller must verify project ownership)."""
     result = await db.execute(select(Source).where(Source.id == source_id))
+    return result.scalar_one_or_none()
+
+
+async def get_source_owned(
+    db: AsyncSession,
+    *,
+    source_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> Source | None:
+    """
+    Return a single source by ID, scoped to an owning user.
+
+    Enforces authorization at the database level by joining through the
+    parent project to its owner. A source that exists but belongs to another
+    user is indistinguishable from a nonexistent source (returns ``None``).
+
+    Phase 9A — SQL-level ownership scoping to prevent IDOR / BOLA.
+    """
+    result = await db.execute(
+        select(Source)
+        .join(Project, Source.project_id == Project.id)
+        .where(
+            Source.id == source_id,
+            Project.user_id == user_id,
+        )
+    )
     return result.scalar_one_or_none()
 
 

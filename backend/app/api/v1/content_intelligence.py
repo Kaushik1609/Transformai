@@ -12,7 +12,7 @@ from app.content_intelligence.schemas import CanonicalContentResponse, ContentIn
 from app.content_intelligence.service import create_pending_analysis_async, get_analysis
 from app.db.session import get_db
 from app.ingestion.queue import enqueue_content_intelligence, get_content_intelligence_queue
-from app.services import project_service, source_service
+from app.services import source_service
 
 router = APIRouter(prefix="/sources", tags=["content-intelligence"])
 
@@ -43,11 +43,10 @@ def _response(content) -> ContentIntelligenceResponse:
 
 
 async def _owned_source(source_id: uuid.UUID, db: AsyncSession, current_user: CurrentUser):
-    source = await source_service.get_source(db, source_id=source_id)
+    source = await source_service.get_source_owned(
+        db, source_id=source_id, user_id=current_user.id
+    )
     if source is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Source {source_id} not found.")
-    project = await project_service.get_project(db, project_id=source.project_id, user_id=current_user.id)
-    if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Source {source_id} not found.")
     return source
 

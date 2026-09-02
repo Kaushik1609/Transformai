@@ -23,9 +23,19 @@ module.exports = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        "surface-elevated": "hsl(var(--surface-elevated))",
+        sidebar: {
+          bg: "hsl(var(--sidebar-bg))",
+          border: "hsl(var(--sidebar-border))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          400: "hsl(237 78% 73%)",
+          500: "hsl(237 75% 64%)",
+          600: "hsl(237 70% 56%)",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -51,6 +61,13 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "output-summary": "#A78BFA",
+        "output-linkedin": "#38BDF8",
+        "output-advisory": "#F4B740",
+        "output-presentation": "#2DD4BF",
+        "output-x": "#E2E8F0",
+        "output-infographic": "#FB923C",
+        "output-video": "#F472B6",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -66,10 +83,19 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        fadeIn: {
+          from: { opacity: "0", transform: "translateY(4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fadeIn 0.3s ease-out",
+        shimmer: "shimmer 1.5s infinite",
       },
     },
   },

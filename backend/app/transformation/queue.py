@@ -30,7 +30,7 @@ def enqueue_transformation_job(
     """Enqueue only the authoritative transformation job identifier."""
     job = queue.enqueue(
         "worker.process_transformation",
-        job_id=str(job_id),
+        str(job_id),
         job_timeout=settings.WORKER_JOB_TIMEOUT,
         result_ttl=86400,
         on_failure="worker.transformation_failure_handler",

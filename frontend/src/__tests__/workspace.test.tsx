@@ -147,7 +147,7 @@ describe("TransformationWorkspace", () => {
 
     // Select outputs.
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /Executive Summary/ }),
+      screen.getByRole("checkbox", { name: /Summary/ }),
     );
     await userEvent.click(screen.getByRole("checkbox", { name: /Video/ }));
     expect(screen.getByText("2 selected")).toBeInTheDocument();
@@ -203,7 +203,7 @@ describe("TransformationWorkspace", () => {
     await waitFor(() => expect(screen.getByText("Direct text")).toBeInTheDocument());
 
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /Executive Summary/ }),
+      screen.getByRole("checkbox", { name: /Summary/ }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Generate outputs" }));
 

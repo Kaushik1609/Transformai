@@ -27,6 +27,8 @@ from sqlalchemy.orm import Session
 from app.db.models.canonical_content import CanonicalContent
 from app.db.models.generation_configuration import GenerationConfiguration
 from app.db.models.output import Output
+from app.db.models.source import Source
+from app.db.models.source_chunk import SourceChunk
 from app.db.models.transformation_job import TransformationJob
 from app.db.models.verification_result import VerificationResult
 from app.rag.service import RAGService
@@ -538,18 +540,61 @@ class TransformationWorkflow:
         return {"outputs": outputs, "errors": errors}
 
     def verify_hook(self, state: TransformationState) -> TransformationState:
-        """Invoke the Phase 6 verification hook for each completed output."""
+        """Run the Phase 8 verification engine for each completed output.
+
+        Loads the source's normalized chunks as evidence, invokes the
+        deterministic verification engine per output, and persists one
+        VerificationResult record per completed output.  A verification failure
+        never destroys the generated output: the output is left untouched and a
+        controlled warning result is recorded, preserving failure isolation
+        between outputs.
+        """
         session = self.deps.session
         hooks: list[dict[str, Any]] = list(state.get("verification_hooks", []))
+
+        source_chunks = self._load_source_chunks(state)
 
         for output in state.get("outputs", []):
             if output["status"] != "completed":
                 continue
-            result = run_verification_hook(
-                output=output["structured_content"],
-                canonical=state.get("canonical", {}),
-                hook=self.deps.verification_hook,
-            )
+            try:
+                result = run_verification_hook(
+                    output=output["structured_content"],
+                    canonical=state.get("canonical", {}),
+                    hook=self.deps.verification_hook,
+                    source_chunks=source_chunks,
+                )
+            except Exception as exc:  # verification must never destroy output
+                result = {
+                    "output_type": output["output_type"],
+                    "status": "error",
+                    "overall_status": "warning",
+                    "message": f"Verification failed: {exc}",
+                    "grounding_score": None,
+                    "consistency_score": None,
+                    "claims_checked": 0,
+                    "claims_supported": 0,
+                    "warnings": {
+                        "status": "warning",
+                        "message": f"Verification failed: {exc}",
+                        "items": [
+                            {
+                                "type": "verification_error",
+                                "severity": "error",
+                                "message": f"Verification failed: {exc}",
+                                "claim_text": None,
+                                "evidence": None,
+                                "chunk_index": None,
+                            }
+                        ],
+                        "count": 1,
+                    },
+                    "details": {
+                        "status": "error",
+                        "generator": "deterministic-phase8-factcheck",
+                        "error": str(exc),
+                    },
+                }
             hooks.append(
                 {
                     "output_id": output["output_id"],
@@ -564,10 +609,12 @@ class TransformationWorkflow:
                     VerificationResult(
                         id=uuid.uuid4(),
                         output_id=record.id,
-                        overall_status="warning",
-                        claims_checked=0,
-                        claims_supported=0,
-                        warnings={"status": result["status"], "message": result["message"]},
+                        overall_status=result.get("overall_status", "warning"),
+                        grounding_score=result.get("grounding_score"),
+                        consistency_score=result.get("consistency_score"),
+                        claims_checked=result.get("claims_checked", 0),
+                        claims_supported=result.get("claims_supported", 0),
+                        warnings=result.get("warnings"),
                         details=result,
                         created_at=_utcnow(),
                     )
@@ -575,6 +622,31 @@ class TransformationWorkflow:
                 session.flush()
 
         return {"verification_hooks": hooks}
+
+    def _load_source_chunks(self, state: TransformationState) -> list[str]:
+        """Load the source's normalized chunks as evidence for verification."""
+        session = self.deps.session
+        source_id = state.get("source_id")
+        if not source_id:
+            return []
+        try:
+            rows = (
+                session.execute(
+                    select(SourceChunk)
+                    .where(SourceChunk.source_id == uuid.UUID(str(source_id)))
+                    .order_by(SourceChunk.chunk_index)
+                )
+                .scalars()
+                .all()
+            )
+            chunks = [row.content for row in rows]
+            if not chunks:
+                source = session.get(Source, uuid.UUID(str(source_id)))
+                if source is not None and source.extracted_text:
+                    chunks = [source.extracted_text]
+            return chunks
+        except (ValueError, TypeError):
+            return []
 
     def finalize(self, state: TransformationState) -> TransformationState:
         """Update job status based on canonical readiness and output outcomes."""

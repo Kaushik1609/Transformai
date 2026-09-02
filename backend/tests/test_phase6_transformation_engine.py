@@ -226,6 +226,14 @@ class FakeRQJob:
 
 
 class FakeQueue:
+    """Minimal stand-in for ``rq.Queue`` that models RQ 2.0 arg handling.
+
+    RQ 2.0 reserves parameters such as ``job_id`` and ``job_timeout`` and pops
+    them before invoking the callable, so an enqueued ``job`` exposes ``args``
+    = the callable's positional arguments (the function reference is *not*
+    included) and ``kwargs`` = the callable's keyword arguments.
+    """
+
     def __init__(self):
         self.calls = []
         self.job_ids = []
@@ -234,10 +242,15 @@ class FakeQueue:
     def enqueue(self, *args, **kwargs):
         self.calls.append((args, kwargs))
         job = FakeRQJob()
-        self._jobs[job.id] = {"args": args, "kwargs": kwargs, "cancelled": False}
+        # Real RQ stores only the callable's args — the function reference is
+        # used for import resolution and is not part of `job.args`.
+        self._jobs[job.id] = {
+            "args": args[1:],
+            "kwargs": dict(kwargs),
+            "cancelled": False,
+        }
         self.job_ids.append(job.id)
-        theta = job
-        return theta
+        return job
 
     def fetch_job(self, rq_job_id):
         return FakeFetchableJob(self._jobs.get(rq_job_id))
@@ -265,9 +278,22 @@ def test_enqueue_payload_contains_only_job_id():
     rq_id = enqueue_transformation_job(job_id, queue=queue)
     assert rq_id == "rq-trans-123"
     args, kwargs = queue.calls[0]
-    assert args == ("worker.process_transformation",)
-    assert kwargs["job_id"] == str(job_id)
-    assert set(kwargs) >= {"job_id", "job_timeout", "result_ttl"}
+    # The DB job ID must be passed positionally (RQ 2.0 reserves the `job_id`
+    # keyword for the RQ job's own ID and strips it before invoking the callable).
+    assert args == ("worker.process_transformation", str(job_id))
+    assert "job_id" not in kwargs
+    assert set(kwargs) >= {"job_timeout", "result_ttl", "on_failure"}
+
+
+def test_transformation_failure_handler_recovers_job_id_from_args():
+    # The failure handler extracts the DB job ID from job.args[0] (real RQ
+    # exposes only the callable's positional args). Verify recovery works for
+    # the payload enqueued by enqueue_transformation_job.
+    queue = FakeQueue()
+    job_id = uuid.uuid4()
+    enqueue_transformation_job(job_id, queue=queue)
+    rq_job = queue.fetch_job(queue.job_ids[0])
+    assert rq_job.args[0] == str(job_id)
 
 
 def test_enqueue_uses_dedicated_transformation_queue():
@@ -540,8 +566,11 @@ def test_verification_hook_invoked_and_persisted():
     with Session(engine) as s:
         results = s.execute(select(VerificationResult)).scalars().all()
         assert len(results) == 1
-        assert results[0].details["status"] == "pending_phase8"
-        assert results[0].overall_status == "warning"
+        # Phase 8 replaces the old pending_phase8 marker with a real result.
+        assert results[0].details["status"] == "completed"
+        assert results[0].overall_status == "passed"
+        assert results[0].claims_checked == 0
+        assert results[0].grounding_score is None
     engine.dispose()
 
 
@@ -603,8 +632,11 @@ def test_api_create_transformation_enqueues(client, monkeypatch):
     assert resp.status_code == 201
     assert resp.json()["data"]["status"] == "queued"
     args, kwargs = fake_queue.calls[0]
-    assert args == ("worker.process_transformation",)
-    assert kwargs["job_id"] == resp.json()["data"]["id"]
+    # The DB job ID is passed positionally; RQ 2.0 consumes reserved kwargs
+    # like `job_id` (so it must not be forwarded as a callable kwarg).
+    assert args == ("worker.process_transformation", resp.json()["data"]["id"])
+    assert "job_id" not in kwargs
+    assert set(kwargs) >= {"job_timeout", "result_ttl", "on_failure"}
 
 
 def test_api_cancel_transformation_revokes_queued_job(client, monkeypatch):

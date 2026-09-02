@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "openai"
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
+    # Optional base URL for OpenAI-compatible endpoints (e.g. a gateway or
+    # self-hosted provider). When empty, the OpenAI provider uses its default
+    # endpoint, preserving existing behavior. Intended for development/prototype
+    # testing only; do not make a third-party gateway the permanent default.
+    LLM_BASE_URL: str = ""
     LLM_TEMPERATURE: float = 0.3
     LLM_MAX_TOKENS: int = 4096
     LLM_TIMEOUT_SECONDS: int = 60

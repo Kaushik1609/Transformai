@@ -3,3 +3,4 @@
  */
 export { TransformationWorkspace } from "./TransformationWorkspace";
 export { SourceAnalysis } from "./SourceAnalysis";
+export { HomeWorkspace } from "./HomeWorkspace";

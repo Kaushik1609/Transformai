@@ -1,37 +1,52 @@
-"""Phase 6 verification hook.
+"""Phase 8 verification hook — workflow integration point.
 
-Phase 6 implements only the interface/entry point so the workflow can reach
-  generate -> validate -> verify_hook
+Replaces the Phase 6 stub.  The hook delegates to the deterministic Phase 8
+verification engine (claim extraction, source-evidence grounding, consistency
+analysis, and warning generation) whenever the workflow reaches
+    generate -> validate -> verify_hook
 
-The actual verification engine (claim extraction, grounding, consistency
-scoring, warnings) is Phase 8 and intentionally NOT implemented here.  The
-Phase 6 hook returns a controlled "pending Phase 8" result for every output.
+The external contract is preserved: ``VerificationHook.verify`` and
+``run_verification_hook`` keep their signatures, and output records now receive
+real scores, claims, and warnings instead of the old ``pending_phase8`` marker.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-# Status marker used by Phase 6 for the to-be-implemented Phase 8 engine.
-VERIFICATION_PENDING = "pending_phase8"
+from app.transformation.verification_engine.engine import RESULT_COMPLETED, run_verification
+
+# The engine result uses this marker for details["status"].
+VERIFICATION_COMPLETED = RESULT_COMPLETED
 
 
 class VerificationHook:
-    """Invoke the (future) verification engine for a generated output.
+    """Run the real Phase 8 verification engine for a generated output.
 
-    Phase 6 contract: returns a deterministic "not implemented / pending Phase 8"
-    result without running any claim/consistency logic.
+    The hook can be constructed with a fixed set of source chunks (for tests
+    and simple callers) or receive ``source_chunks`` per call from the graph.
     """
 
-    def verify(self, *, output: dict[str, Any], canonical: dict[str, Any]) -> dict[str, Any]:
-        """Return a controlled pending-Phase-8 verification result."""
+    def __init__(self, *, source_chunks: list[str] | None = None) -> None:
+        self.source_chunks: list[str] = list(source_chunks or [])
+
+    def verify(
+        self,
+        *,
+        output: dict[str, Any],
+        canonical: dict[str, Any],
+        source_chunks: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Return a real verification result for one generated output."""
+        chunks = list(source_chunks) if source_chunks is not None else self.source_chunks
+        result = run_verification(
+            output=output,
+            canonical=canonical,
+            source_chunks=chunks,
+        )
         return {
             "output_type": output.get("type", ""),
-            "status": VERIFICATION_PENDING,
-            "message": "Verification engine not implemented — pending Phase 8.",
-            "claims_checked": 0,
-            "claims_supported": 0,
-            "warnings": [],
+            **result,
         }
 
 
@@ -40,7 +55,12 @@ def run_verification_hook(
     output: dict[str, Any],
     canonical: dict[str, Any],
     hook: VerificationHook | None = None,
+    source_chunks: list[str] | None = None,
 ) -> dict[str, Any]:
     """Run the verification hook for a single output."""
     instance = hook or VerificationHook()
-    return instance.verify(output=output, canonical=canonical)
+    return instance.verify(
+        output=output,
+        canonical=canonical,
+        source_chunks=source_chunks,
+    )

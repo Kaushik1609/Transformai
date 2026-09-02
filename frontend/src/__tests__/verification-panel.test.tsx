@@ -1,8 +1,8 @@
 /**
  * Phase 9 tests — Verification panel.
  *
- * Covers the pending Phase 8 state display, real results display, the empty
- * (no record) state, and fetch errors.
+ * Covers the passed state, the warning state with structured warning items,
+ * the empty (no record) state, and fetch errors.
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import { VerificationPanel } from "@/components/verification";
@@ -12,16 +12,21 @@ import { jsonResponse, type FetchMock } from "./helpers";
 const mockFetch = jest.fn() as unknown as FetchMock;
 global.fetch = mockFetch;
 
-const pendingRecord: VerificationResultResponse = {
+const passedRecord: VerificationResultResponse = {
   id: "v1",
   output_id: "o1",
-  overall_status: "pending",
-  claims_checked: 0,
-  claims_supported: 0,
-  grounding_score: null,
-  consistency_score: null,
-  details: { status: "pending_phase8" },
-  warnings: {},
+  overall_status: "passed",
+  claims_checked: 1,
+  claims_supported: 1,
+  grounding_score: 1.0,
+  consistency_score: 1.0,
+  details: { status: "completed" },
+  warnings: {
+    status: "passed",
+    message: "All claims supported by source.",
+    items: [],
+    count: 0,
+  },
   created_at: "2025-01-01T00:00:00Z",
 };
 
@@ -33,11 +38,30 @@ const warningRecord: VerificationResultResponse = {
   claims_supported: 2,
   grounding_score: 0.8,
   consistency_score: 0.9,
-  details: {},
-  warnings: ["Claim 2 is only partially supported."] as unknown as Record<
-    string,
-    unknown
-  >,
+  details: { status: "completed" },
+  warnings: {
+    status: "warning",
+    message: "Some claims are not fully grounded.",
+    items: [
+      {
+        type: "weakly_supported_claim",
+        severity: "warning",
+        message: "Claim 2 is only partially supported.",
+        claim_text: "The platform scales linearly.",
+        evidence: null,
+        chunk_index: 0,
+      },
+      {
+        type: "numeric_mismatch",
+        severity: "error",
+        message: "Claim number 500 does not match the source.",
+        claim_text: "The system supports 50,000 concurrent users.",
+        evidence: "500",
+        chunk_index: null,
+      },
+    ],
+    count: 2,
+  },
   created_at: "2025-01-01T00:00:00Z",
 };
 
@@ -46,21 +70,21 @@ beforeEach(() => {
 });
 
 describe("VerificationPanel", () => {
-  it("shows the pending Phase 8 state clearly", async () => {
+  it("renders a passed verification result with percentage scores", async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonResponse({ success: true, data: [pendingRecord], count: 1 }),
+      jsonResponse({ success: true, data: [passedRecord], count: 1 }),
     );
     render(<VerificationPanel outputId="o1" />);
 
-    await waitFor(() =>
-      expect(
-        screen.getByText("Verification pending — Phase 8 engine not implemented"),
-      ).toBeInTheDocument(),
-    );
-    expect(screen.getByText("pending")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Verification")).toBeInTheDocument());
+    expect(screen.getByText("passed")).toBeInTheDocument();
+    expect(screen.getByText("Grounding")).toBeInTheDocument();
+    expect(screen.getAllByText("100%")).toHaveLength(2);
+    expect(screen.getByText("Consistency")).toBeInTheDocument();
+    expect(screen.getAllByText("1")).toHaveLength(2);
   });
 
-  it("renders scores, claims, and warnings for real results", async () => {
+  it("renders structured warnings and percentage scores for real results", async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ success: true, data: [warningRecord], count: 1 }),
     );
@@ -69,12 +93,15 @@ describe("VerificationPanel", () => {
     await waitFor(() => expect(screen.getByText("Verification")).toBeInTheDocument());
     expect(screen.getByText("warning")).toBeInTheDocument();
     expect(screen.getByText("Grounding")).toBeInTheDocument();
-    expect(screen.getByText("0.8")).toBeInTheDocument();
-    expect(screen.getByText("0.9")).toBeInTheDocument();
+    expect(screen.getByText("80%")).toBeInTheDocument();
+    expect(screen.getByText("90%")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(
       screen.getByText("Claim 2 is only partially supported."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Claim number 500 does not match the source."),
     ).toBeInTheDocument();
   });
 

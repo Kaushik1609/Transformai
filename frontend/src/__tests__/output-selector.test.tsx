@@ -19,8 +19,8 @@ const checkbox = (label: string) =>
 describe("OutputSelector", () => {
   it("renders every supported output type with its label", () => {
     render(<OutputSelector selected={[]} onChange={jest.fn()} />);
-    for (const { label } of OUTPUT_TYPES) {
-      expect(checkbox(label)).toBeInTheDocument();
+    for (const { shortLabel } of OUTPUT_TYPES) {
+      expect(checkbox(shortLabel)).toBeInTheDocument();
     }
   });
 
@@ -28,7 +28,7 @@ describe("OutputSelector", () => {
     const onChange = jest.fn();
     render(<OutputSelector selected={["summary"]} onChange={onChange} />);
 
-    const summary = checkbox("Executive Summary");
+    const summary = checkbox("Summary");
     expect(summary).toHaveAttribute("aria-checked", "true");
 
     await userEvent.click(summary);
@@ -42,7 +42,7 @@ describe("OutputSelector", () => {
   it("respects visual selection state", () => {
     render(<OutputSelector selected={["infographic"]} onChange={jest.fn()} />);
     expect(checkbox("Infographic")).toHaveAttribute("aria-checked", "true");
-    expect(checkbox("LinkedIn Post")).toHaveAttribute("aria-checked", "false");
+    expect(checkbox("LinkedIn")).toHaveAttribute("aria-checked", "false");
   });
 
   it("does nothing while disabled", async () => {

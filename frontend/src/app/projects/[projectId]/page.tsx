@@ -1,5 +1,5 @@
 /**
- * TransformIQ — Project workspace route (Phase 9).
+ * TransformIQ — Project workspace route.
  *
  * Route shell for a single project's transformation workspace.
  */
@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { TransformationWorkspace } from "@/components/workspace";
-import { DashboardLayout } from "@/components/layout";
+import { AppShell } from "@/components/layout";
 import { LoadingSpinner } from "@/components/common";
 
 export default function ProjectWorkspacePage() {
@@ -16,15 +16,13 @@ export default function ProjectWorkspacePage() {
   const projectId = params?.projectId;
 
   return (
-    <DashboardLayout>
-      <div className="mb-4">
-        <Link
-          href="/projects"
-          className="text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
-        >
-          ← Back to projects
-        </Link>
-      </div>
+    <AppShell active="/projects" title="Project">
+      <Link
+        href="/projects"
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        ← Projects
+      </Link>
       {projectId ? (
         <TransformationWorkspace projectId={projectId} />
       ) : (
@@ -32,6 +30,6 @@ export default function ProjectWorkspacePage() {
           <LoadingSpinner size="lg" label="Loading project…" />
         </div>
       )}
-    </DashboardLayout>
+    </AppShell>
   );
 }

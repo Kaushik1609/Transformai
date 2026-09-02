@@ -5,9 +5,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "TransformIQ — Gen AI Content Transformation",
+  title: "TransformIQ — One source, every format",
   description:
-    "SIH 26154 | Convert source documents into multiple audience-specific communication artefacts.",
+    "TransformIQ turns one source and one instruction into many communication-ready output formats.",
 };
 
 export default function RootLayout({

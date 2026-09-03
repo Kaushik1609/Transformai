@@ -21,6 +21,9 @@ import {
   outputTypeShortLabel,
   timeAgo,
   jobStatusVariant,
+  jobCompletionStatus,
+  jobCompletionVariant,
+  outputStatusVariant,
 } from "@/lib/outputTypes";
 import { AppShell } from "@/components/layout";
 import {
@@ -307,8 +310,12 @@ export default function HistoryPage() {
                 <span className="text-sm text-muted-foreground">
                   {displayProjectName(detail)}
                 </span>
-                <StatusBadge variant={jobStatusVariant(detail.job.status)}>
-                  {detail.job.status}
+                <StatusBadge
+                  variant={jobCompletionVariant(
+                    jobCompletionStatus(detail.job, detail.outputs),
+                  )}
+                >
+                  {jobCompletionStatus(detail.job, detail.outputs)}
                 </StatusBadge>
               </div>
 
@@ -381,9 +388,7 @@ export default function HistoryPage() {
                             {outputTypeShortLabel(output.output_type)}
                           </span>
                           <StatusBadge
-                            variant={
-                              output.status === "completed" ? "success" : "error"
-                            }
+                            variant={outputStatusVariant(output.status)}
                           >
                             {output.status}
                           </StatusBadge>

@@ -128,6 +128,13 @@ function RecordView({ record }: { record: VerificationResultResponse }) {
     details["status"] === "error"
       ? `${record.overall_status} · verification error`
       : record.overall_status;
+  const claimsUnsupported =
+    record.claims_checked !== null &&
+    record.claims_checked !== undefined &&
+    record.claims_supported !== null &&
+    record.claims_supported !== undefined
+      ? Math.max(0, record.claims_checked - record.claims_supported)
+      : null;
 
   return (
     <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
@@ -137,7 +144,7 @@ function RecordView({ record }: { record: VerificationResultResponse }) {
           {statusLabel}
         </StatusBadge>
       </div>
-      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-5">
         <Metric label="Grounding" value={formatScore(record.grounding_score)} />
         <Metric
           label="Consistency"
@@ -145,16 +152,30 @@ function RecordView({ record }: { record: VerificationResultResponse }) {
         />
         <Metric label="Claims checked" value={record.claims_checked} />
         <Metric label="Claims supported" value={record.claims_supported} />
+        <Metric label="Claims unsupported" value={claimsUnsupported} />
       </dl>
       {warningsList.length > 0 && (
-        <ul className="mt-2 list-inside list-disc space-y-0.5 text-[11px] text-muted-foreground">
+        <ul className="mt-2 space-y-1 text-[11px] text-muted-foreground">
           {warningsList.map((w, i) => (
-            <li key={i}>
-              {typeof w.message === "string"
-                ? w.message
-                : typeof w.type === "string"
-                  ? w.type
-                  : "Verification warning"}
+            <li key={i} className="flex gap-2">
+              <span aria-hidden="true">•</span>
+              <span>
+                {typeof w.message === "string"
+                  ? w.message
+                  : typeof w.type === "string"
+                    ? w.type
+                    : "Verification warning"}
+                {typeof w.severity === "string" && (
+                  <span className="ml-1 uppercase tracking-wide text-muted-foreground">
+                    ({w.severity})
+                  </span>
+                )}
+                {typeof w.evidence === "string" && w.evidence.length > 0 && (
+                  <span className="block text-muted-foreground/80">
+                    Evidence: {w.evidence}
+                  </span>
+                )}
+              </span>
             </li>
           ))}
         </ul>

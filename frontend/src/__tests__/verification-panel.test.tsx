@@ -96,7 +96,8 @@ describe("VerificationPanel", () => {
     expect(screen.getByText("80%")).toBeInTheDocument();
     expect(screen.getByText("90%")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getAllByText("2")).toHaveLength(2);
+    expect(screen.getByText("Claims unsupported")).toBeInTheDocument();
     expect(
       screen.getByText("Claim 2 is only partially supported."),
     ).toBeInTheDocument();

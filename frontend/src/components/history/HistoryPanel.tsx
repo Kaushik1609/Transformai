@@ -14,10 +14,11 @@ import {
   errorMessage,
 } from "@/lib/api";
 import {
-  jobStatusVariant,
   outputTypeLabel,
   formatDateTime,
   isTerminalJobStatus,
+  jobCompletionStatus,
+  jobCompletionVariant,
 } from "@/lib/outputTypes";
 import {
   StatusBadge,
@@ -30,6 +31,9 @@ interface HistoryPanelProps {
   projectId: string;
   /** The job currently open in the workspace (highlighted in the list). */
   currentJobId?: string | null;
+  /** Per-job outputs for jobs whose outputs are already loaded (e.g. the
+   * current job), used to surface a "partial" completion state. */
+  outputsByJobId?: Record<string, Array<{ status: string }>>;
   /** Called when the user selects a historical job to view. */
   onSelectJob: (job: TransformationJobResponse) => void;
 }
@@ -37,6 +41,7 @@ interface HistoryPanelProps {
 export function HistoryPanel({
   projectId,
   currentJobId,
+  outputsByJobId,
   onSelectJob,
 }: HistoryPanelProps) {
   const [jobs, setJobs] = useState<TransformationJobResponse[] | null>(null);
@@ -104,9 +109,17 @@ export function HistoryPanel({
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <span className="flex items-center gap-2 text-xs font-medium text-foreground">
                 Job {job.id.slice(0, 8)}…
-                <StatusBadge variant={jobStatusVariant(job.status)}>
-                  {job.status}
-                </StatusBadge>
+                {(() => {
+                  const completion = jobCompletionStatus(
+                    job,
+                    outputsByJobId?.[job.id],
+                  );
+                  return (
+                    <StatusBadge variant={jobCompletionVariant(completion)}>
+                      {completion}
+                    </StatusBadge>
+                  );
+                })()}
                 {job.id === currentJobId && (
                   <span className="text-[11px] text-primary">(current)</span>
                 )}

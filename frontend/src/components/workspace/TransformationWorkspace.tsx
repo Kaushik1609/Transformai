@@ -451,6 +451,9 @@ export function TransformationWorkspace({
             <HistoryPanel
               projectId={projectId}
               currentJobId={job?.id}
+              outputsByJobId={
+                job ? { [job.id]: outputs } : undefined
+              }
               onSelectJob={handleSelectHistoricalJob}
             />
           </SectionCard>

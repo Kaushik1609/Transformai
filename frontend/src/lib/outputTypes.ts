@@ -220,6 +220,97 @@ export function isTerminalOutputStatus(status: string): boolean {
   return status === "completed" || status === "failed";
 }
 
+/**
+ * Determine the true completion state of a transformation job from its
+ * per-output statuses. A job whose `status` is "completed" may still be
+ * PARTIALLY completed when one or more outputs failed. Falls back to the raw
+ * job status when no outputs are provided.
+ *
+ * Returns "partial" | "completed" | "failed" | "cancelled" | status string.
+ */
+export function jobCompletionStatus(
+  job: { status: string } | null | undefined,
+  outputs?: Array<{ status: string }> | null,
+): string {
+  if (!job) return "unknown";
+  if (outputs && outputs.length > 0 && job.status === "completed") {
+    const failed = outputs.some((o) => o.status === "failed");
+    const anyCompleted = outputs.some((o) => o.status === "completed");
+    if (failed && anyCompleted) return "partial";
+  }
+  return job.status;
+}
+
+/** Badge variant for the composite completion status (adds "partial"). */
+export function jobCompletionVariant(status: string): BadgeVariant {
+  if (status === "partial") return "warning";
+  return jobStatusVariant(status);
+}
+
+// ---------------------------------------------------------------------------
+// Output failure details (safe resilience metadata)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bounded, safe per-output failure details derived from the Phase 11D
+ * `output_metadata.resilience` block persisted server-side. Only enumerable,
+ * non-secret fields are surfaced — never the raw metadata object, exception
+ * traces, or provider inputs. If no meaningful detail is available this
+ * returns `null` and the caller falls back to a generic message.
+ */
+export function outputFailureDetails(
+  output: {
+    status: string;
+    output_metadata?: Record<string, unknown> | null;
+  } | null,
+): {
+  message: string | null;
+  errorType: string | null;
+  attempts: number | null;
+  maxAttempts: number | null;
+  retryable: boolean | null;
+  usedFallback: boolean | null;
+  provider: string | null;
+  retryExhausted: boolean;
+} | null {
+  if (!output || output.status !== "failed") return null;
+  const resilience = (output.output_metadata ?? {})["resilience"] as
+    | Record<string, unknown>
+    | undefined;
+  if (!resilience || typeof resilience !== "object") return null;
+
+  const num = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
+  const bool = (v: unknown): boolean | null =>
+    typeof v === "boolean" ? v : null;
+  const str = (v: unknown): string | null =>
+    typeof v === "string" && v.length > 0 ? v : null;
+
+  const attempts = num(resilience["attempts"]);
+  const maxAttempts = num(resilience["max_attempts"]);
+  const retryable = bool(resilience["retryable"]);
+  const usedFallback = bool(resilience["used_fallback"]);
+  const retryExhausted =
+    retryable === true && attempts !== null && maxAttempts !== null
+      ? attempts >= maxAttempts
+      : retryable === true;
+
+  const message =
+    str(resilience["last_error_message"]) ??
+    str(resilience["last_error_type"]);
+
+  return {
+    message,
+    errorType: str(resilience["last_error_type"]),
+    attempts,
+    maxAttempts,
+    retryable,
+    usedFallback,
+    provider: str(resilience["provider"]),
+    retryExhausted,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Formatting helpers
 // ---------------------------------------------------------------------------

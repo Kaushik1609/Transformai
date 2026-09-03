@@ -103,6 +103,77 @@ export class FakeBackend {
     this.jobFinalStatus = job.status;
   }
 
+  /**
+   * Seed the acceptance scenario: one completed transformation job with all
+   * seven output types requested, where Summary/LinkedIn/X completed and
+   * Advisory/Infographic/Presentation/Video failed. The failed outputs carry
+   * safe Phase 11D resilience metadata (error type, attempts, retries) and the
+   * completed ones expose downloadable artifacts.
+   */
+  seedPartialJob() {
+    const completed = ["summary", "linkedin", "x"];
+    const failed = ["advisory", "infographic", "presentation", "video"];
+
+    const job: TransformationJobResponse = {
+      id: "22222222-2222-2222-2222-222222222222",
+      project_id: "11111111-1111-1111-1111-111111111111",
+      source_id: "source",
+      configuration_id: "config",
+      requested_outputs: {
+        output_types: [...completed, ...failed],
+      },
+      status: "completed",
+      progress: 100,
+      error_message: null,
+      started_at: "2025-01-01T00:00:00Z",
+      completed_at: "2025-01-01T00:01:00Z",
+      created_at: "2025-01-01T00:00:00Z",
+    };
+
+    const outputs: OutputResponse[] = [
+      ...completed.map((type, i) => ({
+        id: `out-${type}`,
+        job_id: job.id,
+        output_type: type,
+        status: "completed",
+        structured_content: null,
+        text_content: `Completed ${type} content.`,
+        storage_key: `artifacts/${type}.txt`,
+        mime_type: "text/plain",
+        output_metadata: null,
+        created_at: "2025-01-01T00:01:00Z",
+      })),
+      ...failed.map((type, i) => ({
+        id: `out-${type}`,
+        job_id: job.id,
+        output_type: type,
+        status: "failed",
+        structured_content: null,
+        text_content: null,
+        storage_key: null,
+        mime_type: null,
+        output_metadata: {
+          resilience: {
+            provider: "openai-compatible",
+            model: "big-pickle",
+            attempts: 3,
+            max_attempts: 3,
+            retryable: true,
+            last_error_type: "timeout",
+            last_error_message:
+              "The provider timed out after 3 attempts (safe, redacted).",
+            retried: true,
+            used_fallback: false,
+            final_status: "failed",
+          },
+        },
+        created_at: "2025-01-01T00:01:00Z",
+      })),
+    ];
+
+    this.seedTerminalJob(job, outputs);
+  }
+
   seedOutputs(outputs: OutputResponse[]) {
     this.outputs = outputs;
   }

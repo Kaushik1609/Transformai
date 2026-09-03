@@ -43,6 +43,8 @@ export default function HelpPage() {
             <li className="flex gap-2"><span className="font-medium text-primary">2.</span> Add your source (PDF, DOCX, TXT or pasted text).</li>
             <li className="flex gap-2"><span className="font-medium text-primary">3.</span> Choose a tone and audience.</li>
             <li className="flex gap-2"><span className="font-medium text-primary">4.</span> Select one or more outputs and click Run Transformation.</li>
+            <li className="flex gap-2"><span className="font-medium text-primary">5.</span> Review each output&apos;s verification results (grounding, consistency, claims).</li>
+            <li className="flex gap-2"><span className="font-medium text-primary">6.</span> Download available artifacts (text, PPTX, PNG, PDF, SRT), or copy text outputs.</li>
           </ol>
         </section>
 

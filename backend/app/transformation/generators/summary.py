@@ -28,6 +28,7 @@ class SummaryGenerator(Generator):
         canonical: dict[str, Any],
         config: dict[str, Any],
         rag_context: RAGContext | None = None,
+        brief: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if self.llm_provider is not None:
             return generate_structured_output(
@@ -37,10 +38,11 @@ class SummaryGenerator(Generator):
                 canonical=canonical,
                 config=config,
                 rag_context=rag_context,
+                brief=brief,
                 llm_provider=self.llm_provider,
             )
         return self._generate_deterministic(
-            canonical=canonical, config=config, rag_context=rag_context
+            canonical=canonical, config=config, rag_context=rag_context, brief=brief
         )
 
     def _generate_deterministic(
@@ -49,6 +51,7 @@ class SummaryGenerator(Generator):
         canonical: dict[str, Any],
         config: dict[str, Any],
         rag_context: RAGContext | None,
+        brief: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         title = canonical.get("title") or "Untitled source"
         summary = canonical.get("summary") or ""

@@ -34,6 +34,10 @@ class TransformationState(TypedDict, total=False):
     rag_context: RAGContext | None
     rag_required: bool
 
+    # Shared canonical semantic brief (Phase 11C) — built once, reused by all
+    # generators so the full canonical/RAG payload is not re-tokenized per output.
+    brief: dict[str, Any]
+
     # Results of the generate stage: one entry per requested output.
     outputs: list[dict[str, Any]]
 

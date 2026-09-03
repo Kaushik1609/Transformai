@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 
@@ -15,7 +16,7 @@ from app.embeddings.service import EmbeddingService
 from app.ingestion.documents import DocumentExtractionError, extract_docx, extract_pdf
 from app.ingestion.queue import enqueue_source_embedding, get_embedding_queue
 from app.ingestion.storage import LocalStorage
-from app.ingestion.text import chunk_text, normalize_text
+from app.ingestion.text import chunk_text, chunk_text_with_metadata, normalize_text
 
 
 def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
@@ -42,8 +43,19 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
             raise ValueError("Source contains no usable text.")
 
         db.execute(delete(SourceChunk).where(SourceChunk.source_id == source.id))
-        chunks = list(chunk_text(normalized))
-        for chunk_index, content_chunk in enumerate(chunks):
+        chunks_info = chunk_text_with_metadata(normalized)
+        for chunk_index, chunk_info in enumerate(chunks_info):
+            content_chunk = chunk_info["content"]
+            chunk_hash = hashlib.sha256(content_chunk.encode("utf-8")).hexdigest()[:16]
+            chunk_meta = {
+                "source_id": str(source.id),
+                "chunk_index": chunk_index,
+                "char_start": chunk_info.get("char_start", 0),
+                "char_end": chunk_info.get("char_end", len(content_chunk)),
+                "char_count": len(content_chunk),
+                "content_hash": chunk_hash,
+                "token_estimate": max(1, len(content_chunk.split())),
+            }
             db.add(
                 SourceChunk(
                     id=uuid.uuid4(),
@@ -51,13 +63,14 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
                     chunk_index=chunk_index,
                     content=content_chunk,
                     embedding=None,
+                    chunk_metadata=chunk_meta,
                     created_at=datetime.now(timezone.utc),
                 )
             )
         source.extracted_text = normalized
         source.status = "ready"
         source_metadata = dict(source.source_metadata or {})
-        source_metadata["chunk_count"] = len(chunks)
+        source_metadata["chunk_count"] = len(chunks_info)
         source_metadata["embedding_status"] = "queued"
         source.source_metadata = source_metadata
         db.commit()

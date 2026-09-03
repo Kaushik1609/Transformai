@@ -35,10 +35,15 @@ class Generator(ABC):
         canonical: dict[str, Any],
         config: dict[str, Any],
         rag_context: RAGContext | None = None,
+        brief: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Return a JSON-compatible structured output.
 
         The returned mapping is persisted as the output's structured_content and
         should include a non-empty human-readable `text` representation plus
         metadata (e.g. `mime_type`, `title`).
+
+        ``brief`` is the optional Phase 11C shared canonical semantic brief.
+        When provided it is the preferred source-grounded input; ``canonical``
+        and ``rag_context`` are still accepted for backward compatibility.
         """

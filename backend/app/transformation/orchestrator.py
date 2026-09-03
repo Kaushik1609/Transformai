@@ -37,6 +37,7 @@ class TransformationOrchestrator:
         storage: Any | None = None,
         requested_output_types_override: list[str] | None = None,
         rag_required_override: bool | None = None,
+        transformation_job_timeout: int | None = None,
     ):
         self.deps = TransformationDependencies(
             session=session,
@@ -48,6 +49,7 @@ class TransformationOrchestrator:
             storage=storage,
             requested_output_types_override=requested_output_types_override,
             rag_required_override=rag_required_override,
+            transformation_job_timeout=transformation_job_timeout,
         )
         self.graph = build_transformation_graph(self.deps)
 

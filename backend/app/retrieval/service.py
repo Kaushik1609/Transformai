@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import dataclass
 from typing import Sequence
@@ -100,18 +101,21 @@ class RetrievalService:
         *,
         top_k: int = 5,
         project_id: UUID | None = None,
+        source_id: UUID | None = None,
+        min_similarity: float | None = None,
     ) -> list[ChunkMatch]:
         validated_vector = self._validate_query_vector(query_vector)
         validated_top_k = self._validate_top_k(top_k)
 
         candidate_query = select(SourceChunk).where(SourceChunk.embedding.is_not(None))
+
+        if source_id is not None:
+            candidate_query = candidate_query.where(SourceChunk.source_id == source_id)
+
         if project_id is not None:
-            project_source_ids = db.execute(
-                select(Source.id).where(Source.project_id == project_id)
-            ).scalars().all()
-            if not project_source_ids:
-                return []
-            candidate_query = candidate_query.where(SourceChunk.source_id.in_(project_source_ids))
+            candidate_query = candidate_query.join(
+                Source, SourceChunk.source_id == Source.id
+            ).where(Source.project_id == project_id)
 
         rows = db.execute(candidate_query).scalars().all()
         scored: list[tuple[float, SourceChunk]] = []
@@ -125,7 +129,10 @@ class RetrievalService:
 
         scored.sort(key=lambda item: item[0])
         matches: list[ChunkMatch] = []
-        for distance, row in scored[:validated_top_k]:
+        for distance, row in scored:
+            score = 1.0 - float(distance) if float(distance) <= 1.0 else 0.0
+            if min_similarity is not None and score < min_similarity:
+                continue
             matches.append(
                 ChunkMatch(
                     source_id=row.source_id,
@@ -133,9 +140,11 @@ class RetrievalService:
                     chunk_index=row.chunk_index,
                     content=row.content,
                     distance=float(distance),
-                    score=1.0 - float(distance) if float(distance) <= 1.0 else 0.0,
+                    score=score,
                 )
             )
+            if len(matches) >= validated_top_k:
+                break
         return matches
 
     def query_by_text(
@@ -145,8 +154,121 @@ class RetrievalService:
         *,
         top_k: int = 5,
         project_id: UUID | None = None,
+        source_id: UUID | None = None,
+        min_similarity: float | None = None,
     ) -> list[ChunkMatch]:
         cleaned = self._validate_query_text(text)
         validated_top_k = self._validate_top_k(top_k)
         vector = self.embedding_service.embed_texts([cleaned])[0]
-        return self.query_by_vector(db, vector, top_k=validated_top_k, project_id=project_id)
+        return self.query_by_vector(
+            db,
+            vector,
+            top_k=validated_top_k,
+            project_id=project_id,
+            source_id=source_id,
+            min_similarity=min_similarity,
+        )
+
+    # ---------------------------------------------------------------------
+    # Phase 11B — Lightweight hybrid retrieval (dense + lexical fusion)
+    # ---------------------------------------------------------------------
+    # This is NOT a full BM25 implementation. It blends the existing dense
+    # vector similarity with a lightweight token-overlap lexical signal and
+    # fuses them deterministically. Project/source isolation is still enforced
+    # at the SQL query level. A full BM25 index / external reranker remains
+    # deferred; this abstraction is intentionally small and extensible.
+
+    DENSE_WEIGHT: float = 0.65
+    LEXICAL_WEIGHT: float = 0.35
+
+    def _scoped_candidate_query(
+        self, *, project_id: UUID | None, source_id: UUID | None
+    ):
+        """Build a SQL-level scoped candidate query over embedded chunks."""
+        candidate_query = select(SourceChunk).where(SourceChunk.embedding.is_not(None))
+        if source_id is not None:
+            candidate_query = candidate_query.where(SourceChunk.source_id == source_id)
+        if project_id is not None:
+            candidate_query = candidate_query.join(
+                Source, SourceChunk.source_id == Source.id
+            ).where(Source.project_id == project_id)
+        return candidate_query
+
+    @staticmethod
+    def _tokenize(text: str) -> set[str]:
+        """Lower-cased word tokens for lexical overlap (no stemming)."""
+        return {tok for tok in text.lower().split() if tok}
+
+    @classmethod
+    def _lexical_overlap(cls, query_tokens: set[str], chunk_tokens: set[str]) -> float:
+        """Jaccard-style token overlap in [0, 1] between query and chunk."""
+        union = query_tokens | chunk_tokens
+        if not union:
+            return 0.0
+        return len(query_tokens & chunk_tokens) / len(union)
+
+    def query_hybrid(
+        self,
+        db: Session,
+        text: str,
+        *,
+        top_k: int = 5,
+        project_id: UUID | None = None,
+        source_id: UUID | None = None,
+        min_similarity: float | None = None,
+    ) -> list[ChunkMatch]:
+        """Rank chunks by a deterministic fuse of dense + lexical similarity.
+
+        Candidate filtering happens entirely in SQL (project/source scope). Each
+        candidate receives a normalized dense score and a lightweight lexical
+        token-overlap score, fused into ``final_score``. The dense score is what
+        the caller's ``min_similarity`` bar is applied to. Duplicate chunk
+        content is folded, provenance is preserved, and output is capped at
+        ``top_k``.
+        """
+        cleaned = self._validate_query_text(text)
+        validated_top_k = self._validate_top_k(top_k)
+        query_vector = self.embedding_service.embed_texts([cleaned])[0]
+        query_tokens = self._tokenize(cleaned)
+
+        rows = db.execute(
+            self._scoped_candidate_query(project_id=project_id, source_id=source_id)
+        ).scalars().all()
+
+        scored: list[tuple[float, SourceChunk]] = []
+        for row in rows:
+            try:
+                row_vector = self._coerce_embedding_vector(row.embedding)
+            except ValueError:
+                continue
+            distance = self._cosine_distance(query_vector, row_vector)
+            dense_score = 1.0 - float(distance) if float(distance) <= 1.0 else 0.0
+            if min_similarity is not None and dense_score < min_similarity:
+                continue
+            lexical_score = self._lexical_overlap(query_tokens, self._tokenize(row.content))
+            final_score = (self.DENSE_WEIGHT * dense_score) + (self.LEXICAL_WEIGHT * lexical_score)
+            scored.append((final_score, row, dense_score))
+
+        # Deterministic: fused score desc, then earliest chunk first.
+        scored.sort(key=lambda item: (item[0], -item[1].chunk_index), reverse=True)
+
+        matches: list[ChunkMatch] = []
+        seen_hashes: set[str] = set()
+        for final_score, row, dense_score in scored:
+            digest = hashlib.sha256(row.content.encode("utf-8")).hexdigest()
+            if digest in seen_hashes:
+                continue
+            seen_hashes.add(digest)
+            matches.append(
+                ChunkMatch(
+                    source_id=row.source_id,
+                    chunk_id=row.id,
+                    chunk_index=row.chunk_index,
+                    content=row.content,
+                    distance=1.0 - dense_score,
+                    score=final_score,
+                )
+            )
+            if len(matches) >= validated_top_k:
+                break
+        return matches

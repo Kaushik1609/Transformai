@@ -126,18 +126,18 @@ def process_transformation(job_id: str) -> dict:
 
     Receives only the authoritative transformation job ID and loads all required
     state (job, canonical content, configuration, RAG) from the database.  The
-    LLM provider is wired from environment settings: the OpenAI provider when a
-    key is configured, otherwise the deterministic fake provider for offline/
-    local execution.
+    LLM provider is wired from environment settings through a resilient
+    ProviderManager: retries, backoff, circuit breaking and an optional
+    fallback are applied centrally (Phase 11D).
     """
     engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
     try:
         import uuid
 
-        from app.transformation.llm.factory import build_llm_provider
+        from app.transformation.llm.factory import build_resilient_provider
         from app.transformation.service import run_transformation_job
 
-        llm_provider = build_llm_provider()
+        llm_provider = build_resilient_provider()
         with Session(engine) as session:
             return run_transformation_job(
                 session, uuid.UUID(job_id), llm_provider=llm_provider

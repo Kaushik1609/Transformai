@@ -67,6 +67,7 @@ def run_transformation_job(
     rag_mode: str = "auto",
     llm_provider: Any | None = None,
     storage: Any | None = None,
+    transformation_job_timeout: int | None = None,
 ) -> dict[str, Any]:
     """Run one transformation job to completion using authoritative DB state.
 
@@ -109,6 +110,7 @@ def run_transformation_job(
         rag_mode=rag_mode,
         llm_provider=llm_provider,
         storage=storage,
+        transformation_job_timeout=transformation_job_timeout,
     )
     result = orchestrator.execute(job_id)
     db.commit()

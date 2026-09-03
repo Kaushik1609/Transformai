@@ -27,6 +27,7 @@ class OpenAILLMProvider(LLMProvider):
         temperature: float | None = None,
         max_tokens: int | None = None,
         timeout: int | None = None,
+        max_retries: int | None = None,
     ) -> None:
         self._model = model or settings.LLM_MODEL
         self._api_key = api_key or settings.LLM_API_KEY
@@ -34,6 +35,11 @@ class OpenAILLMProvider(LLMProvider):
         self._temperature = temperature if temperature is not None else settings.LLM_TEMPERATURE
         self._max_tokens = max_tokens if max_tokens is not None else settings.LLM_MAX_TOKENS
         self._timeout = timeout if timeout is not None else settings.LLM_TIMEOUT_SECONDS
+        # SDK-internal auto-retries are disabled by default so the application
+        # ProviderManager is the single retry owner (avoids retry amplification).
+        self._max_retries = (
+            max_retries if max_retries is not None else settings.LLM_SDK_MAX_RETRIES
+        )
         if not self._api_key:
             raise ValueError(
                 "LLM_API_KEY is not configured. Set LLM_API_KEY in the environment "
@@ -45,6 +51,7 @@ class OpenAILLMProvider(LLMProvider):
             "temperature": self._temperature,
             "max_tokens": self._max_tokens,
             "timeout": self._timeout,
+            "max_retries": self._max_retries,
         }
         if self._base_url:
             client_kwargs["base_url"] = self._base_url

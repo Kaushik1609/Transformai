@@ -15,6 +15,7 @@ so the same workflow runs from the worker and from tests.
 
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -31,8 +32,11 @@ from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
 from app.db.models.transformation_job import TransformationJob
 from app.db.models.verification_result import VerificationResult
+from app.core.config import settings
+from app.rag.query import formulate_retrieval_query
 from app.rag.service import RAGService
 from app.transformation.artifacts import get_storage, save_output_artifact
+from app.transformation.brief import build_canonical_brief
 from app.transformation.output_schemas import (
     Infographic,
     PresentationStructure,
@@ -58,6 +62,25 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+_MEDIA_OUTPUT_TYPES = frozenset({"presentation", "infographic", "video"})
+_STRUCTURED_OUTPUT_TYPES = frozenset({"advisory"})
+
+
+def _classify_output(output_type: str) -> str:
+    """Classify an output for orchestration planning.
+
+    text       — plain, mostly prose outputs (LLM -> text).
+    structured — typed structured content (LLM -> validated model).
+    media      — structured content rendered deterministically to a binary
+                 artifact by a dedicated renderer (LLM -> model -> render).
+    """
+    if output_type in _MEDIA_OUTPUT_TYPES:
+        return "media"
+    if output_type in _STRUCTURED_OUTPUT_TYPES:
+        return "structured"
+    return "text"
+
+
 @dataclass
 class TransformationDependencies:
     """Dependencies injected into the transformation workflow."""
@@ -69,6 +92,8 @@ class TransformationDependencies:
     rag_mode: str = "auto"  # "auto" | "always-on" | "off"
     llm_provider: Any | None = None
     storage: Any | None = None
+    # Phase 11D: optional override of the per-transformation execution budget.
+    transformation_job_timeout: int | None = None
     # Optional overrides for deterministic tests.
     requested_output_types_override: list[str] | None = None
     rag_required_override: bool | None = None
@@ -218,9 +243,14 @@ class TransformationWorkflow:
         session = self.deps.session
         source_id = uuid.UUID(state["source_id"])
         project_id = uuid.UUID(state["project_id"])
-        query = state.get("canonical", {}).get("summary") or state.get("canonical", {}).get("title") or source_id.__str__()
+        canonical = state.get("canonical", {})
+        config = state.get("config", {})
+        # Task-aware retrieval query (compact, source-grounded) rather than a
+        # raw full-source summary. Falls back to a small stable token so
+        # retrieval is never skipped or duplicated silently.
+        query = formulate_retrieval_query(canonical, config)
         task_context = "; ".join(
-            f"{k}: {v}" for k, v in state.get("config", {}).items() if v
+            f"{k}: {v}" for k, v in config.items() if v
         )
 
         try:
@@ -234,46 +264,90 @@ class TransformationWorkflow:
             )
             return {"rag_context": context}
         except Exception as exc:  # retrieval is best-effort; never corrupt source
+            import structlog
+            _logger = structlog.get_logger(__name__)
+            _logger.error(
+                "RAG retrieval failed unexpectedly",
+                error=str(exc),
+                exc_type=type(exc).__name__,
+                source_id=str(source_id),
+                project_id=str(project_id),
+            )
             return {
                 "errors": [
                     {
                         "stage": "retrieve_if_required",
-                        "message": f"RAG retrieval failed: {exc}",
+                        "message": f"RAG retrieval failed: {type(exc).__name__}: {exc}",
                     }
                 ]
             }
 
-    def generate(self, state: TransformationState) -> TransformationState:
-        session = self.deps.session
+    def build_brief(self, state: TransformationState) -> TransformationState:
+        """Build the shared canonical semantic brief once per transformation.
+
+        The brief is a deterministic, bounded, output-agnostic representation of
+        the trusted canonical content plus bounded RAG evidence.  It is built a
+        single time and reused by every generator, so the full canonical/RAG
+        payload is not independently re-formatted/re-tokenized per output.  No
+        LLM is used; no facts are invented.
+        """
         if not state.get("canonical_ready"):
             return {}
-
-        canonical = state["canonical"]
+        canonical = state.get("canonical", {})
         config = state.get("config", {})
         rag_context = state.get("rag_context")
+        brief = build_canonical_brief(canonical, rag_context, config)
+
+        # Persist a reference to the shared brief on the job so it is durable
+        # and inspectable (bounded by RAG_MAX_CONTEXT_CHARS).
+        has_job_id = state.get("job_id")
+        if has_job_id:
+            try:
+                job = self.deps.session.get(TransformationJob, uuid.UUID(has_job_id))
+                if job is not None:
+                    meta = dict(job.requested_outputs or {})
+                    meta["brief"] = brief
+                    job.requested_outputs = meta
+                    self.deps.session.flush()
+            except (ValueError, TypeError):
+                pass
+        return {"brief": brief}
+
+    def plan_outputs(self, state: TransformationState) -> TransformationState:
+        """Plan/fan-out: resolve generators, classify outputs, pre-create output rows.
+
+        Establishes an explicit planning boundary before generation.  Each
+        requested output type is resolved against the generator registry; known
+        types get a persisted ``Output`` row in ``pending`` state, while
+        unknown types are recorded as ``failed`` (so unknown-output failure stays
+        isolated and does not abort the rest).  Output classification
+        (``text`` / ``structured`` / ``media``) is stored server-side.
+        """
+        session = self.deps.session
+        job_id = uuid.UUID(state["job_id"])
+        requested = state.get("requested_output_types", [])
 
         outputs: list[dict[str, Any]] = []
         errors: list[dict[str, Any]] = list(state.get("errors", []))
 
-        for output_type in state.get("requested_output_types", []):
-            job_id = uuid.UUID(state["job_id"])
+        for output_type in requested:
+            generator = self.deps.get_generator(output_type) if self.deps.get_generator else None
             output = Output(
                 id=uuid.uuid4(),
                 job_id=job_id,
                 output_type=output_type,
-                status="generating",
+                status="pending",
                 created_at=_utcnow(),
             )
             session.add(output)
             session.flush()
 
-            generator = self.deps.get_generator(output_type) if self.deps.get_generator else None
             if generator is None:
                 output.status = "failed"
                 output.error_message = f"No generator registered for output type {output_type!r}."
                 errors.append(
                     {
-                        "stage": "generate",
+                        "stage": "plan",
                         "output_type": output_type,
                         "message": output.error_message,
                     }
@@ -284,34 +358,175 @@ class TransformationWorkflow:
                         "output_id": str(output.id),
                         "output_type": output_type,
                         "status": "failed",
+                        "class": "unknown",
                     }
                 )
                 continue
 
-            try:
-                generated = generator.generate(
-                    canonical=canonical,
-                    config=config,
-                    rag_context=rag_context,
-                )
-                text_content = generated.get("text", "")
-                if not isinstance(text_content, str) or not text_content.strip():
-                    raise ValueError("Generator produced empty text content.")
-
-                output.structured_content = generated
-                output.text_content = text_content
-                output.mime_type = generated.get("mime_type") or "text/plain"
-                output.output_metadata = {
-                    "provider": "phase7",
-                    "generator": type(generator).__name__,
+            outputs.append(
+                {
+                    "output_id": str(output.id),
+                    "output_type": output_type,
+                    "status": "pending",
+                    "class": _classify_output(output_type),
                 }
-                self._persist_output_artifact(
-                    state, output, generated,
-                    project_id=uuid.UUID(state["project_id"]),
-                    job_id=job_id,
+            )
+
+        return {"outputs": outputs, "errors": errors}
+
+    def generate(self, state: TransformationState) -> TransformationState:
+        """Execute each planned (pending) output independently.
+
+        Each pending output transitions ``pending -> running -> completed|failed``.
+        Generation is isolated per output so a single failure never prevents the
+        remaining outputs from executing (partial success is preserved).  Job
+        progress is updated incrementally and per-output timing/stage metadata is
+        recorded server-side.  A per-output savepoint keeps a persistence/flush
+        failure from erasing previously successful sibling outputs.
+
+        Phase 11D: per-output resilience metadata (from the ProviderManager, when
+        one is injected) is persisted under ``output_metadata["resilience"]``, and
+        pending outputs are not started after the configured transformation job
+        budget (``TRANSFORMATION_JOB_TIMEOUT``) has elapsed — a soft execution
+        guard that keeps a long provider tail from monopolizing the worker.
+        """
+        session = self.deps.session
+        if not state.get("canonical_ready"):
+            return {}
+
+        canonical = state["canonical"]
+        config = state.get("config", {})
+        rag_context = state.get("rag_context")
+        brief = state.get("brief")
+
+        planned: list[dict[str, Any]] = list(state.get("outputs", []))
+        outputs: list[dict[str, Any]] = []
+        errors: list[dict[str, Any]] = list(state.get("errors", []))
+
+        job = session.get(TransformationJob, uuid.UUID(state["job_id"]))
+        total = len(planned)
+        resolved = 0
+
+        job_budget = getattr(
+            self.deps, "transformation_job_timeout", None
+        )
+        if job_budget is None:
+            job_budget = getattr(settings, "TRANSFORMATION_JOB_TIMEOUT", 600)
+        gen_started = time.monotonic()
+
+        for plan_entry in planned:
+            output_type = plan_entry["output_type"]
+            # Unknown / already-failed planned outputs pass through untouched.
+            if plan_entry.get("status") != "pending":
+                outputs.append(plan_entry)
+                resolved += 1
+                self._update_job_progress(job, resolved, total)
+                continue
+
+            # Phase 11D: if the transformation execution budget has elapsed, mark
+            # remaining pending outputs as failed rather than starting new
+            # provider calls that could exhaust the worker's RQ hard timeout.
+            if not (time.monotonic() - gen_started) < job_budget:
+                output = session.get(Output, uuid.UUID(plan_entry["output_id"]))
+                if output is not None:
+                    output.status = "failed"
+                    output.error_message = (
+                        f"Transformation job budget ({job_budget}s) exceeded; output "
+                        f"{output_type!r} not started."
+                    )
+                    session.flush()
+                errors.append(
+                    {
+                        "stage": "generate",
+                        "output_type": output_type,
+                        "message": f"Transformation job budget ({job_budget}s) exceeded.",
+                    }
                 )
-                output.status = "completed"
+                outputs.append(
+                    {
+                        "output_id": plan_entry["output_id"],
+                        "output_type": output_type,
+                        "status": "failed",
+                        "class": plan_entry.get("class", _classify_output(output_type)),
+                    }
+                )
+                resolved += 1
+                self._update_job_progress(job, resolved, total)
+                continue
+
+            output = session.get(Output, uuid.UUID(plan_entry["output_id"]))
+            if output is None:
+                resolved += 1
+                self._update_job_progress(job, resolved, total)
+                continue
+
+            start = _utcnow()
+
+            # A per-output savepoint gives strict persistence isolation: if the
+            # generator/persist/flush for THIS output fails at the DB level
+            # (e.g. IntegrityError), we roll back only that output's nested
+            # transaction instead of poisoning the shared worker transaction and
+            # erasing previously successful sibling outputs.
+            try:
+                output.status = "running"
+                output.output_metadata = {
+                    **(output.output_metadata or {}),
+                    "started_at": start.isoformat(),
+                    "stage": "generate",
+                }
                 session.flush()
+
+                nested = session.begin_nested()
+                try:
+                    generator = (
+                        self.deps.get_generator(output_type)
+                        if self.deps.get_generator
+                        else None
+                    )
+                    if generator is None:
+                        raise ValueError(
+                            f"No generator registered for output type {output_type!r}."
+                        )
+
+                    generated = generator.generate(
+                        canonical=canonical,
+                        config=config,
+                        rag_context=rag_context,
+                        brief=brief,
+                    )
+                    text_content = generated.get("text", "")
+                    if not isinstance(text_content, str) or not text_content.strip():
+                        raise ValueError("Generator produced empty text content.")
+
+                    output.structured_content = generated
+                    output.text_content = text_content
+                    output.mime_type = generated.get("mime_type") or "text/plain"
+                    output.output_metadata = {
+                        **(output.output_metadata or {}),
+                        "provider": "phase7",
+                        "generator": type(generator).__name__,
+                    }
+                    self._persist_output_artifact(
+                        state, output, generated,
+                        project_id=uuid.UUID(state["project_id"]),
+                        job_id=uuid.UUID(state["job_id"]),
+                    )
+                    completed_at = _utcnow()
+                    resilience_meta = self._resilience_metadata()
+                    output.output_metadata = {
+                        **(output.output_metadata or {}),
+                        "stage": "render",
+                        "completed_at": completed_at.isoformat(),
+                        "duration_ms": int((completed_at - start).total_seconds() * 1000),
+                    }
+                    if resilience_meta:
+                        output.output_metadata["resilience"] = resilience_meta
+                    output.status = "completed"
+                    session.flush()
+                    nested.commit()
+                except Exception:
+                    nested.rollback()
+                    raise
 
                 outputs.append(
                     {
@@ -320,28 +535,93 @@ class TransformationWorkflow:
                         "status": "completed",
                         "structured_content": generated,
                         "text_content": text_content,
+                        "class": plan_entry.get("class", _classify_output(output_type)),
                     }
                 )
             except Exception as exc:
-                output.status = "failed"
-                output.error_message = str(exc)[:4000]
+                failed_at = _utcnow()
+                # Re-fetch the output after a rollback; the outer transaction is
+                # still usable so the failure is recorded without erasing siblings.
+                failed_output = session.get(Output, uuid.UUID(plan_entry["output_id"]))
+                if failed_output is not None:
+                    failed_output.status = "failed"
+                    failed_output.error_message = str(exc)[:4000]
+                    resilience_meta = self._resilience_metadata()
+                    failed_output.output_metadata = {
+                        **(failed_output.output_metadata or {}),
+                        "stage": "generate",
+                        "failed_at": failed_at.isoformat(),
+                        "duration_ms": int((failed_at - start).total_seconds() * 1000),
+                    }
+                    if resilience_meta:
+                        failed_output.output_metadata["resilience"] = resilience_meta
+                    try:
+                        session.flush()
+                    except Exception:
+                        pass
                 errors.append(
                     {
                         "stage": "generate",
                         "output_type": output_type,
-                        "message": output.error_message,
+                        "message": str(exc)[:4000],
                     }
                 )
-                session.flush()
                 outputs.append(
                     {
-                        "output_id": str(output.id),
+                        "output_id": plan_entry["output_id"],
                         "output_type": output_type,
                         "status": "failed",
+                        "class": plan_entry.get("class", _classify_output(output_type)),
                     }
                 )
+            resolved += 1
+            self._update_job_progress(job, resolved, total)
 
         return {"outputs": outputs, "errors": errors}
+
+    def _resilience_metadata(self) -> dict[str, Any] | None:
+        """Read bounded Phase 11D resilience metadata from the injected provider.
+
+        Only present when a resilient ProviderManager is injected; safe for raw
+        providers (FakeLLMProvider, stubs) which expose no such attribute.
+        """
+        provider = getattr(self.deps, "llm_provider", None)
+        meta = getattr(provider, "last_metadata", None)
+        if not isinstance(meta, dict) or not meta:
+            return None
+        # Never persist secrets/probes; keep only enumerable bounded fields.
+        allowed = (
+            "provider",
+            "model",
+            "attempts",
+            "max_attempts",
+            "retryable",
+            "last_error_type",
+            "last_error_message",
+            "last_attempt_at",
+            "latency_ms",
+            "retried",
+            "used_fallback",
+            "final_status",
+        )
+        return {k: meta[k] for k in allowed if k in meta}
+
+    def _update_job_progress(
+        self,
+        job: "TransformationJob | None",
+        resolved: int,
+        total: int,
+    ) -> None:
+        """Update job progress monotonically within 0..100 based on resolved outputs."""
+        if job is None or total <= 0:
+            return
+        pct = int(round(resolved * 100 / total))
+        if pct > job.progress:
+            job.progress = min(100, pct)
+            try:
+                self.deps.session.flush()
+            except Exception:
+                pass
 
     def _persist_output_artifact(
         self,
@@ -694,6 +974,8 @@ def build_transformation_graph(deps: TransformationDependencies):
     builder.add_node("load_input", workflow.load_input)
     builder.add_node("load_canonical_content", workflow.load_canonical_content)
     builder.add_node("retrieve_if_required", workflow.retrieve_if_required)
+    builder.add_node("build_brief", workflow.build_brief)
+    builder.add_node("plan_outputs", workflow.plan_outputs)
     builder.add_node("generate", workflow.generate)
     builder.add_node("validate", workflow.validate)
     builder.add_node("verify_hook", workflow.verify_hook)
@@ -710,7 +992,9 @@ def build_transformation_graph(deps: TransformationDependencies):
         _after_canonical,
         {"retrieve_if_required": "retrieve_if_required", "finalize": "finalize"},
     )
-    builder.add_edge("retrieve_if_required", "generate")
+    builder.add_edge("retrieve_if_required", "build_brief")
+    builder.add_edge("build_brief", "plan_outputs")
+    builder.add_edge("plan_outputs", "generate")
     builder.add_edge("generate", "validate")
     builder.add_edge("validate", "verify_hook")
     builder.add_edge("verify_hook", "finalize")

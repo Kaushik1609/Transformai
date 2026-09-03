@@ -7,7 +7,7 @@ Never hard-code secrets or credentials here.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -240,11 +240,35 @@ class Settings(BaseSettings):
     # Worker
     # -------------------------------------------------------------------------
     WORKER_CONCURRENCY: int = 2
-    WORKER_JOB_TIMEOUT: int = 300
-    # Per-transformation execution budget (seconds). The Q worker timeout is a
-    # final safety backstop and should be greater than this job budget, which in
-    # turn must exceed the per-provider request timeout (LLM_TIMEOUT_SECONDS).
+    # The RQ worker timeout is a final safety backstop for queue jobs and MUST be
+    # greater than (or equal to) the per-transformation execution budget so the
+    # worker never terminates a job before its application-level budget elapses.
+    WORKER_JOB_TIMEOUT: int = 605
+    # Per-transformation execution budget (seconds). This job budget must exceed
+    # the per-provider request timeout (LLM_TIMEOUT_SECONDS) and MUST NOT exceed
+    # WORKER_JOB_TIMEOUT (enforced by the validator below).
     TRANSFORMATION_JOB_TIMEOUT: int = 600
+
+    @model_validator(mode="after")
+    def _validate_worker_job_timeout(self) -> "Settings":
+        """Preserve the timeout hierarchy: worker >= job budget.
+
+        The worker's RQ hard timeout terminates a job if it exceeds the budget,
+        so it must be at least as large as the per-transformation execution
+        budget (which itself exceeds the per-provider request timeout).  This
+        validator rejects a configuration that would let the worker kill a job
+        before its own budget completes.
+        """
+        worker = self.WORKER_JOB_TIMEOUT
+        budget = self.TRANSFORMATION_JOB_TIMEOUT
+        if isinstance(worker, int) and isinstance(budget, int):
+            if worker < budget:
+                raise ValueError(
+                    "WORKER_JOB_TIMEOUT must be >= TRANSFORMATION_JOB_TIMEOUT "
+                    f"({worker} < {budget}); the worker would terminate "
+                    "transformation jobs before their execution budget elapsed."
+                )
+        return self
 
 
 @lru_cache

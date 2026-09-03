@@ -81,6 +81,20 @@ def _classify_output(output_type: str) -> str:
     return "text"
 
 
+def _safe_error_message(exc: BaseException, limit: int = 4000) -> str:
+    """Return a bounded, credential-redacted exception snapshot for persistence.
+
+    Phase 11E-F: exceptions are surfaced to clients (erroneously) if they embed
+    raw provider text, so we redact credentials and cap the length before it is
+    stored on an Output or included in the State errors list.  The original
+    exception is always preserved for local logging; only the persisted string
+    is sanitized here.
+    """
+    from app.transformation.llm.resilience import _redact
+
+    return _redact(str(exc) or exc.__class__.__name__)[:limit]
+
+
 @dataclass
 class TransformationDependencies:
     """Dependencies injected into the transformation workflow."""
@@ -327,20 +341,48 @@ class TransformationWorkflow:
         job_id = uuid.UUID(state["job_id"])
         requested = state.get("requested_output_types", [])
 
+        # Phase 11E — idempotent planning.  If a prior (partially committed) run
+        # already persisted an Output row for this job/output_type, reuse it
+        # instead of creating a duplicate.  This prevents duplicate logical
+        # outputs (and duplicate artifacts) when the same job is retried by the
+        # worker/graph after an earlier partial commit.
+        existing = {
+            o.output_type: o
+            for o in session.execute(select(Output).where(Output.job_id == job_id)).scalars().all()
+        }
+
         outputs: list[dict[str, Any]] = []
         errors: list[dict[str, Any]] = list(state.get("errors", []))
 
         for output_type in requested:
             generator = self.deps.get_generator(output_type) if self.deps.get_generator else None
-            output = Output(
+            existing_output = existing.get(output_type)
+            if existing_output is not None and existing_output.status == "completed":
+                # Already finalized in a prior run; treat as an already-complete
+                # sibling so a retry never re-plans or re-generates it.  Carry its
+                # persisted content forward so the downstream validate/verify
+                # stages see a real completed output (never a fabricated one).
+                outputs.append(
+                    {
+                        "output_id": str(existing_output.id),
+                        "output_type": output_type,
+                        "status": "completed",
+                        "class": _classify_output(output_type),
+                        "structured_content": existing_output.structured_content,
+                        "text_content": existing_output.text_content,
+                    }
+                )
+                continue
+            output = existing_output or Output(
                 id=uuid.uuid4(),
                 job_id=job_id,
                 output_type=output_type,
                 status="pending",
                 created_at=_utcnow(),
             )
-            session.add(output)
-            session.flush()
+            if existing_output is None:
+                session.add(output)
+                session.flush()
 
             if generator is None:
                 output.status = "failed"
@@ -511,6 +553,17 @@ class TransformationWorkflow:
                         project_id=uuid.UUID(state["project_id"]),
                         job_id=uuid.UUID(state["job_id"]),
                     )
+                    # Phase 11E-D — artifact completion gating.  A media output is
+                    # only completed once its binary artifact has been rendered
+                    # and persisted (a storage key is required).  This invariant
+                    # guarantees "generation succeeds + rendering succeeds +
+                    # persistence succeeds -> completed" and treats a missing
+                    # artifact as a per-output failure, never a job-level abort.
+                    if plan_entry.get("class") == "media" and not output.storage_key:
+                        raise RuntimeError(
+                            f"Media output {output_type!r} completed without a "
+                            "persisted artifact (storage_key missing)."
+                        )
                     completed_at = _utcnow()
                     resilience_meta = self._resilience_metadata()
                     output.output_metadata = {
@@ -545,7 +598,7 @@ class TransformationWorkflow:
                 failed_output = session.get(Output, uuid.UUID(plan_entry["output_id"]))
                 if failed_output is not None:
                     failed_output.status = "failed"
-                    failed_output.error_message = str(exc)[:4000]
+                    failed_output.error_message = _safe_error_message(exc)
                     resilience_meta = self._resilience_metadata()
                     failed_output.output_metadata = {
                         **(failed_output.output_metadata or {}),
@@ -563,7 +616,7 @@ class TransformationWorkflow:
                     {
                         "stage": "generate",
                         "output_type": output_type,
-                        "message": str(exc)[:4000],
+                        "message": _safe_error_message(exc),
                     }
                 )
                 outputs.append(
@@ -580,10 +633,14 @@ class TransformationWorkflow:
         return {"outputs": outputs, "errors": errors}
 
     def _resilience_metadata(self) -> dict[str, Any] | None:
-        """Read bounded Phase 11D resilience metadata from the injected provider.
+        """Read bounded, redacted Phase 11D resilience metadata from the provider.
 
         Only present when a resilient ProviderManager is injected; safe for raw
         providers (FakeLLMProvider, stubs) which expose no such attribute.
+
+        Phase 11E-F: the returned dict is strictly bounded to the enumerable
+        allowlist below, every string value is run through a credential redactor,
+        and no stack traces / raw provider credentials / probe objects can leak.
         """
         provider = getattr(self.deps, "llm_provider", None)
         meta = getattr(provider, "last_metadata", None)
@@ -604,7 +661,26 @@ class TransformationWorkflow:
             "used_fallback",
             "final_status",
         )
-        return {k: meta[k] for k in allowed if k in meta}
+        from app.transformation.llm.resilience import _redact
+
+        def _safe(v: Any) -> Any:
+            if isinstance(v, str):
+                return _redact(v)[:4000]
+            if isinstance(v, (int, float, bool)) or v is None:
+                return v
+            if isinstance(v, list):
+                # Bounded retry trace (ProviderManager caps it); sanitize entries.
+                return [_safe(i) if isinstance(i, (str, int, float, bool)) or i is None else i for i in v[:25]]
+            return None  # drop arbitrary nested structures to stay bounded
+
+        safe: dict[str, Any] = {}
+        for key in allowed:
+            if key not in meta:
+                continue
+            cleaned = _safe(meta[key])
+            if cleaned is not None or key == "retried":
+                safe[key] = cleaned if cleaned is not None else []
+        return safe
 
     def _update_job_progress(
         self,
@@ -622,6 +698,19 @@ class TransformationWorkflow:
                 self.deps.session.flush()
             except Exception:
                 pass
+
+    def _artifact_persisted(self, output: Output, marker_key: str) -> bool:
+        """Phase 11E — idempotent artifact persistence guard.
+
+        Returns True when this output's artifacts were already successfully
+        rendered and stored on a prior attempt (detected via an existing primary
+        ``storage_key`` plus a companion-marker in ``output_metadata``).  Reusing
+        the existing keys — instead of re-rendering/re-writing — prevents
+        duplicate artifacts when the same output is retried by the worker/graph.
+        """
+        if not output.storage_key:
+            return False
+        return (output.output_metadata or {}).get(marker_key) is not None
 
     def _persist_output_artifact(
         self,
@@ -675,6 +764,8 @@ class TransformationWorkflow:
         job_id: uuid.UUID,
     ) -> None:
         """Render and store a PPTX artifact for a completed presentation output."""
+        if self._artifact_persisted(output, "artifact") and output.mime_type == PPTX_MIME_TYPE:
+            return  # Phase 11E: artifact already persisted on a prior attempt
         structure = PresentationStructure.model_validate(generated)
         pptx_bytes = render_presentation(structure)
         key = save_output_artifact(
@@ -709,6 +800,8 @@ class TransformationWorkflow:
         in ``output_metadata["pdf_storage_key"]`` so both PRD target formats
         (Image/PDF) are preserved.
         """
+        if self._artifact_persisted(output, "pdf_storage_key"):
+            return  # Phase 11E: PNG + PDF pair already persisted on a prior attempt
         infographic = Infographic.model_validate(generated)
         pdf_bytes = render_infographic_pdf(infographic)
         png_bytes = render_infographic_png(infographic)
@@ -756,6 +849,8 @@ class TransformationWorkflow:
         ``output_metadata["subtitle_storage_key"]`` so both target formats are
         preserved.
         """
+        if self._artifact_persisted(output, "subtitle_storage_key"):
+            return  # Phase 11E: PDF + SRT pair already persisted on a prior attempt
         video_package = VideoPackage.model_validate(generated)
         pdf_bytes = render_video_package_pdf(video_package)
         srt_bytes = render_video_package_srt(video_package)

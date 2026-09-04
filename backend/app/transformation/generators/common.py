@@ -9,7 +9,7 @@ for persistence.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -19,6 +19,37 @@ from app.transformation.llm.provider import LLMProvider
 from app.transformation.output_schemas.parser import parse_output
 from app.transformation.prompts.content import build_user_content
 from app.transformation.prompts.loader import system_prompt
+
+
+def _json_type_label(annotation: Any) -> str:
+    """Return a human/LLM-readable JSON type label for a Pydantic field annotation."""
+    origin = get_origin(annotation)
+    if origin is list:
+        args = get_args(annotation)
+        inner = args[0] if args else None
+        if inner is not None and hasattr(inner, "model_fields"):
+            return "array of objects"
+        return "array of strings"
+    if annotation is bool:
+        return "boolean"
+    if annotation in (int, float):
+        return "number"
+    return "string"
+
+
+def _typed_field_spec(schema_cls: type[BaseModel]) -> str:
+    """Build a field→JSON-type hint line, e.g. ``title: string, hashtags: array of strings``.
+
+    The real LLM frequently returns collection fields (``hashtags``, ``thread``,
+    ``supporting_points``) as a space-separated string instead of a JSON array.
+    Stating each field's JSON type in the prompt steers the model toward the
+    schema-valid structure before validation.
+    """
+    return ", ".join(
+        f"{name}: {_json_type_label(field.annotation)}"
+        for name, field in schema_cls.model_fields.items()
+        if name != "text"
+    )
 
 
 def generate_structured_output(
@@ -48,6 +79,13 @@ def generate_structured_output(
     fields = [f for f in schema_cls.model_fields if f != "text"]
     spec = "{" + ", ".join(fields) + ", text}"
     sp = system_prompt(output_name, spec, config)
+    typed_spec = _typed_field_spec(schema_cls)
+    if typed_spec:
+        sp += (
+            "\n\nFIELD JSON TYPES — use exactly these JSON types for the "
+            f"corresponding fields: {typed_spec}. Collection fields MUST be JSON "
+            "arrays (e.g. \"hashtags\": [\"#A\", \"#B\"]), never space-separated strings."
+        )
     if brief is not None:
         user = build_user_content(canonical, rag_context, brief=brief)
     else:

@@ -36,6 +36,7 @@ from app.api.v1.schemas.transformation import (
     VerificationListResponse,
     VerificationResultResponse,
 )
+from app.core.ratelimit import rate_limit_bucket
 from app.db.session import get_db
 from app.services import project_service, source_service, configuration_service, transformation_service
 from app.transformation.artifacts import artifact_file, get_storage
@@ -109,6 +110,7 @@ async def create_transformation(
     body: TransformationJobCreate,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    _: None = Depends(rate_limit_bucket("transformation")),
 ) -> TransformationJobDetailResponse:
     # Verify project ownership
     project = await project_service.get_project(

@@ -8,7 +8,11 @@
  * Covers the Phase 2+ domain surface:
  *   projects, sources, configurations, content-intelligence,
  *   transformations, outputs, verification results, and artifact downloads.
+ * Phase 11F adds the auth surface (register / login / verify / me / logout)
+ * and transparent bearer-token attachment via lib/auth.
  */
+
+import { authHeaders } from "./auth";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -42,6 +46,69 @@ export interface ReadyCheck {
 export interface ReadyResponse {
   status: "ready" | "not_ready";
   checks: ReadyCheck;
+}
+
+// ---------------------------------------------------------------------------
+// Response types — auth (Phase 11F)
+// ---------------------------------------------------------------------------
+
+export type OtpChannel = "email" | "mobile";
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+export interface OtpDeliveryDetails {
+  channel: string;
+  identifier: string;
+  resend_after_seconds: number;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  data: OtpDeliveryDetails;
+  message: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  data: OtpDeliveryDetails;
+  message: string;
+}
+
+export interface AuthTokenResponse {
+  success: boolean;
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: UserSummary;
+}
+
+export interface MeResponse {
+  success: boolean;
+  data: UserSummary;
+}
+
+export interface LogoutResponse {
+  success: boolean;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  mobile_number: string | null;
+  created_at: string;
+}
+
+export interface AdminUserListResponse {
+  success: boolean;
+  data: AdminUserSummary[];
+  count: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +388,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     response = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
+        ...authHeaders(),
         ...options?.headers,
       },
       ...options,
@@ -336,13 +404,25 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function apiFetchForm<T>(path: string, formData: FormData): Promise<T> {
+async function apiFetchForm<T>(
+  path: string,
+  formData: FormData,
+  options?: RequestInit,
+): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
 
   let response: Response;
   try {
     // The browser sets the multipart content-type with its boundary for us.
-    response = await fetch(url, { method: "POST", body: formData });
+    response = await fetch(url, {
+      ...options,
+      method: options?.method ?? "POST",
+      body: formData,
+      headers: {
+        ...authHeaders(),
+        ...options?.headers,
+      },
+    });
   } catch {
     throw new ApiError(0, `Network error: could not reach ${url}`);
   }
@@ -371,8 +451,10 @@ async function apiFetchBlob(
     ? `?${new URLSearchParams(query).toString()}`
     : "";
   const url = `${API_BASE_URL}${path}${search}`;
-  const fetchInit =
-    init?.method === "POST" ? { method: "POST" as const } : undefined;
+  const fetchInit: RequestInit =
+    init?.method === "POST"
+      ? { method: "POST" as const, headers: authHeaders() }
+      : { method: "GET" as const, headers: authHeaders() };
 
   let response: Response;
   try {
@@ -402,6 +484,70 @@ export const healthApi = {
 
   /** Readiness check — returns 200 when all dependencies are connected. */
   ready: () => apiFetch<ReadyResponse>("/ready"),
+};
+
+// ---------------------------------------------------------------------------
+// Auth API (Phase 11F)
+// ---------------------------------------------------------------------------
+
+export interface RegisterPayload {
+  name: string;
+  email: string;
+  mobile_number?: string;
+  channel?: OtpChannel;
+}
+
+export interface LoginPayload {
+  email: string;
+  channel?: OtpChannel;
+  mobile_number?: string;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  channel?: OtpChannel;
+  mobile_number?: string;
+  otp: string;
+}
+
+export const authApi = {
+  /** Register a new analyst account and deliver an OTP. */
+  register: (body: RegisterPayload) =>
+    apiFetch<RegisterResponse>("/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Request an OTP for an existing account (response is uniform). */
+  login: (body: LoginPayload) =>
+    apiFetch<LoginResponse>("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Exchange an OTP for a short-lived access token. */
+  verifyOtp: (body: VerifyOtpPayload) =>
+    apiFetch<AuthTokenResponse>("/api/v1/auth/verify", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Return the authenticated user's identity. */
+  me: () => apiFetch<MeResponse>("/api/v1/auth/me"),
+
+  /** Acknowledge logout (client clears its own token). */
+  logout: () => apiFetch<LogoutResponse>("/api/v1/auth/logout", {
+    method: "POST",
+  }),
+};
+
+// ---------------------------------------------------------------------------
+// Admin API (Phase 11F — admin-only)
+// ---------------------------------------------------------------------------
+
+export const adminApi = {
+  /** List all users (requires an admin role token). */
+  listUsers: () => apiFetch<AdminUserListResponse>("/api/v1/admin/users"),
 };
 
 // ---------------------------------------------------------------------------

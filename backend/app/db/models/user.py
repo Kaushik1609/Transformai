@@ -40,6 +40,12 @@ class User(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="operator")
+    mobile_number: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        default=None,
+        doc="Optional numeric mobile contact used as the SMS OTP channel",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

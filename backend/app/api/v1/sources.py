@@ -26,6 +26,7 @@ from app.api.v1.schemas.source import (
     SourceListResponse,
     SourceResponse,
 )
+from app.core.ratelimit import rate_limit_bucket
 from app.db.session import get_db
 from app.ingestion.documents import DocumentExtractionError
 from app.ingestion.queue import enqueue_source_ingestion, get_ingestion_queue
@@ -61,6 +62,7 @@ async def create_source(
     body: SourceCreate,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    _: None = Depends(rate_limit_bucket("source_upload")),
 ) -> SourceDetailResponse:
     # Verify project ownership
     project = await project_service.get_project(
@@ -95,6 +97,7 @@ async def ingest_direct_text(
     body: DirectTextSourceCreate,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    _: None = Depends(rate_limit_bucket("source_upload")),
 ) -> SourceDetailResponse:
     project = await project_service.get_project(
         db, project_id=project_id, user_id=current_user.id
@@ -132,6 +135,7 @@ async def ingest_txt_file(
     language: str = Form(default="en"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    _: None = Depends(rate_limit_bucket("source_upload")),
 ) -> SourceDetailResponse:
     project = await project_service.get_project(
         db, project_id=project_id, user_id=current_user.id
@@ -170,6 +174,7 @@ async def ingest_document_file(
     language: str = Form(default="en"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    _: None = Depends(rate_limit_bucket("source_upload")),
 ) -> SourceDetailResponse:
     project = await project_service.get_project(
         db, project_id=project_id, user_id=current_user.id
@@ -213,6 +218,7 @@ async def queue_source_ingestion(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    _: None = Depends(rate_limit_bucket("source_upload")),
 ) -> SourceDetailResponse:
     """Store a source and enqueue extraction without processing in HTTP."""
     project = await project_service.get_project(

@@ -71,6 +71,59 @@ class Settings(BaseSettings):
     AUTH_SECRET_KEY: str = "dev-secret-replace-before-production"
     AUTH_ALGORITHM: str = "HS256"
     AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    AUTH_TOKEN_TYPE: str = "bearer"
+
+    # -------------------------------------------------------------------------
+    # Auth (Phase 11F — L1 Perimeter & Identity)
+    # -------------------------------------------------------------------------
+    # Whether new account registration is allowed. Disable to go invite-only.
+    REGISTRATION_ENABLED: bool = True
+    # Token issuer / audience claims embedded in JWTs.
+    AUTH_ISSUER: str = "transformiq"
+    AUTH_AUDIENCE: str = "transformiq-api"
+
+    # OTP issuance + verification policy.
+    OTP_LENGTH: int = 6
+    OTP_EXPIRY_SECONDS: int = 300
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_RESEND_COOLDOWN_SECONDS: int = 60
+    OTP_MAX_ISSUES_PER_WINDOW: int = 10
+    OTP_ISSUE_WINDOW_SECONDS: int = 900
+
+    # OTP storage / delivery backends (memory = offline/tests; redis = prod).
+    OTP_STORE_BACKEND: Literal["memory", "redis"] = "memory"
+    OTP_PROVIDER: Literal["console", "email", "sms"] = "console"
+
+    # Email delivery (OTP_PROVIDER=email). Never hard-code credentials.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    SMTP_FROM_NAME: str = "TransformIQ"
+
+    # SMS delivery (OTP_PROVIDER=sms). Never hard-code credentials.
+    SMS_ACCOUNT_SID: str = ""
+    SMS_AUTH_TOKEN: str = ""
+    SMS_FROM: str = ""
+
+    # -------------------------------------------------------------------------
+    # Rate limiting (Phase 11F — shared Redis-infrastructure, memory fallback)
+    # -------------------------------------------------------------------------
+    RATE_LIMIT_BACKEND: Literal["memory", "redis"] = "memory"
+    # Master switch. When False every rate-limit dependency permits requests.
+    RATE_LIMIT_ENABLED: bool = True
+    # (limit, window_seconds) buckets.
+    RATE_LIMIT_OTP_REQUEST_MAX: int = 10
+    RATE_LIMIT_OTP_REQUEST_WINDOW: int = 900
+    RATE_LIMIT_OTP_VERIFY_MAX: int = 10
+    RATE_LIMIT_OTP_VERIFY_WINDOW: int = 300
+    RATE_LIMIT_LOGIN_MAX: int = 10
+    RATE_LIMIT_LOGIN_WINDOW: int = 900
+    RATE_LIMIT_SOURCE_UPLOAD_MAX: int = 100
+    RATE_LIMIT_SOURCE_UPLOAD_WINDOW: int = 3600
+    RATE_LIMIT_TRANSFORMATION_MAX: int = 100
+    RATE_LIMIT_TRANSFORMATION_WINDOW: int = 3600
 
     @field_validator("AUTH_SECRET_KEY")
     @classmethod
@@ -268,6 +321,50 @@ class Settings(BaseSettings):
                     f"({worker} < {budget}); the worker would terminate "
                     "transformation jobs before their execution budget elapsed."
                 )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_dev_auth_bypass(self) -> "Settings":
+        """Fail closed: DEV_AUTH_BYPASS must never be enabled outside development.
+
+        This makes it impossible for a staging/production configuration to
+        silently expose the API without authentication.
+        """
+        if self.DEV_AUTH_BYPASS and self.ENVIRONMENT != "development":
+            raise ValueError(
+                "DEV_AUTH_BYPASS must be False when ENVIRONMENT is not "
+                "'development'; refusing to run an unauthenticated API in "
+                f"{self.ENVIRONMENT}."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_otp_policy(self) -> "Settings":
+        """Keep the OTP policy within sane security bounds."""
+        if self.OTP_LENGTH < 6:
+            raise ValueError("OTP_LENGTH must be at least 6.")
+        if self.OTP_EXPIRY_SECONDS < 30 or self.OTP_EXPIRY_SECONDS > 1800:
+            raise ValueError("OTP_EXPIRY_SECONDS must be between 30 and 1800.")
+        if self.OTP_MAX_ATTEMPTS < 1 or self.OTP_MAX_ATTEMPTS > 20:
+            raise ValueError("OTP_MAX_ATTEMPTS must be between 1 and 20.")
+        if self.OTP_RESEND_COOLDOWN_SECONDS < 5:
+            raise ValueError("OTP_RESEND_COOLDOWN_SECONDS must be at least 5s.")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_rate_limit_buckets(self) -> "Settings":
+        """Reject degenerate rate-limit configurations (min 1 request / 1s)."""
+        for name, limit, window in (
+            ("RATE_LIMIT_OTP_REQUEST", self.RATE_LIMIT_OTP_REQUEST_MAX, self.RATE_LIMIT_OTP_REQUEST_WINDOW),
+            ("RATE_LIMIT_OTP_VERIFY", self.RATE_LIMIT_OTP_VERIFY_MAX, self.RATE_LIMIT_OTP_VERIFY_WINDOW),
+            ("RATE_LIMIT_LOGIN", self.RATE_LIMIT_LOGIN_MAX, self.RATE_LIMIT_LOGIN_WINDOW),
+            ("RATE_LIMIT_SOURCE_UPLOAD", self.RATE_LIMIT_SOURCE_UPLOAD_MAX, self.RATE_LIMIT_SOURCE_UPLOAD_WINDOW),
+            ("RATE_LIMIT_TRANSFORMATION", self.RATE_LIMIT_TRANSFORMATION_MAX, self.RATE_LIMIT_TRANSFORMATION_WINDOW),
+        ):
+            if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+                raise ValueError(f"{name}_MAX must be a positive integer (>= 1).")
+            if not isinstance(window, int) or isinstance(window, bool) or window < 1:
+                raise ValueError(f"{name}_WINDOW must be a positive integer (>= 1).")
         return self
 
 

@@ -1,13 +1,20 @@
 /**
- * TransformIQ — Development identity / session state.
+ * TransformIQ — Client identity / session state.
  *
- * The backend authenticates via a stable development identity
- * (DEV_AUTH_BYPASS=true). This module mirrors that mechanism on the client
- * with a lightweight local session: no tokens are invented, no credentials are
- * stored, and nothing is transmitted. Signing in simply records the identity
- * that the development backend already trusts; logging out clears it.
+ * Two coexistence modes:
+ *
+ * 1. Development session (DEV_SESSION_KEY): mirrors the backend
+ *    DEV_AUTH_BYPASS mechanism. No tokens are invented and nothing is
+ *    transmitted; signing in records the identity the development backend
+ *    already trusts.
+ *
+ * 2. Access token (AUTH_TOKEN_KEY): the Phase 11F L1 token issued by
+ *    POST /api/v1/auth/verify. When present it is attached as an
+ *    "Authorization: Bearer" header to every API request; the dev-session
+ *    flow keeps working for environments where the backend trusts it.
  */
 export const DEV_SESSION_KEY = "transformiq.dev_session";
+export const AUTH_TOKEN_KEY = "transformiq.access_token";
 
 export interface DevSession {
   email: string;
@@ -63,4 +70,43 @@ export function clearDevSession(): void {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(DEV_SESSION_KEY);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Access-token helpers (Phase 11F — L1)
+// ---------------------------------------------------------------------------
+
+/** Return the stored bearer token, or null on SSR / missing / malformed. */
+export function getAuthToken(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Persist a freshly verified access token. */
+export function setAuthToken(token: string): void {
+  if (typeof window !== "undefined" && token.length > 0) {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+  }
+}
+
+/** Discard the stored access token (logout). */
+export function clearAuthToken(): void {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(AUTH_TOKEN_KEY);
+  }
+}
+
+/**
+ * Headers merged into every API request. Returns an empty object when no
+ * token exists so the development-session flow is untouched.
+ */
+export function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

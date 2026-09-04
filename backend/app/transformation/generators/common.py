@@ -37,16 +37,37 @@ def _json_type_label(annotation: Any) -> str:
     return "string"
 
 
+def _nested_field_detail(field: Any) -> str:
+    """Render a nested-object field definition for a list-of-model annotation.
+
+    e.g. for ``slides: list[PresentationSlide]`` return
+    ``array of objects, each object with EXACTLY these keys: title (string),
+    key_message (string), supporting_points (array of strings), ...`` so the
+    model emits the correct nested key names before schema validation.
+    """
+    args = get_args(field.annotation)
+    inner = args[0] if args else None
+    if get_origin(field.annotation) is list and inner is not None and hasattr(inner, "model_fields"):
+        keys = ", ".join(
+            f"{name} ({_json_type_label(sub.annotation)})"
+            for name, sub in inner.model_fields.items()
+        )
+        return f"array of objects, each object with EXACTLY these keys: {keys}"
+    return _json_type_label(field.annotation)
+
+
 def _typed_field_spec(schema_cls: type[BaseModel]) -> str:
     """Build a field→JSON-type hint line, e.g. ``title: string, hashtags: array of strings``.
 
     The real LLM frequently returns collection fields (``hashtags``, ``thread``,
-    ``supporting_points``) as a space-separated string instead of a JSON array.
-    Stating each field's JSON type in the prompt steers the model toward the
-    schema-valid structure before validation.
+    ``supporting_points``) as a space-separated string instead of a JSON array,
+    and it improvises the key names of nested objects (``slides``, ``storyboard``,
+    ``sections``) when those keys are not spelled out.  Stating each field's JSON
+    type — and the exact keys of nested objects — in the prompt steers the model
+    toward the schema-valid structure before validation.
     """
     return ", ".join(
-        f"{name}: {_json_type_label(field.annotation)}"
+        f"{name}: {_nested_field_detail(field)}"
         for name, field in schema_cls.model_fields.items()
         if name != "text"
     )

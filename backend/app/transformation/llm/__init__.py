@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from app.transformation.llm.fake import FakeLLMProvider
 from app.transformation.llm.factory import build_llm_provider, build_resilient_provider
+from app.transformation.llm.gemini_provider import GeminiLLMProvider
 from app.transformation.llm.openai_provider import OpenAILLMProvider
 from app.transformation.llm.provider import LLMProvider
 from app.transformation.llm.resilience import (
@@ -29,6 +30,7 @@ __all__ = [
     "LLMProvider",
     "FakeLLMProvider",
     "OpenAILLMProvider",
+    "GeminiLLMProvider",
     "build_llm_provider",
     "build_resilient_provider",
     "ProviderManager",

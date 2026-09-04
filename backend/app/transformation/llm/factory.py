@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from app.core.config import settings
 from app.transformation.llm.fake import FakeLLMProvider
+from app.transformation.llm.gemini_provider import GeminiLLMProvider
 from app.transformation.llm.openai_provider import OpenAILLMProvider
 from app.transformation.llm.provider import LLMProvider
 from app.transformation.llm.resilience import ProviderManager, RetryPolicy
@@ -25,11 +26,15 @@ def build_llm_provider(provider: str | None = None) -> LLMProvider:
     name = (provider or settings.LLM_PROVIDER or "openai").strip().lower()
     if name == "fake":
         return FakeLLMProvider()
-    if name != "openai":
-        raise ValueError(f"Unsupported LLM provider: {name!r}")
-    if not (settings.LLM_API_KEY or "").strip():
-        return FakeLLMProvider()
-    return OpenAILLMProvider()
+    if name == "openai":
+        if not (settings.LLM_API_KEY or "").strip():
+            return FakeLLMProvider()
+        return OpenAILLMProvider()
+    if name == "gemini":
+        if not (settings.LLM_API_KEY or "").strip():
+            return FakeLLMProvider()
+        return GeminiLLMProvider()
+    raise ValueError(f"Unsupported LLM provider: {name!r}")
 
 
 def build_resilient_provider() -> ProviderManager:
@@ -70,4 +75,10 @@ def _build_fallback_provider(name: str) -> LLMProvider:
                 "LLM_FALLBACK_PROVIDER='openai' requires LLM_API_KEY to be set."
             )
         return OpenAILLMProvider()
+    if name == "gemini":
+        if not (settings.LLM_API_KEY or "").strip():
+            raise ValueError(
+                "LLM_FALLBACK_PROVIDER='gemini' requires LLM_API_KEY to be set."
+            )
+        return GeminiLLMProvider()
     raise ValueError(f"Unsupported fallback LLM provider: {name!r}")

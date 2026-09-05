@@ -6,21 +6,31 @@
  * 1. Development session (DEV_SESSION_KEY): mirrors the backend
  *    DEV_AUTH_BYPASS mechanism. No tokens are invented and nothing is
  *    transmitted; signing in records the identity the development backend
- *    already trusts.
+ *    already trusts. Access through this path is ONLY permitted when the
+ *    frontend build explicitly enables it via NEXT_PUBLIC_DEV_AUTH_BYPASS=true
+ *    — it is never the default, silent behavior.
  *
- * 2. Access token (AUTH_TOKEN_KEY): the Phase 11F L1 token issued by
- *    POST /api/v1/auth/verify. When present it is attached as an
- *    "Authorization: Bearer" header to every API request; the dev-session
- *    flow keeps working for environments where the backend trusts it.
+ * 2. Access token (AUTH_STORE_KEY): the Phase 11F L1 JWT issued by
+ *    POST /api/v1/auth/verify. The token and its expiry are stored together
+ *    in a single object so the auth gate can detect (and clear) expired
+ *    credentials. It is attached as an "Authorization: Bearer" header to
+ *    every API request via authHeaders().
  */
 export const DEV_SESSION_KEY = "transformiq.dev_session";
-export const AUTH_TOKEN_KEY = "transformiq.access_token";
+export const AUTH_STORE_KEY = "transformiq.auth";
+export const LEGACY_AUTH_TOKEN_KEY = "transformiq.access_token";
 
 export interface DevSession {
   email: string;
   name: string;
   role: string;
   signedInAt: string;
+}
+
+export interface StoredAuth {
+  token: string;
+  /** Epoch milliseconds at which the token stops being valid. */
+  expiresAt: number;
 }
 
 const FALLBACK_NAME = "Development User";
@@ -38,11 +48,46 @@ function isSession(value: unknown): value is DevSession {
   );
 }
 
+/** Guarded access to the browser storage used by the auth helpers. */
+function storage(): Storage | null {
+  try {
+    return typeof window !== "undefined" ? window.localStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredAuth(): StoredAuth | null {
+  const store = storage();
+  if (!store) return null;
+  try {
+    const raw = store.getItem(AUTH_STORE_KEY);
+    if (!raw) return null;
+    const parsed: Partial<StoredAuth> = JSON.parse(raw);
+    if (
+      typeof parsed.token === "string" &&
+      parsed.token.length > 0 &&
+      typeof parsed.expiresAt === "number" &&
+      Number.isFinite(parsed.expiresAt)
+    ) {
+      return { token: parsed.token, expiresAt: parsed.expiresAt };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Development-session helpers
+// ---------------------------------------------------------------------------
+
 /** Return the active development session, or null when signed out / SSR. */
 export function getDevSession(): DevSession | null {
-  if (typeof window === "undefined") return null;
+  const store = storage();
+  if (!store) return null;
   try {
-    const raw = window.localStorage.getItem(DEV_SESSION_KEY);
+    const raw = store.getItem(DEV_SESSION_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     return isSession(parsed) ? parsed : null;
@@ -51,7 +96,7 @@ export function getDevSession(): DevSession | null {
   }
 }
 
-/** Start a development session (backend stays DEV_AUTH_BYPASS-driven). */
+/** Start a development session (only reachable when dev bypass is enabled). */
 export function setDevSession(email: string, name?: string): DevSession {
   const session: DevSession = {
     email: email.trim() || FALLBACK_EMAIL,
@@ -59,16 +104,30 @@ export function setDevSession(email: string, name?: string): DevSession {
     role: FALLBACK_ROLE,
     signedInAt: new Date().toISOString(),
   };
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(session));
+  const store = storage();
+  if (store) {
+    try {
+      store.setItem(DEV_SESSION_KEY, JSON.stringify(session));
+    } catch {
+      // storage unavailable — ignore
+    }
   }
   return session;
 }
 
-/** Clear the development session (existing data is never deleted). */
+/**
+ * Clear the development session. Also discards any stored access token so a
+ * logout from the profile menu never leaves live credentials behind.
+ */
 export function clearDevSession(): void {
-  if (typeof window !== "undefined") {
-    window.localStorage.removeItem(DEV_SESSION_KEY);
+  clearAuthToken();
+  const store = storage();
+  if (store) {
+    try {
+      store.removeItem(DEV_SESSION_KEY);
+    } catch {
+      // storage unavailable — ignore
+    }
   }
 }
 
@@ -76,35 +135,62 @@ export function clearDevSession(): void {
 // Access-token helpers (Phase 11F — L1)
 // ---------------------------------------------------------------------------
 
-/** Return the stored bearer token, or null on SSR / missing / malformed. */
-export function getAuthToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
+/**
+ * True only when the frontend build was explicitly configured for the
+ * development identity bypass (NEXT_PUBLIC_DEV_AUTH_BYPASS=true). Read at
+ * call-time so tests and build-time flags behave consistently.
+ */
+export function isDevAuthBypassEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true";
+}
+
+/** Persist a verified access token together with its expiry (epoch ms). */
+export function setAuthToken(token: string, expiresAt: number): void {
+  const store = storage();
+  if (!store || !token || typeof expiresAt !== "number" || !Number.isFinite(expiresAt)) {
+    return;
   }
   try {
-    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+    const stored: StoredAuth = { token, expiresAt };
+    store.setItem(AUTH_STORE_KEY, JSON.stringify(stored));
   } catch {
-    return null;
+    // storage unavailable — ignore
   }
 }
 
-/** Persist a freshly verified access token. */
-export function setAuthToken(token: string): void {
-  if (typeof window !== "undefined" && token.length > 0) {
-    window.localStorage.setItem(AUTH_TOKEN_KEY, token);
-  }
+/** Return the stored bearer token, or null on SSR / missing / malformed. */
+export function getAuthToken(): string | null {
+  const stored = readStoredAuth();
+  return stored ? stored.token : null;
 }
 
-/** Discard the stored access token (logout). */
+/** Return the stored token expiry (epoch ms), or null when absent. */
+export function getAuthExpiry(): number | null {
+  const stored = readStoredAuth();
+  return stored ? stored.expiresAt : null;
+}
+
+/** True when a token exists AND its expiry has not yet passed. */
+export function isTokenValid(): boolean {
+  const stored = readStoredAuth();
+  return stored !== null && stored.expiresAt > Date.now();
+}
+
+/** Remove all auth-related storage keys (current store + legacy leftovers). */
 export function clearAuthToken(): void {
-  if (typeof window !== "undefined") {
-    window.localStorage.removeItem(AUTH_TOKEN_KEY);
+  const store = storage();
+  if (!store) return;
+  try {
+    store.removeItem(AUTH_STORE_KEY);
+    store.removeItem(LEGACY_AUTH_TOKEN_KEY);
+  } catch {
+    // storage unavailable — ignore
   }
 }
 
 /**
  * Headers merged into every API request. Returns an empty object when no
- * token exists so the development-session flow is untouched.
+ * valid token exists so the development-session flow is untouched.
  */
 export function authHeaders(): Record<string, string> {
   const token = getAuthToken();

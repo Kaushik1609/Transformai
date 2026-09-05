@@ -1,8 +1,12 @@
 /**
- * Auth / account-flow tests — dev-bypass gateway.
+ * Auth / account-flow tests — OTP/JWT flow + dev-bypass gateway.
  *
  * Covers login, register, login↔register navigation, the application-session
  * gate (unauthenticated → /login, authenticated → shell), and logout.
+ *
+ * The development-session paths here run ONLY with
+ * NEXT_PUBLIC_DEV_AUTH_BYPASS=true (the gated, explicit development path);
+ * the real OTP/JWT flow is covered in require-auth-token.test.tsx.
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -27,8 +31,15 @@ jest.mock("next/navigation", () => ({
 beforeEach(() => {
   localStorage.clear();
   clearDevSession();
+  delete (process.env as Record<string, string | undefined>)
+    .NEXT_PUBLIC_DEV_AUTH_BYPASS;
   push.mockClear();
   replace.mockClear();
+});
+
+afterEach(() => {
+  delete (process.env as Record<string, string | undefined>)
+    .NEXT_PUBLIC_DEV_AUTH_BYPASS;
 });
 
 describe("LoginPage", () => {
@@ -48,7 +59,8 @@ describe("LoginPage", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("start a development session and proceeds to the app after valid submit", async () => {
+  it("starts a development session (dev bypass enabled) and proceeds to the app after valid submit", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText("Email"), "dev@transformiq.local");
     await userEvent.type(screen.getByLabelText("Password"), "password123");
@@ -90,7 +102,8 @@ describe("RegisterPage", () => {
     expect(getDevSession()).toBeNull();
   });
 
-  it("starts a development session and proceeds to the app after valid submit", async () => {
+  it("starts a development session (dev bypass enabled) and proceeds to the app after valid submit", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     render(<RegisterPage />);
     await userEvent.type(screen.getByLabelText("Name"), "Jane Doe");
     await userEvent.type(screen.getByLabelText("Email"), "jane@transformiq.local");
@@ -117,7 +130,8 @@ describe("application session gate", () => {
     expect(screen.queryByText("app content")).not.toBeInTheDocument();
   });
 
-  it("renders the authenticated application for a development session", async () => {
+  it("renders the authenticated application for a development session (dev bypass enabled)", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     setDevSession("dev@transformiq.local");
     render(<AppShell>app content</AppShell>);
     await waitFor(() =>
@@ -129,6 +143,7 @@ describe("application session gate", () => {
   });
 
   it("logs out from the profile menu and returns to /login", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     setDevSession("dev@transformiq.local", "Dev User");
     render(<AppShell>app content</AppShell>);
     await waitFor(() =>

@@ -28,7 +28,13 @@ beforeEach(() => {
     jsonResponse({ success: true, data: [], count: 0 }),
   );
   localStorage.clear();
+  process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
   setDevSession("dev@transformiq.local");
+});
+
+afterEach(() => {
+  delete (process.env as Record<string, string | undefined>)
+    .NEXT_PUBLIC_DEV_AUTH_BYPASS;
 });
 
 const projectsPayload = {

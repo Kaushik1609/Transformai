@@ -12,7 +12,7 @@
  * and transparent bearer-token attachment via lib/auth.
  */
 
-import { authHeaders } from "./auth";
+import { authHeaders, clearAuthToken, getAuthToken } from "./auth";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -380,8 +380,25 @@ async function throwApiError(response: Response): Promise<never> {
   throw new ApiError(response.status, detail);
 }
 
+/**
+ * React to an expired/invalid bearer token: drop the stored credentials and
+ * send the user back to the login page instead of retrying silently.
+ */
+function handleUnauthorized(): void {
+  clearAuthToken();
+  if (typeof window !== "undefined") {
+    try {
+      window.location.assign("/login");
+    } catch {
+      // Navigation is not available in every environment (e.g. tests) —
+      // the token has still been cleared.
+    }
+  }
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
+  const hadBearerToken = getAuthToken() !== null;
 
   let response: Response;
   try {
@@ -398,6 +415,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && hadBearerToken) {
+      handleUnauthorized();
+    }
     await throwApiError(response);
   }
 
@@ -410,6 +430,7 @@ async function apiFetchForm<T>(
   options?: RequestInit,
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
+  const hadBearerToken = getAuthToken() !== null;
 
   let response: Response;
   try {
@@ -428,6 +449,9 @@ async function apiFetchForm<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && hadBearerToken) {
+      handleUnauthorized();
+    }
     await throwApiError(response);
   }
 
@@ -455,6 +479,7 @@ async function apiFetchBlob(
     init?.method === "POST"
       ? { method: "POST" as const, headers: authHeaders() }
       : { method: "GET" as const, headers: authHeaders() };
+  const hadBearerToken = getAuthToken() !== null;
 
   let response: Response;
   try {
@@ -464,6 +489,9 @@ async function apiFetchBlob(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && hadBearerToken) {
+      handleUnauthorized();
+    }
     await throwApiError(response);
   }
 

@@ -11,6 +11,15 @@ from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _positive_bounded(value: int, name: str, upper: int) -> int:
+    """Validate that a configuration value is a bounded positive integer."""
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer.")
+    if value > upper:
+        raise ValueError(f"{name} must not exceed {upper}.")
+    return value
+
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
@@ -292,6 +301,68 @@ class Settings(BaseSettings):
         if value < 0.0:
             raise ValueError("LLM_RETRY_MAX_429_WAIT must be a non-negative number.")
         return value
+
+    # -------------------------------------------------------------------------
+    # L5 Output Security (Phase 11H)
+    # -------------------------------------------------------------------------
+    # Deterministic post-parse security validation of generated output
+    # structures.  All limits are finite upper bounds; there are no unlimited
+    # values.  Defaults are deliberately generous so legitimate model output is
+    # never rejected (only pathological strings/list/counts are flagged).
+    OUTPUT_SECURITY_ENABLED: bool = True
+    OUTPUT_MAX_STRING_LENGTH: int = 20000
+    OUTPUT_MAX_LIST_LENGTH: int = 500
+    OUTPUT_MAX_NESTED_ITEMS: int = 1000
+    OUTPUT_MAX_SLIDES: int = 100
+    OUTPUT_MAX_VIDEO_SCENES: int = 100
+    OUTPUT_MAX_INF_SECTIONS: int = 100
+    OUTPUT_MAX_X_THREAD_ITEMS: int = 50
+    # Number of re-generation attempts allowed when the model's output fails
+    # SCHEMA validation (not provider failures, not verification warnings).
+    # 0 = current behavior (a schema-invalid output simply fails that output).
+    OUTPUT_REGEN_BUDGET: int = 0
+
+    @field_validator("OUTPUT_MAX_STRING_LENGTH")
+    @classmethod
+    def validate_output_max_string_length(cls, v: int) -> int:
+        return _positive_bounded(v, "OUTPUT_MAX_STRING_LENGTH", 1_000_000)
+
+    @field_validator("OUTPUT_MAX_LIST_LENGTH")
+    @classmethod
+    def validate_output_max_list_length(cls, v: int) -> int:
+        return _positive_bounded(v, "OUTPUT_MAX_LIST_LENGTH", 100_000)
+
+    @field_validator("OUTPUT_MAX_NESTED_ITEMS")
+    @classmethod
+    def validate_output_max_nested_items(cls, v: int) -> int:
+        return _positive_bounded(v, "OUTPUT_MAX_NESTED_ITEMS", 1_000_000)
+
+    @field_validator("OUTPUT_MAX_SLIDES")
+    @classmethod
+    def validate_output_max_slides(cls, v: int) -> int:
+        return _positive_bounded(v, "OUTPUT_MAX_SLIDES", 100_000)
+
+    @field_validator("OUTPUT_MAX_VIDEO_SCENES")
+    @classmethod
+    def validate_output_max_video_scenes(cls, v: int) -> int:
+        return _positive_bounded(v, "OUTPUT_MAX_VIDEO_SCENES", 100_000)
+
+    @field_validator("OUTPUT_MAX_INF_SECTIONS")
+    @classmethod
+    def validate_output_max_inf_sections(cls, v: int) -> int:
+        return _positive_bounded(v, "OUTPUT_MAX_INF_SECTIONS", 100_000)
+
+    @field_validator("OUTPUT_MAX_X_THREAD_ITEMS")
+    @classmethod
+    def validate_output_max_x_thread_items(cls, v: int) -> int:
+        return _positive_bounded(v, "OUTPUT_MAX_X_THREAD_ITEMS", 100_000)
+
+    @field_validator("OUTPUT_REGEN_BUDGET")
+    @classmethod
+    def validate_output_regen_budget(cls, v: int) -> int:
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0 or v > 10:
+            raise ValueError("OUTPUT_REGEN_BUDGET must be an integer in [0, 10].")
+        return v
 
     # -------------------------------------------------------------------------
     # File Storage

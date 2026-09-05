@@ -10,6 +10,7 @@ text/structured outputs are persisted in the `outputs` table directly.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import NamedTuple
@@ -35,6 +36,15 @@ _MIME_EXT: dict[str, str] = {
 def ext_for_mime(mime_type: str) -> str:
     """Return a safe file extension for a MIME type."""
     return _MIME_EXT.get(mime_type, ".bin")
+
+
+def sha256_hex(content: bytes) -> str:
+    """Return the lowercase SHA-256 hex digest of artifact bytes.
+
+    Used to record artifact integrity in ``output_metadata`` (no database
+    schema change).  Deterministic and offline.
+    """
+    return hashlib.sha256(content).hexdigest()
 
 
 def output_storage_key(

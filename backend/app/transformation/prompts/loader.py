@@ -41,6 +41,11 @@ def build_common_constraints(config: dict[str, Any]) -> str:
     custom = (config.get("custom_instructions") or "").strip()
     if custom:
         parts.append(f"- Additional operator instructions: {custom}")
+    # Schema-feedback from bounded Phase 11H regeneration (transient, set by
+    # the workflow only; never present in normal operator configuration).
+    regen_feedback = (config.get("regen_feedback") or "").strip()
+    if regen_feedback:
+        parts.append(f"- {regen_feedback}")
     return "\n".join(parts)
 
 

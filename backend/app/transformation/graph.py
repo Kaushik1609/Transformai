@@ -35,13 +35,19 @@ from app.db.models.verification_result import VerificationResult
 from app.core.config import settings
 from app.rag.query import formulate_retrieval_query
 from app.rag.service import RAGService
-from app.transformation.artifacts import get_storage, save_output_artifact
+from app.transformation.artifacts import (
+    get_storage,
+    save_output_artifact,
+    sha256_hex,
+)
 from app.transformation.brief import build_canonical_brief
 from app.transformation.output_schemas import (
     Infographic,
     PresentationStructure,
     VideoPackage,
 )
+from app.transformation.output_schemas.parser import OutputSchemaError
+from app.transformation.security import BLOCKED, SecurityVerdict, validate_output
 from app.transformation.render.infographic import (
     INF_PNG_MIME_TYPE,
     PDF_MIME_TYPE,
@@ -64,6 +70,15 @@ def _utcnow() -> datetime:
 
 _MEDIA_OUTPUT_TYPES = frozenset({"presentation", "infographic", "video"})
 _STRUCTURED_OUTPUT_TYPES = frozenset({"advisory"})
+
+# Phase 11H: neutral schema-feedback line injected into the shared prompt
+# boundary during bounded regeneration.  It is transient (never persisted) and
+# carries no source content or secrets.
+_REGEN_FEEDBACK = (
+    "Your previous response was rejected because it did not conform to the "
+    "requested JSON structure. Return a single valid JSON object that exactly "
+    "matches the requested fields and types."
+)
 
 
 def _classify_output(output_type: str) -> str:
@@ -111,6 +126,9 @@ class TransformationDependencies:
     # Optional overrides for deterministic tests.
     requested_output_types_override: list[str] | None = None
     rag_required_override: bool | None = None
+    # Phase 11H: optional overrides for L5 output security (None = use settings).
+    output_security_enabled: bool | None = None
+    output_regen_budget: int | None = None
 
     def __post_init__(self) -> None:
         if self.rag_service is None:
@@ -530,12 +548,62 @@ class TransformationWorkflow:
                             f"No generator registered for output type {output_type!r}."
                         )
 
-                    generated = generator.generate(
-                        canonical=canonical,
-                        config=config,
-                        rag_context=rag_context,
-                        brief=brief,
+                    # Phase 11H bounded regeneration.  Retry ONLY when the
+                    # model's output fails SCHEMA validation (OutputSchemaError);
+                    # provider failures and verification warnings never trigger
+                    # regeneration.  Budget 0 (default) = exact legacy behavior.
+                    regen_budget = getattr(self.deps, "output_regen_budget", None)
+                    if regen_budget is None:
+                        regen_budget = getattr(settings, "OUTPUT_REGEN_BUDGET", 0)
+                        if not isinstance(regen_budget, int) or regen_budget < 0:
+                            regen_budget = 0
+                    regen_attempts = 0
+                    generation_config: dict[str, Any] = config
+                    generated: dict[str, Any] | None = None
+                    while True:
+                        try:
+                            generated = generator.generate(
+                                canonical=canonical,
+                                config=generation_config,
+                                rag_context=rag_context,
+                                brief=brief,
+                            )
+                            break
+                        except OutputSchemaError:
+                            if regen_attempts >= regen_budget:
+                                raise
+                            regen_attempts += 1
+                            generation_config = {
+                                **config,
+                                "regen_feedback": _REGEN_FEEDBACK,
+                                "regen_attempt": regen_attempts,
+                            }
+                    if generated is None:
+                        raise ValueError(
+                            f"Generator produced no output for {output_type!r}."
+                        )
+
+                    # Phase 11H — L5 output security (post schema-parse, before
+                    # rendering/persistence).  A blocked verdict is an
+                    # output-local failure; warnings are recorded but do not stop
+                    # processing.  Verdict metadata contains only codes, severities
+                    # and field names — never source text or secrets.
+                    security_enabled = getattr(
+                        self.deps, "output_security_enabled", None
                     )
+                    if security_enabled is None:
+                        security_enabled = bool(
+                            getattr(settings, "OUTPUT_SECURITY_ENABLED", True)
+                        )
+                    security_verdict: SecurityVerdict | None = None
+                    if security_enabled:
+                        security_verdict = validate_output(output_type, generated)
+                        if security_verdict.status == BLOCKED:
+                            raise ValueError(
+                                "L5 output security validation failed: "
+                                f"{security_verdict.summary}"
+                            )
+
                     text_content = generated.get("text", "")
                     if not isinstance(text_content, str) or not text_content.strip():
                         raise ValueError("Generator produced empty text content.")
@@ -543,11 +611,28 @@ class TransformationWorkflow:
                     output.structured_content = generated
                     output.text_content = text_content
                     output.mime_type = generated.get("mime_type") or "text/plain"
+                    security_meta: dict[str, Any] | None = None
+                    if security_verdict is not None:
+                        security_meta = {
+                            "status": security_verdict.status,
+                            "codes": security_verdict.codes,
+                            "reasons": [
+                                {
+                                    "code": r.code,
+                                    "severity": r.severity,
+                                    "field": r.field,
+                                }
+                                for r in security_verdict.reasons
+                            ],
+                            "regenerations": regen_attempts,
+                        }
                     output.output_metadata = {
                         **(output.output_metadata or {}),
                         "provider": "phase7",
                         "generator": type(generator).__name__,
                     }
+                    if security_meta is not None:
+                        output.output_metadata["security"] = security_meta
                     self._persist_output_artifact(
                         state, output, generated,
                         project_id=uuid.UUID(state["project_id"]),
@@ -782,6 +867,7 @@ class TransformationWorkflow:
             **(output.output_metadata or {}),
             "artifact": "pptx",
             "bytes": len(pptx_bytes),
+            "artifact_sha256": sha256_hex(pptx_bytes),
         }
 
     def _persist_infographic_artifact(
@@ -829,6 +915,8 @@ class TransformationWorkflow:
             "pdf_storage_key": pdf_key,
             "png_bytes": len(png_bytes),
             "pdf_bytes": len(pdf_bytes),
+            "artifact_sha256": sha256_hex(png_bytes),
+            "pdf_sha256": sha256_hex(pdf_bytes),
         }
 
     def _persist_video_artifact(
@@ -878,6 +966,8 @@ class TransformationWorkflow:
             "subtitle_storage_key": srt_key,
             "pdf_bytes": len(pdf_bytes),
             "srt_bytes": len(srt_bytes),
+            "artifact_sha256": sha256_hex(pdf_bytes),
+            "srt_sha256": sha256_hex(srt_bytes),
         }
 
     def validate(self, state: TransformationState) -> TransformationState:

@@ -89,15 +89,26 @@ def process_source(source_id: str) -> dict[str, str]:
 
 
 def process_source_embedding(source_id: str) -> dict[str, str]:
-    """RQ handler that generates embeddings for a source's chunks without deleting source data."""
+    """RQ handler that generates embeddings for a source's chunks without deleting source data.
+
+    The embedding provider is resolved from configuration (EMBEDDING_PROVIDER)
+    via the Phase 11G factory. An explicitly selected real provider NEVER falls
+    back to fake embeddings: missing credentials or provider failures surface as
+    an explicit job failure so RAG quality is never silently degraded.
+    """
     engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
     try:
         import uuid
 
+        from app.embeddings.factory import build_resilient_embedding_provider
         from app.ingestion.worker_processing import process_source_embeddings_with_session
 
+        embedding_provider = build_resilient_embedding_provider()
+
         with Session(engine) as session:
-            source = process_source_embeddings_with_session(session, uuid.UUID(source_id))
+            source = process_source_embeddings_with_session(
+                session, uuid.UUID(source_id), provider=embedding_provider
+            )
             return {"source_id": str(source.id), "status": source.status}
     finally:
         engine.dispose()

@@ -127,6 +127,8 @@ def process_source_embeddings_with_session(
         source_metadata = dict(source.source_metadata or {})
         source_metadata["embedding_status"] = "completed"
         source_metadata["embedding_dimensions"] = settings.EMBEDDING_DIMENSIONS
+        source_metadata["embedding_model"] = settings.EMBEDDING_MODEL
+        source_metadata["embedding_provider"] = settings.EMBEDDING_PROVIDER
         source_metadata["embedding_count"] = len(chunks)
         source.source_metadata = source_metadata
         db.commit()

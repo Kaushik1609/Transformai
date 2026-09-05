@@ -176,9 +176,42 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Embedding
     # -------------------------------------------------------------------------
-    EMBEDDING_PROVIDER: str = "fake"
+    # Supported providers: "fake" (deterministic, offline/tests) and "openai"
+    # (real embeddings via the OpenAI SDK). Never hard-code keys here.
+    EMBEDDING_PROVIDER: Literal["fake", "openai"] = "fake"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
+    # Real-provider credentials/base URL (EMBEDDING_PROVIDER=openai). The key is
+    # consumed from the local gitignored .env only and never committed/printed.
+    EMBEDDING_API_KEY: str = ""
+    EMBEDDING_BASE_URL: str = ""
+    # Per-request network timeout and max retries for real providers. The total
+    # request budget (timeout * (retries + 1)) is validated below so it can never
+    # exceed the worker's execution budget.
+    EMBEDDING_TIMEOUT_SECONDS: int = 10
+    EMBEDDING_MAX_RETRIES: int = 2
+
+    @field_validator("EMBEDDING_DIMENSIONS")
+    @classmethod
+    def validate_embedding_dimensions(cls, v: int) -> int:
+        """Vector dimensionality must be positive; 1536 matches the pgvector column."""
+        if not isinstance(v, int) or isinstance(v, bool) or v <= 0:
+            raise ValueError("EMBEDDING_DIMENSIONS must be a positive integer.")
+        return v
+
+    @field_validator("EMBEDDING_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_embedding_timeout(cls, v: int) -> int:
+        if not isinstance(v, int) or isinstance(v, bool) or v <= 0:
+            raise ValueError("EMBEDDING_TIMEOUT_SECONDS must be a positive integer.")
+        return v
+
+    @field_validator("EMBEDDING_MAX_RETRIES")
+    @classmethod
+    def validate_embedding_max_retries(cls, v: int) -> int:
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0 or v > 10:
+            raise ValueError("EMBEDDING_MAX_RETRIES must be an integer in [0, 10].")
+        return v
 
     # -------------------------------------------------------------------------
     # RAG / Retrieval
@@ -320,6 +353,27 @@ class Settings(BaseSettings):
                     "WORKER_JOB_TIMEOUT must be >= TRANSFORMATION_JOB_TIMEOUT "
                     f"({worker} < {budget}); the worker would terminate "
                     "transformation jobs before their execution budget elapsed."
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_embedding_request_budget(self) -> "Settings":
+        """Bound the embedding request budget inside the worker's execution budget.
+
+        A real embedding request may take up to EMBEDDING_TIMEOUT_SECONDS and be
+        retried EMBEDDING_MAX_RETRIES times, so the worst case is
+        timeout * (retries + 1). This validator rejects a configuration that
+        could let an embedding job exceed the worker's safe execution budget.
+        """
+        timeout = self.EMBEDDING_TIMEOUT_SECONDS
+        retries = self.EMBEDDING_MAX_RETRIES
+        if isinstance(timeout, int) and isinstance(retries, int):
+            worst_case = timeout * (retries + 1)
+            if worst_case > self.WORKER_JOB_TIMEOUT:
+                raise ValueError(
+                    "Embedding request budget "
+                    f"(EMBEDDING_TIMEOUT_SECONDS * (EMBEDDING_MAX_RETRIES + 1) = {worst_case}s) "
+                    f"would exceed WORKER_JOB_TIMEOUT={self.WORKER_JOB_TIMEOUT}s."
                 )
         return self
 

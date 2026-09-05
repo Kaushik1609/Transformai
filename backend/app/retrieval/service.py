@@ -58,6 +58,28 @@ class RetrievalService:
             return query
         return query.join(SourceChunk.source).where(SourceChunk.source.has(project_id=project_id))
 
+    def _ensure_scope(
+        self,
+        *,
+        project_id: UUID | None,
+        source_id: UUID | None,
+        require_scope: bool,
+    ) -> None:
+        """Fail closed when strict scoping is requested but no scope is supplied.
+
+        An unscoped retrieval would search every embedded chunk in the database —
+        a cross-project data exposure. Production callers (the transformation
+        graph) always pass project_id and source_id; this guard makes accidental
+        unscoped/global queries impossible for callers that opt in.
+        """
+        if not require_scope:
+            return
+        if project_id is None and source_id is None:
+            raise ValueError(
+                "Retrieval scope required: pass project_id and/or source_id; "
+                "refusing an unscoped (global) retrieval."
+            )
+
     def _coerce_embedding_vector(self, value) -> list[float]:
         if value is None:
             raise ValueError("Stored embedding is missing.")
@@ -103,7 +125,11 @@ class RetrievalService:
         project_id: UUID | None = None,
         source_id: UUID | None = None,
         min_similarity: float | None = None,
+        require_scope: bool = False,
     ) -> list[ChunkMatch]:
+        self._ensure_scope(
+            project_id=project_id, source_id=source_id, require_scope=require_scope
+        )
         validated_vector = self._validate_query_vector(query_vector)
         validated_top_k = self._validate_top_k(top_k)
 
@@ -156,6 +182,7 @@ class RetrievalService:
         project_id: UUID | None = None,
         source_id: UUID | None = None,
         min_similarity: float | None = None,
+        require_scope: bool = False,
     ) -> list[ChunkMatch]:
         cleaned = self._validate_query_text(text)
         validated_top_k = self._validate_top_k(top_k)
@@ -167,6 +194,7 @@ class RetrievalService:
             project_id=project_id,
             source_id=source_id,
             min_similarity=min_similarity,
+            require_scope=require_scope,
         )
 
     # ---------------------------------------------------------------------
@@ -216,6 +244,7 @@ class RetrievalService:
         project_id: UUID | None = None,
         source_id: UUID | None = None,
         min_similarity: float | None = None,
+        require_scope: bool = False,
     ) -> list[ChunkMatch]:
         """Rank chunks by a deterministic fuse of dense + lexical similarity.
 
@@ -226,6 +255,9 @@ class RetrievalService:
         content is folded, provenance is preserved, and output is capped at
         ``top_k``.
         """
+        self._ensure_scope(
+            project_id=project_id, source_id=source_id, require_scope=require_scope
+        )
         cleaned = self._validate_query_text(text)
         validated_top_k = self._validate_top_k(top_k)
         query_vector = self.embedding_service.embed_texts([cleaned])[0]

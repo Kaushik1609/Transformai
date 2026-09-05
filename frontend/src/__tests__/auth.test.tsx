@@ -17,6 +17,7 @@ import {
   getDevSession,
   setDevSession,
   clearDevSession,
+  isDevAuthBypassEnabled,
 } from "@/lib/auth";
 
 const push = jest.fn();
@@ -73,6 +74,21 @@ describe("LoginPage", () => {
     render(<LoginPage />);
     const link = screen.getByRole("link", { name: "Create account" });
     expect(link).toHaveAttribute("href", "/register");
+  });
+});
+
+describe("auth module contract (regression: named export must stay callable)", () => {
+  it("exports isDevAuthBypassEnabled as a function returning a boolean", () => {
+    expect(typeof isDevAuthBypassEnabled).toBe("function");
+    expect(typeof isDevAuthBypassEnabled()).toBe("boolean");
+  });
+
+  it("is false when NEXT_PUBLIC_DEV_AUTH_BYPASS is unset and true when 'true'", () => {
+    delete (process.env as Record<string, string | undefined>)
+      .NEXT_PUBLIC_DEV_AUTH_BYPASS;
+    expect(isDevAuthBypassEnabled()).toBe(false);
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
+    expect(isDevAuthBypassEnabled()).toBe(true);
   });
 });
 

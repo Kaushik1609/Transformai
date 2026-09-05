@@ -39,9 +39,11 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         self._base_url = settings.EMBEDDING_BASE_URL if base_url is _UNSET else base_url
         self._dimensions = dimensions if dimensions is not None else settings.EMBEDDING_DIMENSIONS
         self._timeout = timeout if timeout is not None else settings.EMBEDDING_TIMEOUT_SECONDS
-        # SDK-level retries default to the configured embedding retry count; the
-        # application EmbeddingResilientProvider owns the overall retry budget.
-        self._max_retries = max_retries if max_retries is not None else settings.EMBEDDING_MAX_RETRIES
+        # SDK-level auto-retries are DISABLED (EMBEDDING_SDK_MAX_RETRIES defaults
+        # to 0): the application EmbeddingResilientProvider is the single retry
+        # owner and EMBEDDING_MAX_TOTAL_ATTEMPTS is the only ceiling, so SDK and
+        # app-layer retries never amplify each other.
+        self._max_retries = max_retries if max_retries is not None else settings.EMBEDDING_SDK_MAX_RETRIES
         if not self._api_key:
             raise ValueError(
                 "EMBEDDING_API_KEY is not configured. Set EMBEDDING_API_KEY in the "

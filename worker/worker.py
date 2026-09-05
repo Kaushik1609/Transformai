@@ -14,7 +14,7 @@ Environment variables:
     LOG_LEVEL           Logging verbosity        (default: INFO)
     ENVIRONMENT         Application environment  (default: development)
     WORKER_CONCURRENCY  Parallel worker threads  (default: 2)
-    WORKER_JOB_TIMEOUT  Max seconds per job      (default: 300)
+    WORKER_JOB_TIMEOUT  Max seconds per job      (default: 605, from WORKER_JOB_TIMEOUT)
 """
 import logging
 import os
@@ -61,7 +61,10 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 WORKER_CONCURRENCY = int(os.getenv("WORKER_CONCURRENCY", "2"))
-WORKER_JOB_TIMEOUT = int(os.getenv("WORKER_JOB_TIMEOUT", "300"))
+# Single source of truth: the worker timeout is read ONLY from application
+# config (backend/app/core/config.py WORKER_JOB_TIMEOUT). RQ applies it as the
+# per-job timeout at enqueue time (see app/*/queue.py).
+WORKER_JOB_TIMEOUT = settings.WORKER_JOB_TIMEOUT
 
 # Queue names — will be extended as job types are added in later phases.
 QUEUE_NAMES = [
@@ -157,11 +160,32 @@ def process_transformation(job_id: str) -> dict:
         engine.dispose()
 
 
+def _is_timeout_failure(value) -> bool:
+    """Return True when an RQ failure value represents a job timeout.
+
+    RQ 2.0 raises ``rq.timeouts.JobTimeoutException`` (threading-based timer,
+    platform-independent) when a job exceeds its ``job_timeout``. We detect the
+    base class so a clear, timeout-specific reason is written to the DB row.
+    """
+    try:
+        from rq.timeouts import BaseTimeoutException
+
+        if isinstance(value, BaseTimeoutException):
+            return True
+    except ImportError:  # pragma: no cover - RQ API safety
+        pass
+    return "jobtimeout" in type(value).__name__.lower()
+
+
 def transformation_failure_handler(job, connection, type, value, traceback):
     """Mark a transformation job failed when the RQ job itself fails.
 
-    RQ calls this when a queued transformation job raises an unhandled error.
-    Records a controlled error without corrupting the source or other outputs.
+    RQ calls this when a queued transformation job raises an unhandled error
+    (including exceeding ``WORKER_JOB_TIMEOUT``, which RQ turns into a
+    ``JobTimeoutException``). The job is never left in a stuck ``running`` /
+    ``queued`` state: a ``failed`` status with a clear reason is written to the
+    job's DB record. Records a controlled error without corrupting the source or
+    other outputs.
     """
     logger = structlog.get_logger(__name__)
     job_id = None
@@ -188,7 +212,12 @@ def transformation_failure_handler(job, connection, type, value, traceback):
                 ).scalar_one_or_none()
                 if job_record is not None and job_record.status not in ("completed", "cancelled"):
                     job_record.status = "failed"
-                    job_record.error_message = f"Worker job failed: {value}"[:4000]
+                    if _is_timeout_failure(value):
+                        job_record.error_message = (
+                            f"Worker job timed out after {WORKER_JOB_TIMEOUT} seconds."
+                        )
+                    else:
+                        job_record.error_message = f"Worker job failed: {value}"[:4000]
                     job_record.completed_at = datetime.now(timezone.utc)
                     session.commit()
     except Exception as exc:  # pragma: no cover - defensive

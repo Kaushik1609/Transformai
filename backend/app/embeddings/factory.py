@@ -45,7 +45,7 @@ def build_embedding_provider(
         base = OpenAIEmbeddingProvider(dimensions=resolved_dimensions)
         return EmbeddingResilientProvider(
             base,
-            max_attempts=settings.EMBEDDING_MAX_RETRIES + 1,
+            max_attempts=settings.EMBEDDING_MAX_TOTAL_ATTEMPTS,
         )
     raise ValueError(f"Unsupported embedding provider: {name!r}")
 
@@ -63,5 +63,5 @@ def build_resilient_embedding_provider(
         return base
     return EmbeddingResilientProvider(
         base,
-        max_attempts=max_attempts if max_attempts is not None else settings.EMBEDDING_MAX_RETRIES + 1,
+        max_attempts=max_attempts if max_attempts is not None else settings.EMBEDDING_MAX_TOTAL_ATTEMPTS,
     )

@@ -56,7 +56,7 @@ class EmbeddingResilientProvider(EmbeddingProvider):
     ) -> None:
         self._provider = provider
         self._max_attempts = (
-            max_attempts if max_attempts is not None else settings.EMBEDDING_MAX_RETRIES + 1
+            max_attempts if max_attempts is not None else settings.EMBEDDING_MAX_TOTAL_ATTEMPTS
         )
         self._retry_policy = retry_policy or RetryPolicy()
         self._sleep = sleep or time.sleep

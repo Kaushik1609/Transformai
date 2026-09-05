@@ -199,6 +199,22 @@ class Settings(BaseSettings):
     # exceed the worker's execution budget.
     EMBEDDING_TIMEOUT_SECONDS: int = 10
     EMBEDDING_MAX_RETRIES: int = 2
+    # Disable SDK-internal automatic retries so the application
+    # EmbeddingResilientProvider is the SINGLE retry owner (avoids nested/amplified
+    # retry pressure). EMBEDDING_MAX_TOTAL_ATTEMPTS below is the one documented
+    # ceiling for the whole embedding retry stack.
+    EMBEDDING_SDK_MAX_RETRIES: int = 0
+
+    @property
+    def EMBEDDING_MAX_TOTAL_ATTEMPTS(self) -> int:
+        """Single documented retry ceiling for the embedding stack.
+
+        The EmbeddingResilientProvider may attempt a request at most this many
+        times (EMBEDDING_MAX_RETRIES retries plus the initial attempt). Because
+        EMBEDDING_SDK_MAX_RETRIES is 0, this is the ONLY retry layer that can
+        exceed one attempt and therefore the ONLY ceiling.
+        """
+        return self.EMBEDDING_MAX_RETRIES + 1
 
     @field_validator("EMBEDDING_DIMENSIONS")
     @classmethod
@@ -220,6 +236,13 @@ class Settings(BaseSettings):
     def validate_embedding_max_retries(cls, v: int) -> int:
         if not isinstance(v, int) or isinstance(v, bool) or v < 0 or v > 10:
             raise ValueError("EMBEDDING_MAX_RETRIES must be an integer in [0, 10].")
+        return v
+
+    @field_validator("EMBEDDING_SDK_MAX_RETRIES")
+    @classmethod
+    def validate_embedding_sdk_max_retries(cls, v: int) -> int:
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0 or v > 10:
+            raise ValueError("EMBEDDING_SDK_MAX_RETRIES must be an integer in [0, 10].")
         return v
 
     # -------------------------------------------------------------------------

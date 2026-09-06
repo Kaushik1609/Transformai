@@ -26,6 +26,7 @@ import uuid
 
 from fastapi import Depends, HTTPException, Request, status
 
+from app.core.audit import emit_security_event
 from app.core.config import settings
 from app.core.security import decode_access_token
 
@@ -127,25 +128,36 @@ async def get_current_user(request: Request = None) -> CurrentUser:
         )
 
     if request is None:
+        emit_security_event("authn_denied", outcome="denied", reason="missing_token")
         raise _unauthorized("Authentication is required. Provide a Bearer access token.")
     token = _extract_bearer_token(request)
 
     try:
         payload = decode_access_token(token)
     except ValueError as exc:
+        emit_security_event(
+            "authn_denied", outcome="denied", reason="invalid_token",
+            details={"error": str(exc)},
+        )
         raise _unauthorized(str(exc)) from exc
 
     subject = payload.get("sub")
     if not subject:
+        emit_security_event("authn_denied", outcome="denied", reason="missing_subject")
         raise _unauthorized("Invalid access token.")
 
     try:
         user_id = uuid.UUID(str(subject))
     except (ValueError, TypeError):
+        emit_security_event("authn_denied", outcome="denied", reason="malformed_subject")
         raise _unauthorized("Invalid access token.") from None
 
     user = await _get_user_record(user_id)
     if user is None:
+        emit_security_event(
+            "authn_denied", outcome="denied", reason="unknown_user",
+            user_id=str(user_id),
+        )
         raise _unauthorized("The account associated with this token no longer exists.")
 
     return CurrentUser(
@@ -165,6 +177,15 @@ def require_any_roles(*allowed_roles: str):
 
     async def _dependency(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if current_user.role not in allowed_roles:
+            emit_security_event(
+                "authz_denied",
+                outcome="denied",
+                user_id=str(current_user.id),
+                reason=(
+                    f"role '{current_user.role}' not in allowed roles "
+                    f"{sorted(allowed_roles)}"
+                ),
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(

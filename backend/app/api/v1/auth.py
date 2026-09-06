@@ -42,6 +42,7 @@ from app.auth.service import (
     request_login_otp,
     verify_login,
 )
+from app.core.audit import emit_security_event
 from app.core.ratelimit import rate_limit_bucket
 from app.db.session import get_db
 
@@ -96,13 +97,20 @@ async def register(
             store=store,
             delivery=delivery,
         )
+        emit_security_event("account_registered", outcome="allowed")
     except RegistrationDisabledError as exc:
+        emit_security_event("account_registration_declined", outcome="denied",
+                            reason="registration_disabled")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except DuplicateAccountError as exc:
+        emit_security_event("account_registration_declined", outcome="denied",
+                            reason="duplicate_account")
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except OtpIssueError as exc:
+        emit_security_event("otp_issue_limited", outcome="denied", reason="quota_exceeded")
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
     except OtpDeliveryError as exc:
+        emit_security_event("otp_delivery_failed", outcome="denied", reason="delivery_error")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return RegisterResponse(data=_delivery_details(issued))
 
@@ -138,6 +146,7 @@ async def login(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     if issued is None:
         return LoginResponse(data=_generic_login_details(body))
+    emit_security_event("otp_requested", outcome="allowed", reason="otp_issued")
     return LoginResponse(data=_delivery_details(issued))
 
 
@@ -164,9 +173,15 @@ async def verify(
             store=store,
         )
     except (AccountNotFoundError, OtpIssueError) as exc:
+        emit_security_event("otp_verification_denied", outcome="denied",
+                            reason="account_or_issue_mismatch")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except OtpVerifyError as exc:
+        emit_security_event("otp_verification_denied", outcome="denied",
+                            reason="otp_invalid")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    emit_security_event("otp_verified", outcome="allowed", reason="token_issued")
+
     return AuthTokenResponse(
         access_token=token,
         expires_in=expires_in,

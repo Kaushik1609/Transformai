@@ -26,6 +26,7 @@ import structlog
 from rq import Queue, Worker
 
 from app.core.config import settings
+from app.core.redaction import redact_secrets
 from app.ingestion.worker_processing import process_source_with_session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -217,14 +218,24 @@ def transformation_failure_handler(job, connection, type, value, traceback):
                             f"Worker job timed out after {WORKER_JOB_TIMEOUT} seconds."
                         )
                     else:
-                        job_record.error_message = f"Worker job failed: {value}"[:4000]
+                        job_record.error_message = (
+                            "Worker job failed: "
+                            f"{redact_secrets(str(value))}"[:4000]
+                        )
                     job_record.completed_at = datetime.now(timezone.utc)
                     session.commit()
     except Exception as exc:  # pragma: no cover - defensive
-        logger.error("Could not mark transformation job failed", error=str(exc))
+        logger.error(
+            "Could not mark transformation job failed",
+            error=redact_secrets(str(exc)),
+        )
     finally:
         engine.dispose()
-    logger.error("Transformation RQ job failed", job_id=job_id, error=str(value))
+    logger.error(
+        "Transformation RQ job failed",
+        job_id=job_id,
+        error=redact_secrets(str(value)),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -260,12 +271,26 @@ def demo_job(message: str = "hello") -> dict:
 # Redis connectivity with retry
 # ---------------------------------------------------------------------------
 
+def _redis_host(url: str) -> str:
+    """Return a credential-free host label for a Redis URL."""
+    try:
+        from urllib.parse import urlsplit
+
+        parsed = urlsplit(url)
+        host = parsed.hostname or ""
+        if parsed.port:
+            host = f"{host}:{parsed.port}"
+        return host or "unknown"
+    except Exception:  # pragma: no cover - defensive
+        return "unknown"
+
+
 def wait_for_redis(url: str, retries: int = 10, delay: float = 3.0) -> redis.Redis:
     """
     Attempt to connect to Redis with retries.
     Exits the process if Redis is unreachable after all retries.
     """
-    logger.info("Connecting to Redis", url=url)
+    logger.info("Connecting to Redis", host=_redis_host(url))
     conn = redis.from_url(url)
 
     for attempt in range(1, retries + 1):
@@ -278,7 +303,7 @@ def wait_for_redis(url: str, retries: int = 10, delay: float = 3.0) -> redis.Red
                 "Redis not yet available",
                 attempt=attempt,
                 max_retries=retries,
-                error=str(exc),
+                error=redact_secrets(str(exc)),
             )
             if attempt < retries:
                 time.sleep(delay)

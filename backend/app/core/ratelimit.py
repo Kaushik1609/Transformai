@@ -32,6 +32,7 @@ from fastapi import HTTPException, Request, status
 from fastapi import Depends as FastAPIDepends
 
 from app.core.config import settings
+from app.core.audit import emit_security_event
 
 logger = structlog.get_logger(__name__)
 
@@ -159,6 +160,18 @@ def rate_limit_bucket(bucket: str):
         limit, window = get_rate_limit_spec(bucket)
         status_result = limiter.hit(bucket, _client_ip(request), limit, window)
         if not status_result.allowed:
+            emit_security_event(
+                "rate_limit_triggered",
+                outcome="denied",
+                reason=(
+                    f"Rate limit exceeded for '{bucket}'"
+                ),
+                details={
+                    "bucket": bucket,
+                    "limit": limit,
+                    "retry_after_seconds": int(status_result.retry_after),
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Rate limit exceeded for '{bucket}'. Try again after "

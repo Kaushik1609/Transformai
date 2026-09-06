@@ -26,6 +26,7 @@ from app.api.v1.schemas.source import (
     SourceListResponse,
     SourceResponse,
 )
+from app.core.audit import emit_security_event
 from app.core.ratelimit import rate_limit_bucket
 from app.db.session import get_db
 from app.ingestion.documents import DocumentExtractionError
@@ -83,6 +84,14 @@ async def create_source(
         language=body.language,
         metadata=body.metadata,
     )
+    emit_security_event(
+        "source_uploaded",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        project_id=str(project_id),
+        source_id=str(source.id),
+        reason="source_record_created",
+    )
     return SourceDetailResponse(data=SourceResponse.model_validate(source))
 
 
@@ -120,6 +129,14 @@ async def ingest_direct_text(
         )
     except ValueError as exc:
         raise _ingestion_error(exc) from exc
+    emit_security_event(
+        "source_uploaded",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        project_id=str(project_id),
+        source_id=str(source.id),
+        reason="direct_text_ingested",
+    )
     return SourceDetailResponse(data=SourceResponse.model_validate(source))
 
 
@@ -159,6 +176,14 @@ async def ingest_txt_file(
         )
     except ValueError as exc:
         raise _ingestion_error(exc) from exc
+    emit_security_event(
+        "source_uploaded",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        project_id=str(project_id),
+        source_id=str(source.id),
+        reason="txt_file_ingested",
+    )
     return SourceDetailResponse(data=SourceResponse.model_validate(source))
 
 
@@ -204,6 +229,14 @@ async def ingest_document_file(
         )
     except (DocumentExtractionError, ValueError) as exc:
         raise _ingestion_error(exc) from exc
+    emit_security_event(
+        "source_uploaded",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        project_id=str(project_id),
+        source_id=str(source.id),
+        reason="document_ingested",
+    )
     return SourceDetailResponse(data=SourceResponse.model_validate(source))
 
 
@@ -273,6 +306,14 @@ async def queue_source_ingestion(
         enqueue_source_ingestion(source.id, queue=get_ingestion_queue())
     except (SourceValidationError, ValueError) as exc:
         raise _ingestion_error(exc) from exc
+    emit_security_event(
+        "source_uploaded",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        project_id=str(project_id),
+        source_id=str(source.id),
+        reason="queued_ingestion",
+    )
     return SourceDetailResponse(data=SourceResponse.model_validate(source))
 
 
@@ -347,4 +388,11 @@ async def delete_source(
             detail=f"Source {source_id} not found.",
         )
     await source_service.delete_source(db, source=source)
+    emit_security_event(
+        "source_deleted",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        project_id=str(source.project_id),
+        source_id=str(source_id),
+    )
     return DeleteResponse(message=f"Source {source_id} deleted successfully.")

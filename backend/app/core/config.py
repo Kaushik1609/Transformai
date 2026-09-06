@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # MUST be False in staging and production.
     DEV_AUTH_BYPASS: bool = False
 
+    # Structured security/audit event emitter (Phase 11K). When False the
+    # emitter records nothing and logs no security_event records.
+    SECURITY_AUDIT_ENABLED: bool = True
+
     # -------------------------------------------------------------------------
     # Backend
     # -------------------------------------------------------------------------

@@ -11,7 +11,6 @@ health state.
 from __future__ import annotations
 
 import enum
-import re
 import time
 from typing import Any, Callable
 
@@ -295,16 +294,10 @@ class ProviderCallError(Exception):
     """
 
 
-_SECRET_RE = re.compile(
-    r"(?i)(sk-[A-Za-z0-9_-]+"
-    r"|bearer\s+\S+"
-    r"|(?:api[_-]?key|apikey|token|authorization|password|secret)\s*[:=]\s*\S+)"
-)
-
-
-def redact_secrets(message: str) -> str:
-    """Return a bounded, credential-safe message with secret-shaped values removed."""
-    return _SECRET_RE.sub("<redacted>", str(message))
+# Redaction lives in app.core.redaction; re-exported here so existing
+# import sites (``from app.core.resilience import redact_secrets``) keep
+# working while a single implementation is shared across the app.
+from app.core.redaction import redact_secrets  # noqa: E402  (re-export)
 
 
 def safe_message(exc: BaseException, *, limit: int = 500) -> str:

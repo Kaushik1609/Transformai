@@ -26,6 +26,7 @@ from app.api.v1.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
 )
+from app.core.audit import emit_security_event
 from app.db.session import get_db
 from app.services import project_service
 
@@ -141,4 +142,10 @@ async def delete_project(
             detail=f"Project {project_id} not found.",
         )
     await project_service.delete_project(db, project=project)
+    emit_security_event(
+        "project_deleted",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        project_id=str(project_id),
+    )
     return DeleteResponse(message=f"Project {project_id} deleted successfully.")

@@ -10,6 +10,7 @@ import sys
 import structlog
 
 from app.core.config import settings
+from app.core.redaction import RedactionProcessor
 
 
 def configure_logging() -> None:
@@ -26,9 +27,11 @@ def configure_logging() -> None:
     # Suppress noisy libraries at a higher threshold in development.
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-    # Shared processors applied to every log event.
+    # Shared processors applied to every log event.  The redaction processor is
+    # first so secret/PII-shaped values are scrubbed before rendering.
     shared_processors: list = [
         structlog.contextvars.merge_contextvars,
+        RedactionProcessor(),
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),

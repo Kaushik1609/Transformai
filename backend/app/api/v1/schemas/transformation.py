@@ -29,12 +29,22 @@ class TransformationJobCreate(BaseModel):
     output_types: list[str] = Field(
         ...,
         min_length=1,
+        max_length=10,
         description="List of output types: summary | linkedin | x | advisory | infographic | presentation | video",
     )
 
     @field_validator("output_types")
     @classmethod
     def _validate_output_types(cls, values: list[str]) -> list[str]:
+        oversized = sorted(
+            {value for value in values if not value or len(value) > 32}
+        )
+        if oversized:
+            raise ValueError(
+                "Output type names must each be between 1 and 32 characters; "
+                "got oversized value(s): "
+                + ", ".join(repr(value[:32]) for value in oversized)
+            )
         unknown = sorted({value for value in values if value not in KNOWN_OUTPUT_TYPES})
         if unknown:
             raise ValueError(

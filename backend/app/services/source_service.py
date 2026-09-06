@@ -21,6 +21,11 @@ from app.ingestion.queue import enqueue_source_ingestion
 from app.ingestion.storage import LocalStorage
 from app.ingestion.text import chunk_text, normalize_text
 from app.ingestion.validation import validate_source
+from app.services.storage_lifecycle import (
+    cleanup_storage_keys,
+    collect_source_artifact_keys,
+    keys_referenced_by_other_records,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -307,8 +312,25 @@ async def delete_source(
     db: AsyncSession,
     *,
     source: Source,
+    storage: LocalStorage | None = None,
 ) -> None:
-    """Delete a source and all its cascaded children."""
+    """
+    Delete a source and all its cascaded children, including persisted artifacts.
+
+    Storage files for the source original and its job outputs are removed
+    before the database record so a transient storage failure leaves the
+    record intact for a safe, idempotent retry. Keys still referenced by other
+    live records are protected from deletion.
+    """
+    keys, output_ids = await collect_source_artifact_keys(db, source=source)
+    referenced_keys = await keys_referenced_by_other_records(
+        db,
+        keys=keys,
+        exclude_source_ids={source.id},
+        exclude_output_ids=output_ids,
+    )
+    cleaner = storage if storage is not None else LocalStorage(settings.STORAGE_LOCAL_PATH)
+    cleanup_storage_keys(cleaner, keys=keys, referenced_keys=referenced_keys)
     await db.delete(source)
     await db.flush()
     logger.info("Source deleted", source_id=str(source.id))

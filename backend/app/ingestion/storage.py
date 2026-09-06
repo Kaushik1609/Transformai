@@ -36,3 +36,23 @@ class LocalStorage:
         if self.root not in path.parents:
             raise ValueError("Storage key escapes the configured storage root.")
         return path.read_bytes()
+
+    def delete(self, key: str) -> None:
+        """Remove a stored artifact below the storage root for a given key.
+
+        Keys that resolve outside the root raise ``ValueError``. A missing
+        artifact is treated as an idempotent success so lifecycle cleanup can
+        be retried safely. Unexpected filesystem errors propagate so cleanup
+        failures are never silently swallowed.
+        """
+        path = (self.root / key).resolve()
+        if self.root not in path.parents:
+            raise ValueError("Storage key escapes the configured storage root.")
+        if path.is_dir():
+            raise OSError(
+                f"Storage key {key!r} resolves to a directory, not a stored artifact."
+            )
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            return

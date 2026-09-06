@@ -11,8 +11,15 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models.project import Project
 from app.db.models.user import User
+from app.ingestion.storage import LocalStorage
+from app.services.storage_lifecycle import (
+    cleanup_storage_keys,
+    collect_project_artifact_keys,
+    keys_referenced_by_other_records,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -116,8 +123,27 @@ async def delete_project(
     db: AsyncSession,
     *,
     project: Project,
+    storage: LocalStorage | None = None,
 ) -> None:
-    """Delete a project and all its cascaded children."""
+    """
+    Delete a project and all its cascaded children, including persisted artifacts.
+
+    Storage files for every source original and job output under the project
+    are removed before the database record so a transient storage failure
+    leaves the record intact for a safe, idempotent retry. Keys still
+    referenced by other live records are protected from deletion.
+    """
+    keys, source_ids, output_ids = await collect_project_artifact_keys(
+        db, project_id=project.id
+    )
+    referenced_keys = await keys_referenced_by_other_records(
+        db,
+        keys=keys,
+        exclude_source_ids=source_ids,
+        exclude_output_ids=output_ids,
+    )
+    cleaner = storage if storage is not None else LocalStorage(settings.STORAGE_LOCAL_PATH)
+    cleanup_storage_keys(cleaner, keys=keys, referenced_keys=referenced_keys)
     await db.delete(project)
     await db.flush()
     logger.info("Project deleted", project_id=str(project.id))

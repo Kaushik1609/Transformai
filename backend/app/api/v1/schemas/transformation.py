@@ -8,7 +8,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.transformation.generators import KNOWN_OUTPUT_TYPES
 
 
 # ---------------------------------------------------------------------------
@@ -29,6 +31,18 @@ class TransformationJobCreate(BaseModel):
         min_length=1,
         description="List of output types: summary | linkedin | x | advisory | infographic | presentation | video",
     )
+
+    @field_validator("output_types")
+    @classmethod
+    def _validate_output_types(cls, values: list[str]) -> list[str]:
+        unknown = sorted({value for value in values if value not in KNOWN_OUTPUT_TYPES})
+        if unknown:
+            raise ValueError(
+                "Unsupported output type(s): "
+                + ", ".join(repr(value) for value in unknown)
+                + f". Supported output types: {sorted(KNOWN_OUTPUT_TYPES)}"
+            )
+        return values
 
 
 class TransformationJobResponse(BaseModel):

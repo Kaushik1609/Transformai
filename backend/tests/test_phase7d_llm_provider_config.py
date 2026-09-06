@@ -107,13 +107,13 @@ class TestProviderFactory:
         provider = build_llm_provider()
         assert isinstance(provider, OpenAILLMProvider)
 
-    def test_falls_back_to_fake_without_key(self, monkeypatch):
+    def test_openai_without_key_fails_clearly(self, monkeypatch):
         from app.transformation import llm as llm_mod
 
         monkeypatch.setattr(llm_mod.factory.settings, "LLM_PROVIDER", "openai")
         monkeypatch.setattr(llm_mod.factory.settings, "LLM_API_KEY", "")
-        provider = build_llm_provider()
-        assert isinstance(provider, FakeLLMProvider)
+        with pytest.raises(ValueError, match="LLM_API_KEY"):
+            build_llm_provider()
 
     def test_fake_provider_selected_explicitly(self, monkeypatch):
         from app.transformation import llm as llm_mod

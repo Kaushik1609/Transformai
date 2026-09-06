@@ -1,9 +1,15 @@
 """Build an LLM provider from application settings.
 
-The default provider ("openai") requires an API key; when credentials are
-absent the factory falls back to the deterministic FakeLLMProvider so the
-application stays runnable offline and in tests.  Explicitly passing a
-provider name always attempts that provider.
+Provider selection is explicit:
+
+* ``fake``   — deterministic, offline, no credentials required.
+* ``openai`` / ``gemini`` — real providers that REQUIRE ``LLM_API_KEY``.
+
+When a real provider is configured but ``LLM_API_KEY`` is missing, the factory
+raises a clear ``ValueError`` instead of silently falling back to
+``FakeLLMProvider`` (Phase 11J-A).  This matches the embedding provider
+contract and prevents offline "fake" output from ever being mistaken for real
+LLM generation; there is intentionally no implicit fallback.
 
 ``build_resilient_provider`` wraps the selected provider in a Phase 11D
 ``ProviderManager`` so retries, backoff, circuit breaking, health and an
@@ -22,17 +28,30 @@ from app.transformation.llm.resilience import ProviderManager, RetryPolicy
 
 
 def build_llm_provider(provider: str | None = None) -> LLMProvider:
-    """Return an LLM provider instance based on settings."""
+    """Return an LLM provider instance based on settings.
+
+    Raises:
+        ValueError: Unknown provider name, or an explicitly selected real
+            provider (``openai``/``gemini``) missing its ``LLM_API_KEY``.
+            Error messages never contain credential values.
+    """
     name = (provider or settings.LLM_PROVIDER or "openai").strip().lower()
+    api_key = (settings.LLM_API_KEY or "").strip()
     if name == "fake":
         return FakeLLMProvider()
     if name == "openai":
-        if not (settings.LLM_API_KEY or "").strip():
-            return FakeLLMProvider()
+        if not api_key:
+            raise ValueError(
+                "LLM_PROVIDER=\"openai\" requires LLM_API_KEY to be set. "
+                "Set LLM_API_KEY or configure LLM_PROVIDER=\"fake\" for offline/tests."
+            )
         return OpenAILLMProvider()
     if name == "gemini":
-        if not (settings.LLM_API_KEY or "").strip():
-            return FakeLLMProvider()
+        if not api_key:
+            raise ValueError(
+                "LLM_PROVIDER=\"gemini\" requires LLM_API_KEY to be set. "
+                "Set LLM_API_KEY or configure LLM_PROVIDER=\"fake\" for offline/tests."
+            )
         return GeminiLLMProvider()
     raise ValueError(f"Unsupported LLM provider: {name!r}")
 

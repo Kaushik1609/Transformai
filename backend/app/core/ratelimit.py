@@ -33,6 +33,7 @@ from fastapi import Depends as FastAPIDepends
 
 from app.core.config import settings
 from app.core.audit import emit_security_event
+from app.core.metrics import metrics
 
 logger = structlog.get_logger(__name__)
 
@@ -160,6 +161,7 @@ def rate_limit_bucket(bucket: str):
         limit, window = get_rate_limit_spec(bucket)
         status_result = limiter.hit(bucket, _client_ip(request), limit, window)
         if not status_result.allowed:
+            metrics.inc("rate_limit_triggered_total", {"bucket": bucket})
             emit_security_event(
                 "rate_limit_triggered",
                 outcome="denied",

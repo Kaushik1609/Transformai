@@ -3,6 +3,7 @@ TransformIQ Backend
 FastAPI application entry point.
 """
 from contextlib import asynccontextmanager
+import time
 
 import structlog
 from fastapi import FastAPI, Request
@@ -13,7 +14,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.core.metrics import metrics
 from app.api.v1.health import router as health_router
+from app.api.v1.metrics import router as metrics_router
 from app.api.v1 import router as api_v1_router
 
 configure_logging()
@@ -60,6 +63,46 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# HTTP metrics (Phase 11L-C)
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def http_metrics_middleware(request: Request, call_next):
+    """Record per-route HTTP request count and latency.
+
+    The route is normalized to the literal route pattern (``request.scope``
+    ``route.path``) — never the concrete path — so error pages, unknown routes
+    and the metrics scrape itself stay low-cardinality.  ``unrouted`` is used
+    when routing did not resolve a route (e.g. early lifecycle requests).
+    """
+    started = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception:
+        status_code = 500
+        raise
+    finally:
+        route = request.scope.get("route")
+        route_path = getattr(route, "path", None)
+        if not route_path:
+            route_path = "unrouted"
+        method = (request.method or "UNKNOWN").upper()
+        duration = time.perf_counter() - started
+        metrics.inc(
+            "http_requests_total",
+            {"method": method, "route": route_path, "status": str(status_code)},
+        )
+        metrics.observe(
+            "http_request_duration_seconds",
+            duration,
+            {"method": method, "route": route_path},
+        )
+    return response
 
 # ---------------------------------------------------------------------------
 # Global exception handlers
@@ -126,6 +169,9 @@ async def unhandled_exception_handler(
 # Health/ready endpoints are intentionally at the root (not /api/v1) so
 # orchestration tools and load balancers can reach them without auth.
 app.include_router(health_router)
+
+# Prometheus scrape target — root level, unauthenticated, like /health.
+app.include_router(metrics_router)
 
 # Versioned API router — all domain endpoints will be registered here.
 app.include_router(api_v1_router, prefix="/api/v1")

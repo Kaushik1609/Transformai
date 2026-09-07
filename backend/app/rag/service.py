@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.metrics import metrics
 from app.rag.schemas import RAGContext, RAGCitation
 from app.retrieval.service import RetrievalService, ChunkMatch
 
@@ -76,13 +78,22 @@ class RAGService:
         resolved_top_k = self._resolve_top_k(top_k)
         resolved_min = self._resolve_min_similarity(min_similarity)
 
-        matches = self.retrieval.query_by_text(
-            db,
-            query,
-            top_k=resolved_top_k,
-            project_id=project_id,
-            source_id=source_id,
-            min_similarity=resolved_min,
+        started = time.monotonic()
+        try:
+            matches = self.retrieval.query_by_text(
+                db,
+                query,
+                top_k=resolved_top_k,
+                project_id=project_id,
+                source_id=source_id,
+                min_similarity=resolved_min,
+            )
+        except Exception:
+            metrics.inc("rag_retrieval_failures_total")
+            raise
+        metrics.inc("rag_retrievals_total")
+        metrics.observe(
+            "rag_retrieval_duration_seconds", time.monotonic() - started
         )
 
         return self._assemble_context(
@@ -124,13 +135,22 @@ class RAGService:
         resolved_top_k = self._resolve_top_k(top_k)
         resolved_min = self._resolve_min_similarity(min_similarity)
 
-        matches = self.retrieval.query_by_text(
-            db,
-            query,
-            top_k=resolved_top_k,
-            project_id=project_id,
-            source_id=source_id,
-            min_similarity=resolved_min,
+        started = time.monotonic()
+        try:
+            matches = self.retrieval.query_by_text(
+                db,
+                query,
+                top_k=resolved_top_k,
+                project_id=project_id,
+                source_id=source_id,
+                min_similarity=resolved_min,
+            )
+        except Exception:
+            metrics.inc("rag_retrieval_failures_total")
+            raise
+        metrics.inc("rag_retrievals_total")
+        metrics.observe(
+            "rag_retrieval_duration_seconds", time.monotonic() - started
         )
 
         return self._assemble_context(

@@ -38,6 +38,7 @@ from app.api.v1.schemas.transformation import (
 )
 from app.core.ratelimit import rate_limit_bucket
 from app.db.session import get_db
+from app.core.metrics import metrics
 from app.services import project_service, source_service, configuration_service, transformation_service
 from app.transformation.artifacts import artifact_file, get_storage
 from app.transformation.output_schemas import Advisory, ExecutiveSummary
@@ -155,6 +156,7 @@ async def create_transformation(
             job_id=str(job.id),
             error=str(exc),
         )
+    metrics.inc("transformations_requested_total")
     return TransformationJobDetailResponse(
         data=TransformationJobResponse.model_validate(job)
     )

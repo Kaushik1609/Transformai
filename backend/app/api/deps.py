@@ -28,6 +28,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.core.audit import emit_security_event
 from app.core.config import settings
+from app.core.metrics import metrics
 from app.core.security import decode_access_token
 
 # Stable development user identity.
@@ -129,6 +130,7 @@ async def get_current_user(request: Request = None) -> CurrentUser:
 
     if request is None:
         emit_security_event("authn_denied", outcome="denied", reason="missing_token")
+        metrics.inc("authn_denials_total", {"reason": "missing_token"})
         raise _unauthorized("Authentication is required. Provide a Bearer access token.")
     token = _extract_bearer_token(request)
 
@@ -139,17 +141,20 @@ async def get_current_user(request: Request = None) -> CurrentUser:
             "authn_denied", outcome="denied", reason="invalid_token",
             details={"error": str(exc)},
         )
+        metrics.inc("authn_denials_total", {"reason": "invalid_token"})
         raise _unauthorized(str(exc)) from exc
 
     subject = payload.get("sub")
     if not subject:
         emit_security_event("authn_denied", outcome="denied", reason="missing_subject")
+        metrics.inc("authn_denials_total", {"reason": "missing_subject"})
         raise _unauthorized("Invalid access token.")
 
     try:
         user_id = uuid.UUID(str(subject))
     except (ValueError, TypeError):
         emit_security_event("authn_denied", outcome="denied", reason="malformed_subject")
+        metrics.inc("authn_denials_total", {"reason": "malformed_subject"})
         raise _unauthorized("Invalid access token.") from None
 
     user = await _get_user_record(user_id)
@@ -158,6 +163,7 @@ async def get_current_user(request: Request = None) -> CurrentUser:
             "authn_denied", outcome="denied", reason="unknown_user",
             user_id=str(user_id),
         )
+        metrics.inc("authn_denials_total", {"reason": "unknown_user"})
         raise _unauthorized("The account associated with this token no longer exists.")
 
     return CurrentUser(
@@ -177,6 +183,7 @@ def require_any_roles(*allowed_roles: str):
 
     async def _dependency(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if current_user.role not in allowed_roles:
+            metrics.inc("authz_denials_total")
             emit_security_event(
                 "authz_denied",
                 outcome="denied",

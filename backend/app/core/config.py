@@ -421,9 +421,41 @@ class Settings(BaseSettings):
         return [t.strip() for t in self.ALLOWED_UPLOAD_TYPES.split(",") if t.strip()]
 
     # -------------------------------------------------------------------------
+    # Caching (Phase 11L-A)
+    # -------------------------------------------------------------------------
+    # Master switch. Disabled by default to preserve historical behavior and
+    # test determinism; production configuration enables it.
+    CACHE_ENABLED: bool = False
+    # Backend: memory (offline/tests, bounded) | redis (shared, production).
+    CACHE_BACKEND: Literal["memory", "redis"] = "memory"
+    # Time-to-live for cached LLM outputs.
+    CACHE_TTL_SECONDS: int = 3600
+    # Version tag embedded in every cache key so a key-format change invalidates
+    # old entries naturally (set to a new value to hard-expire all caches).
+    CACHE_KEY_VERSION: str = "v1"
+    # Number of worker PROCESSES to launch (a single RQ 2.0 worker runs one job
+    # at a time, so scaling is process count, not threads). This replaces the
+    # legacy WORKER_CONCURRENCY knob, which was never wired to any RQ behavior
+    # and is no longer read anywhere.
+    WORKER_COUNT: int = 1
+
+    @field_validator("CACHE_TTL_SECONDS")
+    @classmethod
+    def validate_cache_ttl(cls, v: int) -> int:
+        if not isinstance(v, int) or isinstance(v, bool) or v < 60 or v > 604800:
+            raise ValueError("CACHE_TTL_SECONDS must be an integer in [60, 604800].")
+        return v
+
+    @field_validator("WORKER_COUNT")
+    @classmethod
+    def validate_worker_count(cls, v: int) -> int:
+        if not isinstance(v, int) or isinstance(v, bool) or v < 1 or v > 128:
+            raise ValueError("WORKER_COUNT must be an integer in [1, 128].")
+        return v
+
+    # -------------------------------------------------------------------------
     # Worker
     # -------------------------------------------------------------------------
-    WORKER_CONCURRENCY: int = 2
     # The RQ worker timeout is a final safety backstop for queue jobs and MUST be
     # greater than (or equal to) the per-transformation execution budget so the
     # worker never terminates a job before its application-level budget elapses.

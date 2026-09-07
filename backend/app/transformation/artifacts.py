@@ -12,11 +12,13 @@ from __future__ import annotations
 
 import hashlib
 import re
+import time
 from pathlib import Path
 from typing import NamedTuple
 from uuid import UUID
 
 from app.core.config import settings
+from app.core.metrics import metrics
 from app.db.models.output import Output
 from app.ingestion.storage import LocalStorage
 from app.transformation.render.pptx import PPTX_MIME_TYPE
@@ -77,7 +79,17 @@ def save_output_artifact(
     """Persist an output artifact and return its storage key."""
     storage = storage or get_storage()
     key = output_storage_key(project_id, job_id, output_id, mime_type)
-    storage.save(key, content)
+    started = time.monotonic()
+    try:
+        storage.save(key, content)
+    except Exception:
+        metrics.inc("artifacts_failed_total")
+        raise
+    metrics.inc("artifacts_saved_total")
+    metrics.inc("artifacts_saved_bytes_total", amount=len(content))
+    metrics.observe(
+        "artifact_save_duration_seconds", time.monotonic() - started
+    )
     return key
 
 

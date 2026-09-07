@@ -18,7 +18,8 @@ import {
 import { StatusBadge } from "@/components/common";
 import { DownloadButton, CopyButton, ExportButton } from "@/components/export";
 import { artifactOptions } from "@/components/export/DownloadButton";
-import { VerificationPanel } from "@/components/verification";
+import { VerificationPanel, FactVerificationPanel } from "@/components/verification";
+import { Check, AlertTriangle } from "lucide-react";
 
 interface ResultsPanelProps {
   outputs: OutputResponse[];
@@ -65,9 +66,12 @@ function OutputCard({ output }: { output: OutputResponse }) {
   return (
     <article className="rounded-lg border border-border">
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <h3 className="text-sm font-semibold text-foreground">
-          {outputTypeLabel(output.output_type)}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground">
+            {outputTypeLabel(output.output_type)}
+          </h3>
+          <IntegrityBadge output={output} />
+        </div>
         <StatusBadge variant={outputStatusVariant(output.status)}>
           {output.status}
         </StatusBadge>
@@ -125,6 +129,10 @@ function OutputCard({ output }: { output: OutputResponse }) {
         )}
 
         {!failed && <VerificationPanel outputId={output.id} />}
+
+        {output.status === "completed" && (
+          <FactVerificationPanel outputId={output.id} />
+        )}
       </div>
     </article>
   );
@@ -212,6 +220,40 @@ function OutputContent({ output }: { output: OutputResponse }) {
     <p className="text-xs text-muted-foreground">
       Content prepared — no text preview available.
     </p>
+  );
+}
+
+function IntegrityBadge({ output }: { output: OutputResponse }) {
+  // Phase 11M — minimal provenance indicator. Reads the integrity status that
+  // the backend stored in output_metadata.integrity at generation time.
+  const meta = output.output_metadata as { integrity?: Record<string, unknown> } | null;
+  const integrity = meta?.integrity;
+  const status = typeof integrity?.status === "string" ? integrity.status : null;
+
+  if (!status) {
+    return null;
+  }
+
+  if (status === "recorded") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
+        title="Artifact integrity recorded at generation time"
+      >
+        <Check className="h-3 w-3" aria-hidden="true" />
+        Integrity
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+      title={`Integrity status: ${status}`}
+    >
+      <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+      Integrity
+    </span>
   );
 }
 

@@ -383,6 +383,42 @@ def _register_default_families() -> None:
         "authz_denials_total",
         "Authorization (RBAC role) denials.",
     )
+    # Phase 11M — artifact integrity / provenance
+    # Bounded labels only: never artifact/project/user IDs, hashes, transaction
+    # IDs or free-text as labels (avoids high cardinality).
+    metrics.register_counter(
+        "integrity_hashes_total",
+        "SHA-256 digests computed for persisted artifacts, by result and provider.",
+        ("result", "provider"),
+    )
+    metrics.register_counter(
+        "integrity_ledger_total",
+        "Ledger provenance operations, by provider/operation/result.",
+        ("provider", "operation", "result"),
+    )
+    metrics.register_counter(
+        "integrity_verifications_total",
+        "Artifact integrity verification outcomes, by result.",
+        ("result",),
+    )
+    # Phase 11N — evidence / fact verification
+    # Bounded labels only: always-enumerable outcomes. NEVER claim text, source
+    # /project/user/output IDs, hashes, or free-text as labels.
+    metrics.register_counter(
+        "fact_verification_requests_total",
+        "Fact verification requests handled by the API, by result.",
+        ("result",),
+    )
+    metrics.register_counter(
+        "fact_verification_claims_total",
+        "Factual claims checked for evidence, by verdict.",
+        ("verdict",),
+    )
+    metrics.register_counter(
+        "fact_verification_results_total",
+        "Fact verification reports persisted, by status.",
+        ("status",),
+    )
 
 
 _register_default_families()

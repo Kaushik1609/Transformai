@@ -326,6 +326,44 @@ export interface VerificationListResponse {
   count: number;
 }
 
+export interface FactVerificationEvidenceResponse {
+  source_id: string;
+  chunk_id: string;
+  chunk_index: number;
+  evidence: string;
+  relevance_score: number | null;
+  overlap: number;
+  numeric_conflict: boolean;
+  date_conflict: boolean;
+}
+
+export interface FactVerificationClaimResponse {
+  id: string;
+  text: string;
+  claim_type: string;
+  verdict: "SUPPORTED" | "CONTRADICTED" | "UNVERIFIED";
+  reason: string;
+  overlap: number;
+  evidence: FactVerificationEvidenceResponse[];
+}
+
+export interface FactVerificationResultResponse {
+  report_id: string;
+  output_id: string;
+  overall_status: "passed" | "warning" | "failed";
+  summary: string;
+  claims_checked: number;
+  claims_supported: number;
+  claims_contradicted: number;
+  claims_unverified: number;
+  claims: FactVerificationClaimResponse[];
+}
+
+export interface FactVerificationResponse {
+  success: boolean;
+  data: FactVerificationResultResponse;
+}
+
 export type ArtifactRole = "primary" | "pdf" | "srt";
 
 export interface DownloadResult {
@@ -746,6 +784,13 @@ export const outputsApi = {
   verify: (outputId: string) =>
     apiFetch<VerificationListResponse>(
       `/api/v1/outputs/${outputId}/verification`,
+    ),
+
+  /** Run Phase 11N fact verification for a completed output's claims. */
+  verifyFacts: (outputId: string) =>
+    apiFetch<FactVerificationResponse>(
+      `/api/v1/outputs/${outputId}/verify-facts`,
+      { method: "POST" },
     ),
 
   /**

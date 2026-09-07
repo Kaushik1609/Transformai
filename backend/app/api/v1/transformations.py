@@ -16,7 +16,7 @@ Endpoints:
 Phase 2: persistence only. No job enqueueing, no AI calls.
 """
 import uuid
-from typing import Literal
+from typing import Any, Literal
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -26,6 +26,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
 from app.api.v1.schemas.transformation import (
+    FactVerificationClaimResponse,
+    FactVerificationEvidenceResponse,
+    FactVerificationResponse,
+    FactVerificationResultResponse,
+    IntegrityDetailResponse,
+    IntegrityRecordResponse,
+    IntegrityVerifyResponse,
     OutputDetailResponse,
     OutputListResponse,
     OutputResponse,
@@ -37,6 +44,7 @@ from app.api.v1.schemas.transformation import (
     VerificationResultResponse,
 )
 from app.core.ratelimit import rate_limit_bucket
+from app.core.config import settings
 from app.db.session import get_db
 from app.core.metrics import metrics
 from app.services import project_service, source_service, configuration_service, transformation_service
@@ -312,6 +320,275 @@ async def list_output_verifications(
         data=[VerificationResultResponse.model_validate(v) for v in verifications],
         count=len(verifications),
     )
+
+
+@outputs_router.get(
+    "/{output_id}/integrity",
+    response_model=IntegrityDetailResponse,
+    summary="Get the integrity/provenance record for an output artifact",
+)
+async def get_output_integrity(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> IntegrityDetailResponse:
+    # Authorization is resolved at the database level (Output -> job -> project
+    # -> user); a non-owned output is indistinguishable from a missing one.
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    meta = (output.output_metadata or {}).get("integrity")
+    if not isinstance(meta, dict) or not meta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} has no integrity record.",
+        )
+    return IntegrityDetailResponse(
+        data=IntegrityRecordResponse(
+            output_id=output.id,
+            digest=meta.get("digest"),
+            algorithm=meta.get("algorithm"),
+            representation=meta.get("representation"),
+            provider=meta.get("provider"),
+            reference=meta.get("reference"),
+            status=meta.get("status", "unavailable"),
+            recorded=bool(meta.get("recorded", False)),
+            verified_at=meta.get("verified_at"),
+        )
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/verify",
+    response_model=IntegrityVerifyResponse,
+    summary="Verify the current artifact against its recorded SHA-256 digest",
+)
+async def verify_output_integrity_endpoint(
+    output_id: uuid.UUID,
+    role: Literal["primary", "pdf", "srt"] = Query(default="primary"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> IntegrityVerifyResponse:
+    from app.integrity.service import verify_output_integrity as _verify
+
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    if output.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Output {output_id} is not in a completed state.",
+        )
+    result = _verify(output, storage=get_storage(), ledger=None, role=role)
+    return IntegrityVerifyResponse(data=result)
+
+
+@outputs_router.post(
+    "/{output_id}/verify-facts",
+    response_model=FactVerificationResponse,
+    summary="Deterministically verify an output's factual claims against source evidence",
+)
+async def verify_output_facts_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> FactVerificationResponse:
+    """Run Phase 11N fact verification for one completed output.
+
+    Extracts factual claims from the output, retrieves project-scoped source
+    evidence via the provenance-carrying RAG path, and assigns a deterministic
+    SUPPORTED / CONTRADICTED / UNVERIFIED verdict per claim. The report is
+    persisted into the existing ``VerificationResult`` table. Purely additive —
+    it never runs inside the generation workflow.
+    """
+    from app.services.transformation_service import (
+        get_output_owned as _get_output_owned,
+    )
+
+    if not settings.FACT_VERIFICATION_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Fact verification is disabled by configuration.",
+        )
+
+    output = await _get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    if output.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Output {output_id} is not in a completed state "
+                "(facts can only be verified against a completed generation)."
+            ),
+        )
+
+    job = await _load_job(db, output.job_id)
+    if job is None or job.source_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Output {output_id} has no resolvable source to verify against.",
+        )
+    if job.project_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Output {output_id} has no resolvable project scope.",
+        )
+
+    from app.transformation.verification_engine import fact_verifier
+
+    # Phase 11K audit lifecycle (started → completed | failed). These events are
+    # fail-safe: an audit-sink failure can never change the verification outcome.
+    fact_verifier.emit_audit_event(
+        "fact_verification_started",
+        outcome="started",
+        user_id=str(current_user.id),
+        project_id=str(job.project_id),
+        source_id=str(job.source_id),
+        job_id=str(job.id),
+        output_id=str(output.id),
+        reason="fact_verification_begin",
+    )
+
+    try:
+        report, record_id = await db.run_sync(
+            _run_fact_verification_sync,
+            output=output,
+            project_id=job.project_id,
+            source_id=job.source_id,
+        )
+    except Exception:  # retrieval/persistence failure — surface without leaking details
+        fact_verifier.emit_audit_event(
+            "fact_verification_failed",
+            outcome="failed",
+            user_id=str(current_user.id),
+            project_id=str(job.project_id),
+            source_id=str(job.source_id),
+            job_id=str(job.id),
+            output_id=str(output.id),
+            reason="evidence-retrieval-or-persistence-failed",
+        )
+        logger.warning(
+            "fact_verification_failed",
+            output_id=str(output_id),
+            error="evidence-retrieval-or-persistence-failed",
+        )
+        metrics.inc("fact_verification_requests_total", {"result": "failed"})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fact verification could not be completed for this output.",
+        ) from None
+
+    fact_verifier.emit_metrics(report)
+    fact_verifier.emit_audit_event(
+        "fact_verification_completed",
+        outcome="completed",
+        user_id=str(current_user.id),
+        project_id=str(job.project_id),
+        source_id=str(job.source_id),
+        job_id=str(job.id),
+        output_id=str(output.id),
+        reason=report.overall_status,
+        details={
+            "overall_status": report.overall_status,
+            "claims_checked": report.claims_checked,
+            "claims_supported": report.claims_supported,
+            "claims_contradicted": report.claims_contradicted,
+            "claims_unverified": report.claims_unverified,
+        },
+    )
+    return _build_fact_verification_response(report, record_id)
+
+
+def _build_fact_verification_response(
+    report: Any, record_id: uuid.UUID
+) -> FactVerificationResponse:
+    """Assemble the bounded response envelope from a completed report."""
+    return FactVerificationResponse(
+        data=FactVerificationResultResponse(
+            report_id=record_id,
+            output_id=report.output_id,
+            overall_status=report.overall_status,
+            summary=report.summary,
+            claims_checked=report.claims_checked,
+            claims_supported=report.claims_supported,
+            claims_contradicted=report.claims_contradicted,
+            claims_unverified=report.claims_unverified,
+            claims=[
+                FactVerificationClaimResponse(
+                    id=check.claim_id,
+                    text=check.text,
+                    claim_type=check.claim_type,
+                    verdict=check.verdict,
+                    reason=check.reason,
+                    overlap=check.overlap,
+                    evidence=[
+                        FactVerificationEvidenceResponse(
+                            source_id=ev.citation.source_id,
+                            chunk_id=ev.citation.chunk_id,
+                            chunk_index=ev.citation.chunk_index,
+                            evidence=ev.citation.evidence,
+                            relevance_score=ev.citation.relevance_score,
+                            overlap=ev.overlap,
+                            numeric_conflict=ev.numeric_conflict,
+                            date_conflict=ev.date_conflict,
+                        )
+                        for ev in check.evidence
+                    ],
+                )
+                for check in report.claims
+            ],
+        )
+    )
+
+
+def _run_fact_verification_sync(
+    sync_db: Any,
+    *,
+    output: Any,
+    project_id: uuid.UUID,
+    source_id: uuid.UUID,
+) -> tuple[Any, uuid.UUID]:
+    """Run the sync Phase 11N pipeline + persistence against the session bridge."""
+    from app.rag.service import RAGService
+    from app.transformation.verification_engine import fact_verifier
+
+    rag_service = RAGService()
+    report = fact_verifier.verify_facts(
+        output=output,
+        rag_service=rag_service,
+        db=sync_db,
+        project_id=project_id,
+        source_id=source_id,
+    )
+    record = fact_verifier.persist_report(sync_db, report)
+    sync_db.commit()
+    return report, record.id
+
+
+async def _load_job(db: AsyncSession, job_id: uuid.UUID) -> Any:
+    """Load a transformation job row (used to resolve scope/source)."""
+    from app.db.models.transformation_job import TransformationJob
+
+    from sqlalchemy import select
+
+    result = await db.execute(select(TransformationJob).where(TransformationJob.id == job_id))
+    return result.scalar_one_or_none()
 
 
 @outputs_router.post(

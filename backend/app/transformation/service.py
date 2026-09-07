@@ -168,8 +168,64 @@ def run_transformation_job(
     )
     started = time.monotonic()
     result = orchestrator.execute(job_id)
+    # Phase 11M — POST-GENERATION integrity/provenance. Once generation has
+    # completed (and without touching the AI pipeline), record the content
+    # digest of every successfully persisted artifact. This is fail-open:
+    # provenance failure never blocks or aborts the artifact or the job result.
+    if settings.INTEGRITY_RECORD_ENABLED:
+        _record_job_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
     db.commit()
     metrics.observe(
         "transformation_job_duration_seconds", time.monotonic() - started
     )
     return result
+
+
+def _record_job_integrity(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    storage: Any | None = None,
+    project_id: str | None = None,
+) -> None:
+    """Record integrity/provenance for a job's completed binary artifacts.
+
+    Called only from the post-generation hook in ``run_transformation_job``.
+    Loads the completed outputs and records a digest for each persisted
+    artifact, storing the provenance status in ``output_metadata.integrity``.
+    Never raises on a ledger failure: provenance is fail-open.
+    """
+    from app.db.models.output import Output
+    from app.integrity.factory import build_ledger
+    from app.integrity.service import record_output_integrity
+    from app.transformation.artifacts import get_storage
+
+    ledger = build_ledger()
+    storage = storage or get_storage()
+    try:
+        outputs = db.execute(
+            select(Output).where(
+                Output.job_id == job_id,
+                Output.status == "completed",
+            )
+        ).scalars().all()
+    except Exception:
+        metrics.inc(
+            "integrity_hashes_total", {"result": "load_failed", "provider": "n/a"}
+        )
+        return
+    for output in outputs:
+        try:
+            record_output_integrity(
+                output,
+                storage=storage,
+                ledger=ledger,
+                algorithm=settings.INTEGRITY_ALGORITHM,
+                project_id=project_id,
+            )
+        except Exception:
+            # Provenance must never break the job; record the failure metric and
+            # continue with the remaining outputs.
+            metrics.inc(
+                "integrity_hashes_total", {"result": "error", "provider": "n/a"}
+            )

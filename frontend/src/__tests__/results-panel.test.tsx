@@ -5,6 +5,7 @@
  * loading, empty, generating, and failed states.
  */
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ResultsPanel } from "@/components/results";
 import type { OutputResponse } from "@/lib/api";
 import { jsonResponse, type FetchMock } from "./helpers";
@@ -181,6 +182,175 @@ describe("ResultsPanel", () => {
     expect(screen.queryByText(/Content prepared/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Subtitles \(SRT\)/ }),
+    ).toBeInTheDocument();
+  });
+
+  // Phase 11M — artifact integrity badge.
+  it("shows a recorded integrity badge when provenance was recorded", () => {
+    render(
+      <ResultsPanel
+        outputs={[
+          createOutput({
+            id: "o-integrity",
+            output_type: "summary",
+            text_content: "Body.",
+            output_metadata: {
+              integrity: { status: "recorded", provider: "fake" },
+            },
+          }),
+        ]}
+      />,
+    );
+    // IntegrityBadge (with aria-hidden icons) exposes the label text.
+    expect(screen.getAllByText("Integrity").length).toBeGreaterThan(0);
+  });
+
+  it("shows an integrity badge for a non-recorded status", () => {
+    render(
+      <ResultsPanel
+        outputs={[
+          createOutput({
+            id: "o-integrity2",
+            output_type: "summary",
+            text_content: "Body.",
+            output_metadata: {
+              integrity: { status: "unavailable", provider: "none" },
+            },
+          }),
+        ]}
+      />,
+    );
+    expect(screen.getAllByText("Integrity").length).toBeGreaterThan(0);
+  });
+
+  it("hides the integrity badge when no integrity metadata exists", () => {
+    render(
+      <ResultsPanel
+        outputs={[createOutput({ id: "o-none", output_type: "summary" })]}
+      />,
+    );
+    expect(screen.queryAllByText("Integrity")).toHaveLength(0);
+  });
+
+  // Phase 11N — evidence / fact verification.
+  it("shows a 'Verify facts' button for completed outputs", () => {
+    render(
+      <ResultsPanel
+        outputs={[createOutput({ id: "o-fact", output_type: "summary" })]}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Verify facts" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show a 'Verify facts' button for failed outputs", () => {
+    render(
+      <ResultsPanel
+        outputs={[
+          createOutput({ id: "o-fail", output_type: "summary", status: "failed" }),
+        ]}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Verify facts" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("runs fact verification and renders the report on success", async () => {
+    const report = {
+      success: true,
+      data: {
+        report_id: "r1",
+        output_id: "o1",
+        overall_status: "warning",
+        summary: "2 of 3 claims supported by source evidence.",
+        claims_checked: 3,
+        claims_supported: 2,
+        claims_contradicted: 1,
+        claims_unverified: 0,
+        claims: [
+          {
+            id: "c1",
+            text: "The system supports 500 concurrent users.",
+            claim_type: "explicit",
+            verdict: "SUPPORTED",
+            reason: "Matches retrieved source evidence.",
+            overlap: 0.9,
+            evidence: [
+              {
+                source_id: "s1",
+                chunk_id: "chunk1",
+                chunk_index: 0,
+                evidence: "Supports up to 500 users.",
+                relevance_score: 0.8,
+                overlap: 0.9,
+                numeric_conflict: false,
+                date_conflict: false,
+              },
+            ],
+          },
+          {
+            id: "c2",
+            text: "The system supports 50000 users.",
+            claim_type: "explicit",
+            verdict: "CONTRADICTED",
+            reason: "Numeric claim conflicts with source evidence.",
+            overlap: 0.9,
+            evidence: [],
+          },
+        ],
+      },
+    };
+    mockFetch.mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/verify-facts")) {
+        return Promise.resolve(jsonResponse(report));
+      }
+      return Promise.resolve(
+        jsonResponse({ success: true, data: [], count: 0 }),
+      );
+    });
+
+    render(
+      <ResultsPanel
+        outputs={[createOutput({ id: "o1", output_type: "summary" })]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Verify facts" }));
+
+    expect(
+      await screen.findByText("2 of 3 claims supported by source evidence."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("SUPPORTED")).toBeInTheDocument();
+    expect(screen.getByText("CONTRADICTED")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Verify facts" })).not.toBeInTheDocument();
+  });
+
+  it("surfaces an error if fact verification fails", async () => {
+    mockFetch.mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/verify-facts")) {
+        return Promise.resolve(jsonResponse({ detail: "boom" }, 409));
+      }
+      return Promise.resolve(
+        jsonResponse({ success: true, data: [], count: 0 }),
+      );
+    });
+
+    render(
+      <ResultsPanel
+        outputs={[createOutput({ id: "o2", output_type: "summary" })]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Verify facts" }));
+
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Verify facts" }),
     ).toBeInTheDocument();
   });
 });

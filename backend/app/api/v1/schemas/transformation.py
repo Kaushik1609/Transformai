@@ -141,3 +141,94 @@ class VerificationListResponse(BaseModel):
     success: bool = True
     data: list[VerificationResultResponse]
     count: int
+
+
+# ---------------------------------------------------------------------------
+# Artifact integrity / provenance (Phase 11M)
+# ---------------------------------------------------------------------------
+
+class IntegrityRecordResponse(BaseModel):
+    """Serialized integrity/provenance record for an output artifact."""
+
+    output_id: uuid.UUID
+    digest: str | None = None
+    algorithm: str | None = None
+    representation: str | None = None
+    provider: str | None = None
+    reference: str | None = None
+    status: str
+    recorded: bool
+    verified_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class IntegrityResultResponse(BaseModel):
+    """Read-only verification result for an output artifact."""
+
+    verified: bool
+    status: str
+    message: str
+    digest: str | None = None
+    algorithm: str | None = None
+
+
+class IntegrityDetailResponse(BaseModel):
+    success: bool = True
+    data: IntegrityRecordResponse
+
+
+class IntegrityVerifyResponse(BaseModel):
+    success: bool = True
+    data: IntegrityResultResponse
+
+
+# ---------------------------------------------------------------------------
+# Evidence / fact verification (Phase 11N)
+# ---------------------------------------------------------------------------
+# All response fields are bounded: claim/evidence text is excerpted by the
+# engine and evidence lists are capped per claim. IDs (source/chunk) are UUIDs,
+# never free text.
+
+class FactVerificationEvidenceResponse(BaseModel):
+    """One retrieved, provenance-carrying piece of evidence for a claim."""
+
+    source_id: uuid.UUID
+    chunk_id: uuid.UUID
+    chunk_index: int
+    evidence: str
+    relevance_score: float | None = None
+    overlap: float = 0.0
+    numeric_conflict: bool = False
+    date_conflict: bool = False
+
+
+class FactVerificationClaimResponse(BaseModel):
+    """One extracted claim and its deterministic verdict."""
+
+    id: str
+    text: str
+    claim_type: str
+    verdict: str
+    reason: str
+    overlap: float = 0.0
+    evidence: list[FactVerificationEvidenceResponse] = Field(default_factory=list)
+
+
+class FactVerificationResultResponse(BaseModel):
+    """A persisted Phase 11N fact-verification report."""
+
+    report_id: uuid.UUID
+    output_id: uuid.UUID
+    overall_status: str
+    summary: str
+    claims_checked: int
+    claims_supported: int
+    claims_contradicted: int
+    claims_unverified: int
+    claims: list[FactVerificationClaimResponse] = Field(default_factory=list)
+
+
+class FactVerificationResponse(BaseModel):
+    success: bool = True
+    data: FactVerificationResultResponse

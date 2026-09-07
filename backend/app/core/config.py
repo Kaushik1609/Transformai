@@ -454,6 +454,49 @@ class Settings(BaseSettings):
         return v
 
     # -------------------------------------------------------------------------
+    # Artifact integrity / provenance (Phase 11M)
+    # -------------------------------------------------------------------------
+    # POST-GENERATION provenance layer. Recording a hash never blocks artifact
+    # persistence (fail-open by default); verification is always read-only.
+    # Ledger provider: fake (offline/tests) | real (configurable production
+    # adapter) | none (integrity hashes + local verification only, no ledger).
+    INTEGRITY_PROVIDER: Literal["fake", "real", "none"] = "fake"
+    # If True, record an integrity ledger reference for every persisted artifact
+    # during generation. If False, hashes already recorded by Phase 11H-I remain
+    # in output_metadata but no ledger reference is written.
+    INTEGRITY_RECORD_ENABLED: bool = True
+    # Deterministic algorithm used for content hashing.
+    INTEGRITY_ALGORITHM: Literal["sha256"] = "sha256"
+    # Real-ledger network/target (PRODUCTION-CONFIGURATION-REQUIRED; never a
+    # committed secret). Left empty -> the real adapter reports 'unavailable'
+    # rather than pretending a write succeeded.
+    INTEGRITY_LEDGER_URL: str = ""
+    # Real-ledger credential reference (secret manager value only; never set to
+    # a literal in any repo file).
+    INTEGRITY_LEDGER_CREDENTIAL: str = ""
+
+    # -------------------------------------------------------------------------
+    # Evidence / fact verification (Phase 11N)
+    # -------------------------------------------------------------------------
+    # On-demand factual verification of generated outputs against project-scoped
+    # source evidence. Purely additive to the Phase 8 verification pipeline; it
+    # never runs inside the generation workflow. See
+    # app/transformation/verification_engine/fact_verifier.py.
+    FACT_VERIFICATION_ENABLED: bool = True
+    # Upper bound on how many extracted claims are checked per request. Claim
+    # extraction stays conservative (Phase 8 signals), but the count is capped
+    # so a single response stays bounded.
+    FACT_VERIFICATION_MAX_CLAIMS: int = 20
+    # Number of source chunks retrieved per claim (top-k for the RAG-backed
+    # evidence retrieval; reuses RAGService.retrieve_context_for_source).
+    FACT_VERIFICATION_TOP_K: int = 3
+    # Minimum cosine similarity for retrieved evidence (0.0 preserves legacy
+    # behavior where every scoped chunk is a retrieval candidate).
+    FACT_VERIFICATION_MIN_SIMILARITY: float = 0.0
+    # Maximum number of retrieved citations surfaced per claim in the response.
+    FACT_VERIFICATION_MAX_EVIDENCE_PER_CLAIM: int = 3
+
+    # -------------------------------------------------------------------------
     # Worker
     # -------------------------------------------------------------------------
     # The RQ worker timeout is a final safety backstop for queue jobs and MUST be

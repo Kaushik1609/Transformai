@@ -147,6 +147,33 @@ describe("SecurityPipeline", () => {
     expect(screen.getByText("BLOCKED")).toBeInTheDocument();
   });
 
+  it("does not claim PASSED for structural stages the backend never verifies", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        success: true,
+        data: sourceWith({
+          malware_scan: { status: "clean", scanner: "fake" },
+          pii_scan: { detected: false, counts: {} },
+        }),
+      }),
+    );
+    render(
+      <SecurityPipeline
+        projectId="p1"
+        jobSourceId="source-1"
+        outputs={[completedOutput("o1", {})]}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Scanned clean by "fake"/)).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/delimited data boundary/)).toBeInTheDocument();
+    expect(screen.getByText(/no per-job isolation assertion/)).toBeInTheDocument();
+    expect(screen.getByText(/no per-artifact check result/)).toBeInTheDocument();
+    const unavailable = screen.getAllByText("UNAVAILABLE");
+    expect(unavailable.length).toBeGreaterThanOrEqual(3);
+  });
+
   it("shows UNAVAILABLE for a source that cannot be loaded", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ detail: "not found" }, 404));
     render(

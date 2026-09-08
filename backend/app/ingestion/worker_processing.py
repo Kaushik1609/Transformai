@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.core.audit import emit_security_event
+from app.core.audit import emit_security_event, flush_pending_audit_sync
 from app.core.config import settings
 from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
@@ -43,11 +43,21 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
         normalized = normalize_text(extracted)
         if not normalized:
             raise ValueError("Source contains no usable text.")
+        if len(normalized) > settings.MAX_EXTRACTED_CHARS:
+            raise ValueError(
+                "Source text exceeds the configured extraction limit "
+                f"of {settings.MAX_EXTRACTED_CHARS} characters."
+            )
 
         pii_scan = scan_source_pii(normalized)
 
         db.execute(delete(SourceChunk).where(SourceChunk.source_id == source.id))
         chunks_info = chunk_text_with_metadata(normalized)
+        if len(chunks_info) > settings.MAX_SOURCE_CHUNKS:
+            raise ValueError(
+                "Source chunk count exceeds the configured limit "
+                f"of {settings.MAX_SOURCE_CHUNKS} chunks."
+            )
         for chunk_index, chunk_info in enumerate(chunks_info):
             content_chunk = chunk_info["content"]
             chunk_hash = hashlib.sha256(content_chunk.encode("utf-8")).hexdigest()[:16]
@@ -86,6 +96,8 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
                 reason="pii_detected_in_source",
                 details={"categories": list(pii_scan["counts"])},
             )
+        if settings.SECURITY_AUDIT_SINK == "database":
+            flush_pending_audit_sync(db)
         source.source_metadata = source_metadata
         db.commit()
         db.refresh(source)

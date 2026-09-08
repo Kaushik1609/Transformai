@@ -15,7 +15,7 @@ Security notes:
 - All entrypoints are individually rate limited (IP-based).
 """
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -43,12 +43,23 @@ from app.auth.service import (
     verify_login,
 )
 from app.core.audit import emit_security_event
+from app.core.metrics import metrics
 from app.core.ratelimit import rate_limit_bucket
+from app.core.token_revocation import get_revocation_store, revoke_access_token
 from app.db.session import get_db
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _extract_bearer(request: Request) -> str | None:
+    """Extract the raw bearer credential for server-side revocation."""
+    header = request.headers.get("Authorization", "")
+    scheme, _, credentials = header.partition(" ")
+    if scheme.lower() not in {"bearer", "token"} or not credentials.strip():
+        return None
+    return credentials.strip()
 
 
 def _delivery_details(result) -> OtpDeliveryDetails:
@@ -210,11 +221,36 @@ async def me(
 @router.post(
     "/logout",
     response_model=LogoutResponse,
-    summary="Acknowledge logout (client clears its local token)",
+    summary="Revoke the presented token server-side (Phase 13A)",
 )
 async def logout(
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
+    store=Depends(get_revocation_store),
 ) -> LogoutResponse:
-    # Stateless JWT: logout is a client-side token discard.
-    logger.info("auth_logout", user_id=str(current_user.id))
+    """Revoke the presented access token so it cannot be replayed.
+
+    The token's ``jti`` is registered in the revocation store until the token
+    would expire. A token that is already revoked, malformed, or missing a
+    ``jti`` is handled idempotently — logout always succeeds because the client
+    discards its local copy regardless.
+    """
+    token = _extract_bearer(request)
+    revoked = (
+        revoke_access_token(token, store=store)
+        if token is not None
+        else False
+    )
+    result = (
+        "revoked" if revoked else "no_jti"
+        if token is not None else "missing_token"
+    )
+    metrics.inc("token_revoked_total", {"result": result})
+    emit_security_event(
+        "logout",
+        outcome="allowed",
+        user_id=str(current_user.id),
+        reason="token_revoked" if revoked else "client_side_only",
+    )
+    logger.info("auth_logout", user_id=str(current_user.id), revoked=revoked)
     return LogoutResponse()

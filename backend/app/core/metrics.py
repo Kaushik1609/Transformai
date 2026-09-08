@@ -428,6 +428,26 @@ def _register_default_families() -> None:
         "Malware scans performed during source ingestion, by scanner and status.",
         ("scanner", "status"),
     )
+    # Phase 13 — production hardening observability.
+    # Bounded labels ONLY. Never identifiers, tokens, or free text as labels.
+    metrics.register_counter(
+        "security_events_persisted_total",
+        "Security events durably persisted by the database audit sink.",
+    )
+    metrics.register_counter(
+        "security_events_drop_total",
+        "Security events dropped by a bounded sink, by reason.",
+        ("reason",),
+    )
+    metrics.register_counter(
+        "token_revoked_total",
+        "Server-side token revocations performed at logout, by result.",
+        ("result",),
+    )
+    metrics.register_counter(
+        "stale_transformation_jobs_failed_total",
+        "Transformation jobs failed by the stale-job reaper after the grace period.",
+    )
 
 
 _register_default_families()

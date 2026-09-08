@@ -3,6 +3,7 @@ TransformIQ Backend
 FastAPI application entry point.
 """
 from contextlib import asynccontextmanager
+import asyncio
 import time
 
 import structlog
@@ -29,14 +30,37 @@ logger = structlog.get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application startup and shutdown lifecycle."""
+    """Application startup and shutdown lifecycle.
+
+    Phase 13G: when enabled, a background reaper task fails transformation jobs
+    stuck in ``running`` past the configured grace period (workers that died
+    mid-job). It is cancelled on shutdown so a graceful stop never leaks tasks.
+    """
+    from app.core.config import settings as _settings
+
+    reaper_task = None
+    if _settings.STALE_JOB_REAPER_ENABLED:
+        from app.transformation.reaper import run_stale_job_reaper_loop
+
+        reaper_task = asyncio.create_task(
+            run_stale_job_reaper_loop(_settings.STALE_JOB_REAPER_INTERVAL_SECONDS)
+        )
+
     logger.info(
         "TransformIQ backend starting",
         environment=settings.ENVIRONMENT,
         version="0.1.0",
     )
-    yield
-    logger.info("TransformIQ backend shutting down")
+    try:
+        yield
+    finally:
+        if reaper_task is not None:
+            reaper_task.cancel()
+            try:
+                await reaper_task
+            except asyncio.CancelledError:
+                pass
+        logger.info("TransformIQ backend shutting down")
 
 
 # ---------------------------------------------------------------------------

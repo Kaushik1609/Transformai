@@ -246,6 +246,9 @@ def transformation_failure_handler(job, connection, type, value, traceback):
 
         from sqlalchemy import select
 
+        from app.core.audit import emit_security_event, flush_pending_audit_sync
+        from app.core.metrics import metrics
+        from app.core.config import settings as app_settings
         from app.db.models.transformation_job import TransformationJob
 
         if job_id is not None:
@@ -267,6 +270,17 @@ def transformation_failure_handler(job, connection, type, value, traceback):
                             f"{redact_secrets(str(value))}"[:4000]
                         )
                     job_record.completed_at = datetime.now(timezone.utc)
+                    # Phase 13G: durable job-failure security event + metric.
+                    emit_security_event(
+                        "job_failed",
+                        outcome="denied",
+                        job_id=job_id,
+                        project_id=str(job_record.project_id) if job_record.project_id else None,
+                        reason="worker_job_failure",
+                        details={"timeout": _is_timeout_failure(value)},
+                    )
+                    if app_settings.SECURITY_AUDIT_SINK == "database":
+                        flush_pending_audit_sync(session)
                     session.commit()
     except Exception as exc:  # pragma: no cover - defensive
         logger.error(

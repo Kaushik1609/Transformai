@@ -5,11 +5,16 @@ Phase 11F replaces the development-only identity with a real JWT-aware
 ``get_current_user`` while preserving backward compatibility:
 
 - When ``DEV_AUTH_BYPASS=true`` (development only, enforced by settings) the
-  stable development identity is injected, keeping the API usable without a
-  token during local development.
+   stable development identity is injected, keeping the API usable without a
+   token during local development.
 - Otherwise a valid ``Authorization: Bearer <jwt>`` is required. The JWT is
-  decoded via python-jose and the owning user record is loaded from the
-  database (so a deleted user's stale token is rejected).
+   decoded via python-jose and the owning user record is loaded from the
+   database (so a deleted user's stale token is rejected).  Tokens whose
+   ``jti`` was revoked at logout are rejected too (Phase 13A).
+
+All authentication failures surface a GENERIC 401 detail: the response never
+reveals whether a token was missing, invalid, expired, or revoked (Phase 13A).
+The precise reason is recorded only in the internal security-event stream.
 
 Role-based access control:
     ``require_any_roles(*roles)`` / ``require_analyst`` / ``require_admin``
@@ -30,6 +35,7 @@ from app.core.audit import emit_security_event
 from app.core.config import settings
 from app.core.metrics import metrics
 from app.core.security import decode_access_token
+from app.core.token_revocation import get_revocation_store
 
 # Stable development user identity.
 # This UUID is deterministic so the dev user always has the same ID across
@@ -94,10 +100,14 @@ def _extract_bearer_token(request: Request) -> str | None:
     return credentials.strip()
 
 
-def _unauthorized(detail: str) -> HTTPException:
+def _unauthorized() -> HTTPException:
+    """Generic 401 — never reveals whether the token was missing, invalid,
+    expired, or revoked (Phase 13A)."""
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=detail,
+        detail=(
+            "Authentication required. Provide a valid Bearer access token."
+        ),
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -131,7 +141,7 @@ async def get_current_user(request: Request = None) -> CurrentUser:
     if request is None:
         emit_security_event("authn_denied", outcome="denied", reason="missing_token")
         metrics.inc("authn_denials_total", {"reason": "missing_token"})
-        raise _unauthorized("Authentication is required. Provide a Bearer access token.")
+        raise _unauthorized()
     token = _extract_bearer_token(request)
 
     try:
@@ -142,20 +152,30 @@ async def get_current_user(request: Request = None) -> CurrentUser:
             details={"error": str(exc)},
         )
         metrics.inc("authn_denials_total", {"reason": "invalid_token"})
-        raise _unauthorized(str(exc)) from exc
+        raise _unauthorized() from exc
+
+    jti = payload.get("jti")
+    if jti is not None:
+        revoked = get_revocation_store(request).is_revoked(str(jti))
+        if revoked:
+            emit_security_event(
+                "authn_denied", outcome="denied", reason="revoked_token",
+            )
+            metrics.inc("authn_denials_total", {"reason": "revoked_token"})
+            raise _unauthorized()
 
     subject = payload.get("sub")
     if not subject:
         emit_security_event("authn_denied", outcome="denied", reason="missing_subject")
         metrics.inc("authn_denials_total", {"reason": "missing_subject"})
-        raise _unauthorized("Invalid access token.")
+        raise _unauthorized()
 
     try:
         user_id = uuid.UUID(str(subject))
     except (ValueError, TypeError):
         emit_security_event("authn_denied", outcome="denied", reason="malformed_subject")
         metrics.inc("authn_denials_total", {"reason": "malformed_subject"})
-        raise _unauthorized("Invalid access token.") from None
+        raise _unauthorized() from None
 
     user = await _get_user_record(user_id)
     if user is None:
@@ -164,7 +184,7 @@ async def get_current_user(request: Request = None) -> CurrentUser:
             user_id=str(user_id),
         )
         metrics.inc("authn_denials_total", {"reason": "unknown_user"})
-        raise _unauthorized("The account associated with this token no longer exists.")
+        raise _unauthorized()
 
     return CurrentUser(
         id=user.id,

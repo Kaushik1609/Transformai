@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass
 
 import structlog
@@ -64,21 +64,54 @@ class RateLimiter(ABC):
 
 
 class MemoryRateLimiter(RateLimiter):
-    """Sliding-window in-process limiter (tests, offline development)."""
+    """Sliding-window in-process limiter (tests, offline development).
 
-    def __init__(self) -> None:
-        self._hits: dict[tuple[str, str], deque[float]] = defaultdict(deque)
+    Bounded memory (Phase 13C): the total number of tracked ``(bucket, key)``
+    tracks is capped by ``RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS`` and each deque is
+    pruned to at most ``limit + _PER_KEY_OVERFLOW`` samples. Stale tracks (no
+    hits within the last window) are evicted lazily on hit.
+    """
+
+    # Small overflow margin so requests at the configured limit are never
+    # prematurely rejected while keeping per-key memory strictly bounded.
+    _PER_KEY_OVERFLOW = 16
+
+    def __init__(self, max_tracked_keys: int | None = None) -> None:
+        self._max_keys = max(
+            1, max_tracked_keys or settings.RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS
+        )
+        self._hits: dict[tuple[str, str], deque[float]] = {}
+
+    def _evict_idle(self, now: float, window_seconds: int) -> None:
+        idle = [
+            key
+            for key, hits in self._hits.items()
+            if not hits or (now - hits[-1]) > window_seconds
+        ]
+        for key in idle:
+            self._hits.pop(key, None)
 
     def hit(self, bucket: str, key: str, limit: int, window_seconds: int) -> RateLimitStatus:
         now = time.monotonic()
-        hits = self._hits[(bucket, key)]
+        track = self._hits.get((bucket, key))
+        if track is None:
+            if len(self._hits) >= self._max_keys:
+                self._evict_idle(now, window_seconds)
+            if len(self._hits) >= self._max_keys:
+                oldest_key = next(iter(self._hits), None)
+                if oldest_key is not None:
+                    self._hits.pop(oldest_key, None)
+            track = deque()
+            self._hits[(bucket, key)] = track
         cutoff = now - window_seconds
-        while hits and hits[0] <= cutoff:
-            hits.popleft()
-        if len(hits) >= limit:
-            retry = (hits[0] + window_seconds) - now if hits else 0.0
+        while track and track[0] <= cutoff:
+            track.popleft()
+        while len(track) > limit + self._PER_KEY_OVERFLOW:
+            track.popleft()
+        if len(track) >= limit:
+            retry = (track[0] + window_seconds) - now if track else 0.0
             return RateLimitStatus(allowed=False, limit=limit, retry_after=max(retry, 1.0))
-        hits.append(now)
+        track.append(now)
         return RateLimitStatus(allowed=True, limit=limit, retry_after=0.0)
 
 

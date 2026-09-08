@@ -40,6 +40,47 @@ class ValidatedSource:
     file_size: int
 
 
+_PDF_MAGIC = b"%PDF-"
+# ZIP local-file header (empty/zero-file marker) covers valid .docx containers.
+_DOCX_MAGIC = (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+
+
+def _matches_docx_magic(content: bytes) -> bool:
+    return any(content.startswith(magic) for magic in _DOCX_MAGIC)
+
+
+def _detected_document_signature(content: bytes) -> str | None:
+    """Return 'pdf' or 'docx' when the bytes start with a known signature."""
+    if content.startswith(_PDF_MAGIC):
+        return "pdf"
+    if _matches_docx_magic(content):
+        return "docx"
+    return None
+
+
+def _validate_magic_bytes(*, source_type: str, content: bytes) -> None:
+    """Reject files whose content is a *known different* document type.
+
+    Guards against type-confusion uploads (a real PDF renamed to .docx or .txt,
+    a ZIP/DOCX container uploaded as a PDF). Content with no known signature is
+    left to extraction, which produces the standard controlled parsing error —
+    this preserves the existing 'could not read the document' contract for
+    arbitrary/corrupt bytes while still rejecting mislabeled valid documents.
+    """
+    detected = _detected_document_signature(content)
+    if source_type in {"pdf", "docx"}:
+        if detected is not None and detected != source_type:
+            raise SourceValidationError(
+                f"{source_type.upper()} content does not match its declared type "
+                f"(detected {detected.upper()} signature)."
+            )
+    elif detected is not None:
+        raise SourceValidationError(
+            "Text content appears to be a binary document (PDF/DOCX); "
+            "use the document upload endpoint instead."
+        )
+
+
 def validate_source(
     *,
     source_type: str,
@@ -66,6 +107,8 @@ def validate_source(
         raise SourceValidationError(
             f"Source exceeds the maximum size of {max_size_bytes} bytes."
         )
+
+    _validate_magic_bytes(source_type=normalized_type, content=content)
 
     normalized_mime = mime_type.strip().lower()
     allowed_mimes = MIME_TYPES_BY_SOURCE_TYPE[normalized_type]

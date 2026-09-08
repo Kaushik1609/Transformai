@@ -5,8 +5,9 @@
  * transformation.  Each stage reports PASSED / WARNING / BLOCKED /
  * UNAVAILABLE / NOT_APPLICABLE and is derived ONLY from real backend data
  * (source metadata, output metadata, and structural pipeline invariants).
- * A stage is never reported PASSED without a concrete backing signal; where
- * the backend does not expose a check result the stage is UNAVAILABLE.
+ * A stage is never reported PASSED without a concrete backend-reported
+ * signal; where the backend does not expose a check result the stage is
+ * UNAVAILABLE.
  */
 "use client";
 
@@ -182,21 +183,24 @@ function buildStages({
 
   // --- 4. Prompt-injection defense ---------------------------------------
   // The structural delimiter boundary (Phase 11K) is applied to every
-  // generated output, so a completed output implies it passed through it.
+  // generated output, but the backend exposes no per-output check result,
+  // so the stage cannot be truthfully reported PASSED.
   const promptInjectionStage: StageStatus =
-    completedOutputs.length > 0 ? "PASSED" : "NOT_APPLICABLE";
+    completedOutputs.length > 0 ? "UNAVAILABLE" : "NOT_APPLICABLE";
   const promptInjectionMessage =
     completedOutputs.length > 0
-      ? "Generated outputs passed through the delimited data boundary."
+      ? "The platform enforces a delimited data boundary; no per-output check result is recorded."
       : "No generated output to protect yet.";
 
   // --- 5. RAG source isolation -------------------------------------------
-  // Retrieval is grounded strictly in this project's own source chunks.
+  // Retrieval is grounded strictly in this project's own source chunks, but
+  // the backend records no per-job isolation assertion, so the stage cannot
+  // be truthfully reported PASSED.
   const ragStage: StageStatus =
-    completedOutputs.length > 0 ? "PASSED" : "NOT_APPLICABLE";
+    completedOutputs.length > 0 ? "UNAVAILABLE" : "NOT_APPLICABLE";
   const ragMessage =
     completedOutputs.length > 0
-      ? "Retrieval grounded strictly in this project's source chunks."
+      ? "Retrieval is grounded in this project's chunks; no per-job isolation assertion is recorded."
       : "No retrieval performed yet.";
 
   // --- 6. Output security (L5) -------------------------------------------
@@ -228,9 +232,12 @@ function buildStages({
   }
 
   // --- 7. Ownership authorization ----------------------------------------
-  const authorizationStage: StageStatus = "PASSED";
+  // Enforced server-side on every request, but the backend publishes no
+  // per-run authorization result, so the stage is UNAVAILABLE rather than
+  // a claimed PASSED.
+  const authorizationStage: StageStatus = "UNAVAILABLE";
   const authorizationMessage =
-    "Server-side ownership authorization is enforced on every request.";
+    "Server-side ownership authorization is enforced on every request; no per-artifact check result is recorded.";
 
   return [
     {

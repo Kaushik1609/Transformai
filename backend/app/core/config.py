@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     # emitter records nothing and logs no security_event records.
     SECURITY_AUDIT_ENABLED: bool = True
 
+    # Audit sink: "memory" keeps the historical bounded in-process store
+    # (Phase 11K behavior) served by the security-events API; "database"
+    # additionally/persistently drains events into the `security_events` table
+    # (Phase 13D) and the security-events API reads from the database. The
+    # database sink requires migrations to have been applied (alembic head).
+    SECURITY_AUDIT_SINK: Literal["memory", "database"] = "memory"
+
+    # Max in-process audit records retained for inspection (bounded memory).
+    SECURITY_AUDIT_MEMORY_MAX_EVENTS: int = 5000
+
     # -------------------------------------------------------------------------
     # Backend
     # -------------------------------------------------------------------------
@@ -85,6 +95,15 @@ class Settings(BaseSettings):
     AUTH_ALGORITHM: str = "HS256"
     AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     AUTH_TOKEN_TYPE: str = "bearer"
+
+    # Server-side token revocation (Phase 13A). Every JWT carries a unique
+    # ``jti`` claim; logout registers that ``jti`` in a revocation store so the
+    # token cannot be replayed. memory = bounded in-process denylist (single
+    # replica default); redis = shared denylist across replicas.
+    AUTH_TOKEN_REVOCATION_STORE: Literal["memory", "redis"] = "memory"
+    # Upper bound of distinct revoked tokens cached in the memory store
+    # (bounded memory; expired entries are swept first).
+    AUTH_REVOKED_TOKEN_MAX: int = 100_000
 
     # -------------------------------------------------------------------------
     # Auth (Phase 11F — L1 Perimeter & Identity)
@@ -126,6 +145,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_BACKEND: Literal["memory", "redis"] = "memory"
     # Master switch. When False every rate-limit dependency permits requests.
     RATE_LIMIT_ENABLED: bool = True
+    # Upper bound of distinct (bucket, key) tracks kept by the in-process
+    # limiter. Exceeding this evicts the oldest tracks (bounded memory).
+    RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS: int = 100_000
     # (limit, window_seconds) buckets.
     RATE_LIMIT_OTP_REQUEST_MAX: int = 10
     RATE_LIMIT_OTP_REQUEST_WINDOW: int = 900
@@ -419,6 +441,19 @@ class Settings(BaseSettings):
         return self.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
     # -------------------------------------------------------------------------
+    # Ingestion resource limits (Phase 13E)
+    # -------------------------------------------------------------------------
+    # Bounded processing budgets so a single source file can never exhaust
+    # worker time or memory. A document exceeding any cap is rejected with a
+    # controlled ingestion failure (never truncated silently).
+    MAX_PDF_PAGES: int = 500
+    MAX_EXTRACTED_CHARS: int = 2_000_000
+    # Direct-text source size cap (bytes).
+    INPUT_MAX_TEXT_LENGTH: int = 500_000
+    # Upper bound on chunks produced from one source.
+    MAX_SOURCE_CHUNKS: int = 10_000
+
+    # -------------------------------------------------------------------------
     # Malware scanning (Phase 12D-A)
     # -------------------------------------------------------------------------
     # Local-only source-file scanning. NO third-party upload services.
@@ -524,6 +559,17 @@ class Settings(BaseSettings):
     # the per-provider request timeout (LLM_TIMEOUT_SECONDS) and MUST NOT exceed
     # WORKER_JOB_TIMEOUT (enforced by the validator below).
     TRANSFORMATION_JOB_TIMEOUT: int = 600
+    # Stale-job grace period (Phase 13G). A transformation job stuck in the
+    # ``running`` state for longer than this many seconds is assumed orphaned
+    # (worker died/crashed mid-job) and failed by the backend reaper. Must be
+    # strictly greater than WORKER_JOB_TIMEOUT so a live-but-slow job is never
+    # touched (RQ already fails jobs that exceed WORKER_JOB_TIMEOUT).
+    STALE_TRANSFORMATION_JOB_GRACE_SECONDS: int = 1200
+    # Backend reaper sweep interval (Phase 13G). The reaper is an asyncio task
+    # started in the API lifespan; disabling it leaves stale-job handling to RQ
+    # timeouts alone.
+    STALE_JOB_REAPER_ENABLED: bool = True
+    STALE_JOB_REAPER_INTERVAL_SECONDS: int = 600
 
     @model_validator(mode="after")
     def _validate_worker_job_timeout(self) -> "Settings":
@@ -639,6 +685,131 @@ class Settings(BaseSettings):
         ):
             raise ValueError(
                 "CLAMAV_TIMEOUT_SECONDS must be an integer in [1, 300]."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_bounded_phase13_knobs(self) -> "Settings":
+        """Reject degenerate Phase 13 bounded-resource configurations."""
+        if (
+            not isinstance(self.MAX_PDF_PAGES, int)
+            or isinstance(self.MAX_PDF_PAGES, bool)
+            or self.MAX_PDF_PAGES < 1
+            or self.MAX_PDF_PAGES > 5000
+        ):
+            raise ValueError("MAX_PDF_PAGES must be an integer in [1, 5000].")
+        if (
+            not isinstance(self.MAX_EXTRACTED_CHARS, int)
+            or isinstance(self.MAX_EXTRACTED_CHARS, bool)
+            or self.MAX_EXTRACTED_CHARS < 1000
+            or self.MAX_EXTRACTED_CHARS > 100_000_000
+        ):
+            raise ValueError(
+                "MAX_EXTRACTED_CHARS must be an integer in [1000, 100000000]."
+            )
+        if (
+            not isinstance(self.INPUT_MAX_TEXT_LENGTH, int)
+            or isinstance(self.INPUT_MAX_TEXT_LENGTH, bool)
+            or self.INPUT_MAX_TEXT_LENGTH < 1000
+            or self.INPUT_MAX_TEXT_LENGTH > 50_000_000
+        ):
+            raise ValueError(
+                "INPUT_MAX_TEXT_LENGTH must be an integer in [1000, 50000000]."
+            )
+        if (
+            not isinstance(self.MAX_SOURCE_CHUNKS, int)
+            or isinstance(self.MAX_SOURCE_CHUNKS, bool)
+            or self.MAX_SOURCE_CHUNKS < 1
+            or self.MAX_SOURCE_CHUNKS > 1_000_000
+        ):
+            raise ValueError(
+                "MAX_SOURCE_CHUNKS must be an integer in [1, 1000000]."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_revocation_and_grace(self) -> "Settings":
+        """Bound revocation memory and keep grace above the worker timeout."""
+        if (
+            not isinstance(self.AUTH_REVOKED_TOKEN_MAX, int)
+            or isinstance(self.AUTH_REVOKED_TOKEN_MAX, bool)
+            or self.AUTH_REVOKED_TOKEN_MAX < 1000
+            or self.AUTH_REVOKED_TOKEN_MAX > 10_000_000
+        ):
+            raise ValueError(
+                "AUTH_REVOKED_TOKEN_MAX must be an integer in [1000, 10000000]."
+            )
+        if (
+            not isinstance(self.RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS, int)
+            or isinstance(self.RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS, bool)
+            or self.RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS < 100
+            or self.RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS > 10_000_000
+        ):
+            raise ValueError(
+                "RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS must be an integer in "
+                "[100, 10000000]."
+            )
+        if (
+            not isinstance(self.SECURITY_AUDIT_MEMORY_MAX_EVENTS, int)
+            or isinstance(self.SECURITY_AUDIT_MEMORY_MAX_EVENTS, bool)
+            or self.SECURITY_AUDIT_MEMORY_MAX_EVENTS < 100
+            or self.SECURITY_AUDIT_MEMORY_MAX_EVENTS > 1_000_000
+        ):
+            raise ValueError(
+                "SECURITY_AUDIT_MEMORY_MAX_EVENTS must be an integer in "
+                "[100, 1000000]."
+            )
+        if self.STALE_TRANSFORMATION_JOB_GRACE_SECONDS <= self.WORKER_JOB_TIMEOUT:
+            raise ValueError(
+                "STALE_TRANSFORMATION_JOB_GRACE_SECONDS must be greater than "
+                "WORKER_JOB_TIMEOUT so a live-but-slow job is never treated as "
+                "an orphaned/stuck job."
+            )
+        if (
+            not isinstance(self.STALE_JOB_REAPER_INTERVAL_SECONDS, int)
+            or isinstance(self.STALE_JOB_REAPER_INTERVAL_SECONDS, bool)
+            or self.STALE_JOB_REAPER_INTERVAL_SECONDS < 60
+            or self.STALE_JOB_REAPER_INTERVAL_SECONDS > 86400
+        ):
+            raise ValueError(
+                "STALE_JOB_REAPER_INTERVAL_SECONDS must be an integer in "
+                "[60, 86400]."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_production_hardening(self) -> "Settings":
+        """Fail closed for staging/production (Phase 13F).
+
+        In a non-development environment the API refuses to boot with a
+        development secret, a console OTP provider, an in-memory OTP store, or
+        a wildcard CORS origin — configuration that would silently weaken the
+        perimeter in production.
+        """
+        if self.ENVIRONMENT not in ("staging", "production"):
+            return self
+
+        if self.AUTH_SECRET_KEY == "dev-secret-replace-before-production":
+            raise ValueError(
+                "AUTH_SECRET_KEY must be a strong random secret in "
+                f"{self.ENVIRONMENT}; refusing to boot with the development value."
+            )
+        if self.OTP_PROVIDER == "console":
+            raise ValueError(
+                f"OTP_PROVIDER='console' is not allowed in {self.ENVIRONMENT}; "
+                "use an email or sms delivery provider."
+            )
+        if self.OTP_STORE_BACKEND == "memory":
+            raise ValueError(
+                f"OTP_STORE_BACKEND='memory' is not allowed in {self.ENVIRONMENT}; "
+                "use the shared redis store."
+            )
+        origins = [
+            o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()
+        ]
+        if "*" in origins:
+            raise ValueError(
+                f"ALLOWED_ORIGINS must not contain '*' in {self.ENVIRONMENT}."
             )
         return self
 

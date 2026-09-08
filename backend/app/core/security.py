@@ -88,13 +88,16 @@ def create_access_token(
     """
     Create a signed JWT access token.
 
-    Uses python-jose. Only non-sensitive claims are included.
+    Uses python-jose. Only non-sensitive claims are included.  Every token
+    carries a unique ``jti`` claim (Phase 13A) enabling server-side revocation
+    on logout without relying on shared state in the token itself.
     """
     from jose import jwt
 
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(subject),
+        "jti": secrets.token_urlsafe(24),
         "email": email,
         "role": role,
         "iat": now,

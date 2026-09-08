@@ -27,6 +27,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { getDevSession, clearDevSession } from "@/lib/auth";
+import { authApi } from "@/lib/api";
+import { clearQuickProjectId } from "@/lib/quickWorkspace";
 
 interface SidebarProps {
   /** Active section, used to highlight nav. Defaults to derive from pathname. */
@@ -193,8 +195,14 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Best-effort server-side revocation; local cleanup still proceeds.
+    }
     clearDevSession();
+    clearQuickProjectId();
     setOpen(false);
     router.replace("/login");
   };
@@ -288,8 +296,14 @@ function MobileDrawer({ active }: { active?: string }) {
   const email = session?.email || "dev@transformiq.local";
   const initial = name.trim().charAt(0).toUpperCase() || "D";
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Best-effort server-side revocation; local cleanup still proceeds.
+    }
     clearDevSession();
+    clearQuickProjectId();
     setOpen(false);
     router.replace("/login");
   };

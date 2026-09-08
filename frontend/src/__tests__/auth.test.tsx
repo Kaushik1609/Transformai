@@ -161,6 +161,12 @@ describe("application session gate", () => {
   it("logs out from the profile menu and returns to /login", async () => {
     process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     setDevSession("dev@transformiq.local", "Dev User");
+    localStorage.setItem("transformiq.quick_project_id", "quick-1");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true }),
+    }) as unknown as typeof fetch;
     render(<AppShell>app content</AppShell>);
     await waitFor(() =>
       expect(screen.getByText("app content")).toBeInTheDocument(),
@@ -171,5 +177,10 @@ describe("application session gate", () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
     expect(getDevSession()).toBeNull();
+    expect(localStorage.getItem("transformiq.quick_project_id")).toBeNull();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/auth/logout"),
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 });

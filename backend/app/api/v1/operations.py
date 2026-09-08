@@ -15,12 +15,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user
+from app.api.deps import CurrentUser, require_analyst
 from app.api.v1.schemas.operations import (
     SecurityEventListResponse,
     SecurityEventResponse,
 )
-from app.core.audit import security_events
+from app.core.audit import list_db_security_events, security_events
+from app.core.config import settings
 from app.db.models.project import Project
 from app.db.session import get_db
 
@@ -72,7 +73,7 @@ async def _owned_project_ids(
 )
 async def list_security_events(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_analyst),
     project_id: Annotated[
         uuid.UUID | None,
         Query(description="Restrict to a specific project you own."),
@@ -91,7 +92,10 @@ async def list_security_events(
     A user may see events they initiated (``user_id``) or events that belong
     to projects they own (``project_id``).  Platform-global events with no
     owning user/project are never exposed here.  Responses carry only bounded
-    fields that were already redacted at emit time.
+    fields that were already redacted at emit time. With the database audit
+    sink (Phase 13D) events are read durably from ``security_events``; with the
+    memory sink the historical in-process stream is used. The endpoint requires
+    an analyst-tier role (Phase 13B).
     """
     owned_projects = await _owned_project_ids(db, current_user.id)
     if project_id is not None and str(project_id) not in owned_projects:
@@ -101,28 +105,56 @@ async def list_security_events(
         )
 
     me = str(current_user.id)
-    events = security_events()
+    if settings.SECURITY_AUDIT_SINK == "database":
+        events = await list_db_security_events(
+            db,
+            owned_projects=owned_projects,
+            me=me,
+            project_id=str(project_id) if project_id is not None else None,
+            event_type=event_type,
+            limit=limit,
+        )
+    else:
+        events = _filter_memory_events(
+            security_events(),
+            owned_projects=owned_projects,
+            me=me,
+            project_id=str(project_id) if project_id is not None else None,
+            event_type=event_type,
+            limit=limit,
+        )
+
+    return SecurityEventListResponse(
+        data=[_to_response(event) for event in events],
+        count=len(events),
+    )
+
+
+def _filter_memory_events(
+    events: list[dict],
+    *,
+    owned_projects: set[str],
+    me: str,
+    project_id: str | None = None,
+    event_type: str | None = None,
+    limit: int,
+) -> list[dict]:
+    """Owner-scoped filter for the in-memory sink (mirrors the DB query)."""
     filtered: list[dict] = []
-    for event in sorted(
-        events, key=lambda e: e.get("timestamp", ""), reverse=True
-    ):
+    for event in sorted(events, key=lambda e: e.get("timestamp", ""), reverse=True):
         project = event.get("project_id")
         owned = project is not None and project in owned_projects
         initiated = event.get("user_id") == me
         if not (owned or initiated):
             continue
-        if project_id is not None and project != str(project_id):
+        if project_id is not None and project != project_id:
             continue
         if event_type is not None and event.get("event_type") != event_type:
             continue
         filtered.append(event)
         if len(filtered) >= limit:
             break
-
-    return SecurityEventListResponse(
-        data=[_to_response(event) for event in filtered],
-        count=len(filtered),
-    )
+    return filtered
 
 
 __all__ = ["router"]

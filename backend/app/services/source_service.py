@@ -138,6 +138,11 @@ async def ingest_text_source(
         raise ValueError("Text source must be UTF-8 encoded.") from exc
     if not text:
         raise ValueError("Text source cannot be empty after normalization.")
+    if len(text) > settings.INPUT_MAX_TEXT_LENGTH:
+        raise ValueError(
+            "Text source exceeds the configured input limit of "
+            f"{settings.INPUT_MAX_TEXT_LENGTH} characters."
+        )
 
     source_metadata = dict(metadata or {})
     source_metadata.update(_scan_malware(content=content, project_id=project_id))

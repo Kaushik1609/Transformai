@@ -34,7 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.output import Output
 from app.db.models.source import Source
 from app.db.models.transformation_job import TransformationJob
-from app.ingestion.storage import LocalStorage
+from app.ingestion.storage import StorageAdapter
 
 logger = structlog.get_logger(__name__)
 
@@ -167,7 +167,7 @@ async def keys_referenced_by_other_records(
 
 
 def cleanup_storage_keys(
-    storage: LocalStorage,
+    storage: StorageAdapter,
     *,
     keys: list[str],
     referenced_keys: set[str] | None = None,

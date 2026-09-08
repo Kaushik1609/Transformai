@@ -12,13 +12,16 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import emit_security_event
 from app.core.config import settings
 from app.db.models.project import Project
 from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
 from app.ingestion.documents import extract_docx, extract_pdf
+from app.ingestion.malware_scan import build_malware_scanner, run_malware_scan
 from app.ingestion.queue import enqueue_source_ingestion
-from app.ingestion.storage import LocalStorage
+from app.ingestion.pii_scan import EVENT_TYPE, scan_source_pii
+from app.ingestion.storage import StorageAdapter, get_storage
 from app.ingestion.text import chunk_text, normalize_text
 from app.ingestion.validation import validate_source
 from app.services.storage_lifecycle import (
@@ -32,6 +35,37 @@ logger = structlog.get_logger(__name__)
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _scan_malware(
+    *,
+    content: bytes,
+    project_id: uuid.UUID,
+    source_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """Run the configured malware scan and return bounded metadata (or empty).
+
+    Raises ``MalwareScanRejected`` when a required scan is not CLEAN
+    (fail-closed).  Returns ``{}`` when scanning is disabled or no metadata
+    was produced.  Never alters ``content`` and never persists raw output.
+    """
+    if not settings.MALWARE_SCAN_ENABLED:
+        return {}
+    scanner = build_malware_scanner(
+        name=settings.MALWARE_SCANNER,
+        host=settings.CLAMAV_HOST,
+        port=settings.CLAMAV_PORT,
+        timeout_seconds=settings.CLAMAV_TIMEOUT_SECONDS,
+    )
+    meta = run_malware_scan(
+        content=content,
+        scanner=scanner,
+        enabled=True,
+        required=settings.MALWARE_SCAN_REQUIRED,
+        project_id=str(project_id),
+        source_id=str(source_id) if source_id is not None else None,
+    )
+    return {"malware_scan": meta} if meta else {}
 
 
 async def create_pending_source(
@@ -53,6 +87,8 @@ async def create_pending_source(
         mime_type=mime_type,
         max_size_bytes=settings.max_upload_size_bytes,
     )
+    source_metadata = dict(metadata or {})
+    source_metadata.update(_scan_malware(content=content, project_id=project_id))
     source = Source(
         id=uuid.uuid4(),
         project_id=project_id,
@@ -62,15 +98,15 @@ async def create_pending_source(
         file_size=validated.file_size,
         language=language,
         status="processing",
-        source_metadata=metadata,
+        source_metadata=source_metadata or None,
         created_at=_utcnow(),
     )
     db.add(source)
     await db.flush()
 
-    storage = LocalStorage(settings.STORAGE_LOCAL_PATH)
+    storage = get_storage()
     storage_key = storage.source_key(project_id, source.id, filename)
-    storage.save(storage_key, content)
+    storage.save(storage_key, content, content_type=validated.mime_type)
     source.storage_key = storage_key
     await db.flush()
     await db.refresh(source)
@@ -103,6 +139,19 @@ async def ingest_text_source(
     if not text:
         raise ValueError("Text source cannot be empty after normalization.")
 
+    source_metadata = dict(metadata or {})
+    source_metadata.update(_scan_malware(content=content, project_id=project_id))
+    pii_scan = scan_source_pii(text)
+    if pii_scan["detected"]:
+        source_metadata["pii_scan"] = pii_scan
+        emit_security_event(
+            EVENT_TYPE,
+            outcome="observed",
+            project_id=str(project_id),
+            reason="pii_detected_in_source",
+            details={"categories": list(pii_scan["counts"])},
+        )
+
     source = Source(
         id=uuid.uuid4(),
         project_id=project_id,
@@ -112,7 +161,7 @@ async def ingest_text_source(
         file_size=validated.file_size,
         language=language,
         status="processing",
-        source_metadata=metadata,
+        source_metadata=source_metadata or None,
         extracted_text=text,
         created_at=_utcnow(),
     )
@@ -120,9 +169,9 @@ async def ingest_text_source(
     await db.flush()
 
     storage_filename = validated.filename or "original.txt"
-    storage = LocalStorage(settings.STORAGE_LOCAL_PATH)
+    storage = get_storage()
     storage_key = storage.source_key(project_id, source.id, storage_filename)
-    storage.save(storage_key, content)
+    storage.save(storage_key, content, content_type=validated.mime_type)
     source.storage_key = storage_key
 
     for chunk_index, chunk in enumerate(chunk_text(text)):
@@ -177,6 +226,19 @@ async def ingest_document_source(
     if not text:
         raise ValueError("Document contains no usable text.")
 
+    source_metadata: dict[str, Any] = {}
+    source_metadata.update(_scan_malware(content=content, project_id=project_id))
+    pii_scan = scan_source_pii(text)
+    if pii_scan["detected"]:
+        source_metadata["pii_scan"] = pii_scan
+        emit_security_event(
+            EVENT_TYPE,
+            outcome="observed",
+            project_id=str(project_id),
+            reason="pii_detected_in_source",
+            details={"categories": list(pii_scan["counts"])},
+        )
+
     source = Source(
         id=uuid.uuid4(),
         project_id=project_id,
@@ -187,14 +249,15 @@ async def ingest_document_source(
         language=language,
         status="processing",
         extracted_text=text,
+        source_metadata=source_metadata or None,
         created_at=_utcnow(),
     )
     db.add(source)
     await db.flush()
 
-    storage = LocalStorage(settings.STORAGE_LOCAL_PATH)
+    storage = get_storage()
     storage_key = storage.source_key(project_id, source.id, validated.filename or "original")
-    storage.save(storage_key, content)
+    storage.save(storage_key, content, content_type=validated.mime_type)
     source.storage_key = storage_key
 
     for chunk_index, chunk in enumerate(chunk_text(text)):
@@ -312,7 +375,7 @@ async def delete_source(
     db: AsyncSession,
     *,
     source: Source,
-    storage: LocalStorage | None = None,
+    storage: StorageAdapter | None = None,
 ) -> None:
     """
     Delete a source and all its cascaded children, including persisted artifacts.
@@ -329,7 +392,7 @@ async def delete_source(
         exclude_source_ids={source.id},
         exclude_output_ids=output_ids,
     )
-    cleaner = storage if storage is not None else LocalStorage(settings.STORAGE_LOCAL_PATH)
+    cleaner = storage if storage is not None else get_storage()
     cleanup_storage_keys(cleaner, keys=keys, referenced_keys=referenced_keys)
     await db.delete(source)
     await db.flush()

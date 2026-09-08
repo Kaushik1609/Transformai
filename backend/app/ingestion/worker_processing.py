@@ -9,14 +9,16 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.core.audit import emit_security_event
 from app.core.config import settings
 from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
 from app.embeddings.service import EmbeddingService
 from app.ingestion.documents import DocumentExtractionError, extract_docx, extract_pdf
+from app.ingestion.pii_scan import scan_source_pii
 from app.ingestion.queue import enqueue_source_embedding, get_embedding_queue
-from app.ingestion.storage import LocalStorage
 from app.ingestion.text import chunk_text, chunk_text_with_metadata, normalize_text
+from app.ingestion.storage import get_storage
 
 
 def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
@@ -28,7 +30,7 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
     try:
         if not source.storage_key:
             raise ValueError("Source has no stored original file.")
-        content = LocalStorage(settings.STORAGE_LOCAL_PATH).read(source.storage_key)
+        content = get_storage().read(source.storage_key)
         if source.source_type in {"text", "txt"}:
             extracted = content.decode("utf-8")
         elif source.source_type == "pdf":
@@ -41,6 +43,8 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
         normalized = normalize_text(extracted)
         if not normalized:
             raise ValueError("Source contains no usable text.")
+
+        pii_scan = scan_source_pii(normalized)
 
         db.execute(delete(SourceChunk).where(SourceChunk.source_id == source.id))
         chunks_info = chunk_text_with_metadata(normalized)
@@ -72,6 +76,16 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
         source_metadata = dict(source.source_metadata or {})
         source_metadata["chunk_count"] = len(chunks_info)
         source_metadata["embedding_status"] = "queued"
+        if pii_scan["detected"]:
+            source_metadata["pii_scan"] = pii_scan
+            emit_security_event(
+                "pii_detected",
+                outcome="observed",
+                project_id=str(source.project_id),
+                source_id=str(source.id),
+                reason="pii_detected_in_source",
+                details={"categories": list(pii_scan["counts"])},
+            )
         source.source_metadata = source_metadata
         db.commit()
         db.refresh(source)

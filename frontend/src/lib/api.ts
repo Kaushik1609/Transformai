@@ -364,6 +364,79 @@ export interface FactVerificationResponse {
   data: FactVerificationResultResponse;
 }
 
+// ---------------------------------------------------------------------------
+// Response types — trust status + cross-output consistency (Phase 12B)
+// ---------------------------------------------------------------------------
+
+export interface TrustSignalResponse {
+  category: string;
+  present: boolean;
+  status: "positive" | "warning" | "failure" | "missing";
+  reason_code: string;
+  detail: string;
+}
+
+export interface TrustStatusResponse {
+  status: "TRUSTED" | "CAUTION" | "UNVERIFIED";
+  reason_codes: string[];
+  signals: TrustSignalResponse[];
+  output_id: string;
+  output_type: string;
+}
+
+export interface ConsistencyConflictResponse {
+  category: "numeric" | "percentage" | "date";
+  value_a: string;
+  value_b: string;
+  output_a_id: string;
+  output_a_type: string;
+  output_b_id: string;
+  output_b_type: string;
+  message: string;
+}
+
+export interface CrossOutputConsistencyResponse {
+  status: "CONSISTENT" | "INCONSISTENT" | "NOT_APPLICABLE";
+  completed_output_count: number;
+  conflicts: ConsistencyConflictResponse[];
+  checked_pairs: number;
+  note: string;
+}
+
+export interface ConsistencyResultResponse {
+  job_id: string;
+  trust_statuses: TrustStatusResponse[];
+  cross_output: CrossOutputConsistencyResponse;
+}
+
+export interface ConsistencyResponse {
+  success: boolean;
+  data: ConsistencyResultResponse;
+}
+
+// ---------------------------------------------------------------------------
+// Response types — security operations (Phase 12D-G)
+// ---------------------------------------------------------------------------
+
+export interface SecurityEventResponse {
+  event_type: string;
+  outcome: string;
+  timestamp: string;
+  user_id: string | null;
+  project_id: string | null;
+  source_id: string | null;
+  job_id: string | null;
+  reason: string | null;
+  /** Bounded, already-redacted operational details (never raw content). */
+  details: Record<string, unknown>;
+}
+
+export interface SecurityEventListResponse {
+  success: boolean;
+  count: number;
+  data: SecurityEventResponse[];
+}
+
 export type ArtifactRole = "primary" | "pdf" | "srt";
 
 export interface DownloadResult {
@@ -763,6 +836,10 @@ export const transformationsApi = {
       `/api/v1/projects/${projectId}/transformations`,
     ),
 
+  /** Trust status + cross-output consistency for a transformation job. */
+  consistency: (jobId: string) =>
+    apiFetch<ConsistencyResponse>(`/api/v1/transformations/${jobId}/consistency`),
+
   /** Cancel a queued/running job. */
   cancel: (jobId: string) =>
     apiFetch<TransformationJobDetailResponse>(
@@ -811,4 +888,31 @@ export const outputsApi = {
       { format },
       { method: "POST" },
     ),
+};
+
+// ---------------------------------------------------------------------------
+// Security operations API (Phase 12D-G — read-only)
+// ---------------------------------------------------------------------------
+
+export interface SecurityEventsQuery {
+  projectId?: string;
+  eventType?: string;
+  limit?: number;
+}
+
+export const operationsApi = {
+  /**
+   * List bounded, owner-scoped security events (read-only observability).
+   * Never returns source content, credentials, secrets, or other users' events.
+   */
+  securityEvents: (query: SecurityEventsQuery = {}) => {
+    const params = new URLSearchParams();
+    if (query.projectId) params.set("project_id", query.projectId);
+    if (query.eventType) params.set("event_type", query.eventType);
+    if (query.limit) params.set("limit", String(query.limit));
+    const search = params.toString();
+    return apiFetch<SecurityEventListResponse>(
+      `/api/v1/operations/security-events${search ? `?${search}` : ""}`,
+    );
+  },
 };

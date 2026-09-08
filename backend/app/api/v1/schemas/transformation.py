@@ -232,3 +232,63 @@ class FactVerificationResultResponse(BaseModel):
 class FactVerificationResponse(BaseModel):
     success: bool = True
     data: FactVerificationResultResponse
+
+
+# ---------------------------------------------------------------------------
+# Trust status + cross-output consistency (Phase 12B)
+# ---------------------------------------------------------------------------
+
+class TrustSignalResponse(BaseModel):
+    """A single trust-signal category assessment."""
+
+    category: str
+    present: bool
+    status: str  # "positive" | "warning" | "failure" | "missing"
+    reason_code: str
+    detail: str
+
+
+class TrustStatusResponse(BaseModel):
+    """Per-output trust status derived from existing verification signals."""
+
+    status: str  # TRUSTED | CAUTION | UNVERIFIED
+    reason_codes: list[str] = Field(default_factory=list)
+    signals: list[TrustSignalResponse] = Field(default_factory=list)
+    output_id: str
+    output_type: str
+
+
+class ConsistencyConflictResponse(BaseModel):
+    """A detected factual conflict between two outputs."""
+
+    category: str
+    value_a: str
+    value_b: str
+    output_a_id: str
+    output_a_type: str
+    output_b_id: str
+    output_b_type: str
+    message: str
+
+
+class CrossOutputConsistencyResponse(BaseModel):
+    """Cross-output consistency status for a transformation job."""
+
+    status: str  # CONSISTENT | INCONSISTENT | NOT_APPLICABLE
+    completed_output_count: int
+    conflicts: list[ConsistencyConflictResponse] = Field(default_factory=list)
+    checked_pairs: int
+    note: str
+
+
+class ConsistencyResultResponse(BaseModel):
+    """Combined trust status + cross-output consistency for a job."""
+
+    job_id: uuid.UUID
+    trust_statuses: list[TrustStatusResponse] = Field(default_factory=list)
+    cross_output: CrossOutputConsistencyResponse
+
+
+class ConsistencyResponse(BaseModel):
+    success: bool = True
+    data: ConsistencyResultResponse

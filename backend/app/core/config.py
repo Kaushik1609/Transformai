@@ -401,6 +401,8 @@ class Settings(BaseSettings):
     STORAGE_SECRET_KEY: str = ""
     STORAGE_BUCKET: str = "transformiq"
     STORAGE_REGION: str = "us-east-1"
+    # S3-compatible path-style addressing (required by MinIO; AWS S3 auto-detects).
+    STORAGE_PATH_STYLE: bool = True
 
     # -------------------------------------------------------------------------
     # Upload limits
@@ -415,6 +417,21 @@ class Settings(BaseSettings):
     @property
     def max_upload_size_bytes(self) -> int:
         return self.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+    # -------------------------------------------------------------------------
+    # Malware scanning (Phase 12D-A)
+    # -------------------------------------------------------------------------
+    # Local-only source-file scanning. NO third-party upload services.
+    # When enabled, uploaded bytes are scanned before persistence/extraction.
+    # When REQUIRED, a scanned-but-unavailable scanner rejects ingestion
+    # (fail-closed); a non-required scanner degrades to 'unavailable' metadata.
+    MALWARE_SCAN_ENABLED: bool = False
+    MALWARE_SCAN_REQUIRED: bool = False
+    # Scanner backend: fake (offline/tests) | clamav (local clamd service).
+    MALWARE_SCANNER: Literal["fake", "clamav"] = "fake"
+    CLAMAV_HOST: str = "clamav"
+    CLAMAV_PORT: int = 3310
+    CLAMAV_TIMEOUT_SECONDS: int = 10
 
     @property
     def allowed_upload_types_list(self) -> list[str]:
@@ -592,6 +609,37 @@ class Settings(BaseSettings):
                 raise ValueError(f"{name}_MAX must be a positive integer (>= 1).")
             if not isinstance(window, int) or isinstance(window, bool) or window < 1:
                 raise ValueError(f"{name}_WINDOW must be a positive integer (>= 1).")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_malware_scan(self) -> "Settings":
+        """Enforce a coherent, fail-closed malware-scan configuration.
+
+        A required scan that is disabled is a misconfiguration (a "required"
+        protection that can never run).  The scanner never silently bypasses a
+        required scan at scan time (see ingestion/malware_scan run helper).
+        """
+        if self.MALWARE_SCAN_REQUIRED and not self.MALWARE_SCAN_ENABLED:
+            raise ValueError(
+                "MALWARE_SCAN_REQUIRED must not be True when MALWARE_SCAN_ENABLED "
+                "is False; a required scan can never run."
+            )
+        if (
+            not isinstance(self.CLAMAV_PORT, int)
+            or isinstance(self.CLAMAV_PORT, bool)
+            or self.CLAMAV_PORT < 1
+            or self.CLAMAV_PORT > 65535
+        ):
+            raise ValueError("CLAMAV_PORT must be an integer in [1, 65535].")
+        if (
+            not isinstance(self.CLAMAV_TIMEOUT_SECONDS, int)
+            or isinstance(self.CLAMAV_TIMEOUT_SECONDS, bool)
+            or self.CLAMAV_TIMEOUT_SECONDS < 1
+            or self.CLAMAV_TIMEOUT_SECONDS > 300
+        ):
+            raise ValueError(
+                "CLAMAV_TIMEOUT_SECONDS must be an integer in [1, 300]."
+            )
         return self
 
 

@@ -18,8 +18,7 @@ import {
 import { StatusBadge } from "@/components/common";
 import { DownloadButton, CopyButton, ExportButton } from "@/components/export";
 import { artifactOptions } from "@/components/export/DownloadButton";
-import { VerificationPanel, FactVerificationPanel } from "@/components/verification";
-import { Check, AlertTriangle } from "lucide-react";
+import { VerificationPanel, FactVerificationPanel, ArtifactIntegrity } from "@/components/verification";
 
 interface ResultsPanelProps {
   outputs: OutputResponse[];
@@ -70,7 +69,7 @@ function OutputCard({ output }: { output: OutputResponse }) {
           <h3 className="text-sm font-semibold text-foreground">
             {outputTypeLabel(output.output_type)}
           </h3>
-          <IntegrityBadge output={output} />
+          <ArtifactIntegrity output={output} compact />
         </div>
         <StatusBadge variant={outputStatusVariant(output.status)}>
           {output.status}
@@ -220,40 +219,6 @@ function OutputContent({ output }: { output: OutputResponse }) {
     <p className="text-xs text-muted-foreground">
       Content prepared — no text preview available.
     </p>
-  );
-}
-
-function IntegrityBadge({ output }: { output: OutputResponse }) {
-  // Phase 11M — minimal provenance indicator. Reads the integrity status that
-  // the backend stored in output_metadata.integrity at generation time.
-  const meta = output.output_metadata as { integrity?: Record<string, unknown> } | null;
-  const integrity = meta?.integrity;
-  const status = typeof integrity?.status === "string" ? integrity.status : null;
-
-  if (!status) {
-    return null;
-  }
-
-  if (status === "recorded") {
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
-        title="Artifact integrity recorded at generation time"
-      >
-        <Check className="h-3 w-3" aria-hidden="true" />
-        Integrity
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-      title={`Integrity status: ${status}`}
-    >
-      <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-      Integrity
-    </span>
   );
 }
 

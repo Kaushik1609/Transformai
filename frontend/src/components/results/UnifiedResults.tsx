@@ -16,6 +16,9 @@ import { isTerminalJobStatus } from "@/lib/outputTypes";
 import { cn } from "@/lib/utils";
 import { Check, AlertTriangle } from "lucide-react";
 import { ResultsPanel } from "./ResultsPanel";
+import { ConsistencyPanel } from "@/components/verification/ConsistencyPanel";
+import { SecurityPipeline } from "@/components/verification/SecurityPipeline";
+import { SecurityActivity } from "@/components/verification/SecurityActivity";
 
 interface UnifiedResultsProps {
   job: TransformationJobResponse;
@@ -45,20 +48,31 @@ export function UnifiedResults({ job, outputs, loading = false }: UnifiedResults
     const activeId = selectedId ?? outputs[0].id;
     const activeOutput = outputs.find((o) => o.id === activeId) ?? outputs[0];
 
-    return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h3 className="text-sm font-semibold text-foreground">
-            {completed} output{completed !== 1 ? "s" : ""} generated
-          </h3>
-          {failed > 0 && (
-            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
-              {failed} failed
-            </span>
-          )}
-        </div>
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <h3 className="text-sm font-semibold text-foreground">
+          {completed} output{completed !== 1 ? "s" : ""} generated
+        </h3>
+        {failed > 0 && (
+          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+            {failed} failed
+          </span>
+        )}
+      </div>
 
-        {/* Output tabs */}
+      {/* Phase 12B — job-level trust + cross-output consistency */}
+      <ConsistencyPanel jobId={job.id} />
+
+      {/* Phase 12D — security pipeline (7 stages) + security activity */}
+      <SecurityPipeline
+        projectId={job.project_id}
+        jobSourceId={job.source_id}
+        outputs={outputs}
+      />
+      <SecurityActivity projectId={job.project_id} limit={15} />
+
+      {/* Output tabs */}
         <div role="tablist" aria-label="Generated outputs" className="flex flex-wrap gap-1.5">
           {outputs.map((output) => {
             const active = output.id === activeId;

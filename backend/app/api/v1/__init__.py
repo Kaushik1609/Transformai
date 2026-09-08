@@ -17,6 +17,7 @@ from app.api.v1.transformations import (
     project_transformations_router,
 )
 from app.api.v1.content_intelligence import router as content_intelligence_router
+from app.api.v1.operations import router as operations_router
 
 router = APIRouter()
 
@@ -37,6 +38,11 @@ router.include_router(projects_router, prefix="/projects")
 router.include_router(project_sources_router, prefix="/projects")
 router.include_router(sources_router, prefix="/sources")
 router.include_router(content_intelligence_router)
+
+# ---------------------------------------------------------------------------
+# Security operations (Phase 12D-G — read-only observability)
+# ---------------------------------------------------------------------------
+router.include_router(operations_router)
 
 # ---------------------------------------------------------------------------
 # Configurations (nested under projects + standalone)

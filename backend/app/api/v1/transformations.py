@@ -26,6 +26,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
 from app.api.v1.schemas.transformation import (
+    ConsistencyConflictResponse,
+    ConsistencyResponse,
+    ConsistencyResultResponse,
+    CrossOutputConsistencyResponse,
     FactVerificationClaimResponse,
     FactVerificationEvidenceResponse,
     FactVerificationResponse,
@@ -40,6 +44,8 @@ from app.api.v1.schemas.transformation import (
     TransformationJobDetailResponse,
     TransformationJobListResponse,
     TransformationJobResponse,
+    TrustSignalResponse,
+    TrustStatusResponse,
     VerificationListResponse,
     VerificationResultResponse,
 )
@@ -589,6 +595,134 @@ async def _load_job(db: AsyncSession, job_id: uuid.UUID) -> Any:
 
     result = await db.execute(select(TransformationJob).where(TransformationJob.id == job_id))
     return result.scalar_one_or_none()
+
+
+# ---------------------------------------------------------------------------
+# Trust Status + Cross-Output Consistency (Phase 12B)
+# ---------------------------------------------------------------------------
+
+@transformations_router.get(
+    "/{job_id}/consistency",
+    response_model=ConsistencyResponse,
+    summary="Trust status + cross-output consistency for a transformation job",
+)
+async def get_job_consistency(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ConsistencyResponse:
+    """Deterministic trust-status and cross-output consistency evaluation.
+
+    Aggregates existing verification, security, integrity, and fact-verification
+    signals into a per-output trust status (TRUSTED / CAUTION / UNVERIFIED) and
+    checks completed outputs for numeric, percentage, and date conflicts.
+    No LLM calls, no arbitrary scores — only explicit reason codes.
+    """
+    from app.transformation.verification_engine.cross_output import (
+        check_cross_output_consistency,
+    )
+    from app.transformation.verification_engine.trust_status import (
+        evaluate_trust_status,
+    )
+
+    job = await transformation_service.get_job(
+        db, job_id=job_id, user_id=current_user.id
+    )
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found.",
+        )
+
+    outputs = await transformation_service.list_job_outputs(db, job_id=job_id)
+
+    # Build per-output trust statuses.
+    trust_statuses: list[TrustStatusResponse] = []
+    output_dicts: list[dict[str, Any]] = []
+
+    for out in outputs:
+        # Load verification results for this output.
+        verifications = await transformation_service.list_output_verifications(
+            db, output_id=out.id
+        )
+        vr_dicts = [
+            {
+                "overall_status": v.overall_status,
+                "grounding_score": v.grounding_score,
+                "consistency_score": v.consistency_score,
+                "claims_checked": v.claims_checked,
+                "claims_supported": v.claims_supported,
+                "warnings": v.warnings,
+                "details": v.details,
+            }
+            for v in verifications
+        ]
+
+        trust = evaluate_trust_status(
+            output_id=str(out.id),
+            output_type=out.output_type,
+            output_status=out.status,
+            output_metadata=out.output_metadata,
+            verification_results=vr_dicts,
+        )
+        trust_statuses.append(
+            TrustStatusResponse(
+                status=trust.status,
+                reason_codes=trust.reason_codes,
+                signals=[
+                    TrustSignalResponse(
+                        category=s.category,
+                        present=s.present,
+                        status=s.status,
+                        reason_code=s.reason_code,
+                        detail=s.detail,
+                    )
+                    for s in trust.signals
+                ],
+                output_id=trust.output_id,
+                output_type=trust.output_type,
+            )
+        )
+
+        output_dicts.append(
+            {
+                "id": str(out.id),
+                "output_type": out.output_type,
+                "status": out.status,
+                "text_content": out.text_content,
+                "structured_content": out.structured_content,
+            }
+        )
+
+    # Cross-output consistency check.
+    cross = check_cross_output_consistency(output_dicts)
+    cross_response = CrossOutputConsistencyResponse(
+        status=cross.status,
+        completed_output_count=cross.completed_output_count,
+        conflicts=[
+            ConsistencyConflictResponse(
+                category=conflict.category,
+                value_a=conflict.value_a,
+                value_b=conflict.value_b,
+                output_a_id=conflict.output_a_id,
+                output_a_type=conflict.output_a_type,
+                output_b_id=conflict.output_b_id,
+                output_b_type=conflict.output_b_type,
+                message=conflict.message,
+            )
+            for conflict in cross.conflicts
+        ],
+        checked_pairs=cross.checked_pairs,
+        note=cross.note,
+    )
+
+    return ConsistencyResponse(
+        data=ConsistencyResultResponse(
+            job_id=job.id,
+            trust_statuses=trust_statuses,
+            cross_output=cross_response,
+        )
+    )
 
 
 @outputs_router.post(

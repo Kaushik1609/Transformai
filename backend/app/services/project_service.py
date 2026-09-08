@@ -11,10 +11,9 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.db.models.project import Project
 from app.db.models.user import User
-from app.ingestion.storage import LocalStorage
+from app.ingestion.storage import StorageAdapter, get_storage
 from app.services.storage_lifecycle import (
     cleanup_storage_keys,
     collect_project_artifact_keys,
@@ -123,7 +122,7 @@ async def delete_project(
     db: AsyncSession,
     *,
     project: Project,
-    storage: LocalStorage | None = None,
+    storage: StorageAdapter | None = None,
 ) -> None:
     """
     Delete a project and all its cascaded children, including persisted artifacts.
@@ -142,7 +141,7 @@ async def delete_project(
         exclude_source_ids=source_ids,
         exclude_output_ids=output_ids,
     )
-    cleaner = storage if storage is not None else LocalStorage(settings.STORAGE_LOCAL_PATH)
+    cleaner = storage if storage is not None else get_storage()
     cleanup_storage_keys(cleaner, keys=keys, referenced_keys=referenced_keys)
     await db.delete(project)
     await db.flush()

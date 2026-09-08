@@ -185,7 +185,7 @@ describe("ResultsPanel", () => {
     ).toBeInTheDocument();
   });
 
-  // Phase 11M — artifact integrity badge.
+  // Phase 11M / 12D-F — artifact integrity badge (ArtifactIntegrity compact).
   it("shows a recorded integrity badge when provenance was recorded", () => {
     render(
       <ResultsPanel
@@ -201,8 +201,7 @@ describe("ResultsPanel", () => {
         ]}
       />,
     );
-    // IntegrityBadge (with aria-hidden icons) exposes the label text.
-    expect(screen.getAllByText("Integrity").length).toBeGreaterThan(0);
+    expect(screen.getByText("Integrity · VERIFIED")).toBeInTheDocument();
   });
 
   it("shows an integrity badge for a non-recorded status", () => {
@@ -220,16 +219,18 @@ describe("ResultsPanel", () => {
         ]}
       />,
     );
-    expect(screen.getAllByText("Integrity").length).toBeGreaterThan(0);
+    expect(screen.getByText("Integrity · UNAVAILABLE")).toBeInTheDocument();
   });
 
-  it("hides the integrity badge when no integrity metadata exists", () => {
+  // Phase 12D-F — absence of a record is surfaced as UNAVAILABLE, not hidden.
+  it("surfaces an unavailable integrity badge when no integrity metadata exists", () => {
     render(
       <ResultsPanel
         outputs={[createOutput({ id: "o-none", output_type: "summary" })]}
       />,
     );
-    expect(screen.queryAllByText("Integrity")).toHaveLength(0);
+    expect(screen.getByText("Integrity · UNAVAILABLE")).toBeInTheDocument();
+    expect(screen.queryByText(/VERIFIED|ERROR/)).not.toBeInTheDocument();
   });
 
   // Phase 11N — evidence / fact verification.

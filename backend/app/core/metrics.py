@@ -419,6 +419,15 @@ def _register_default_families() -> None:
         "Fact verification reports persisted, by status.",
         ("status",),
     )
+    # Phase 12D — malware scanning
+    # Bounded labels ONLY: scanner name (fake|clamav) and outcome status
+    # (clean|infected|unavailable|error). NEVER file contents, hashes,
+    # filenames, project/source IDs, or free text as labels.
+    metrics.register_counter(
+        "malware_scans_total",
+        "Malware scans performed during source ingestion, by scanner and status.",
+        ("scanner", "status"),
+    )
 
 
 _register_default_families()

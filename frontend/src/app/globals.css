@@ -4,60 +4,122 @@
 
 @layer base {
   :root {
-    --background: 228 50% 98%;
-    --foreground: 228 34% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 228 34% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 228 34% 9%;
-    --primary: 237 75% 56%;
-    --primary-foreground: 228 100% 98%;
-    --secondary: 228 26% 94%;
-    --secondary-foreground: 228 30% 12%;
-    --muted: 228 22% 94%;
-    --muted-foreground: 228 14% 42%;
-    --accent: 228 26% 93%;
-    --accent-foreground: 228 30% 12%;
-    --destructive: 4 78% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 228 20% 88%;
-    --input: 228 20% 86%;
-    --ring: 237 75% 56%;
+    /* Fonts — Geist Variable (fontsource) + JetBrains Mono (next/font) */
+    --font-geist-sans: "Geist Variable", ui-sans-serif, system-ui,
+      -apple-system, "Segoe UI", sans-serif;
+
+    /* Material-3 brand tokens — light */
+    --background: #f8fafc;
+    --foreground: #1a1d24;
+    --card: #ffffff;
+    --card-foreground: #1a1d24;
+    --popover: #ffffff;
+    --popover-foreground: #1a1d24;
+    --primary: #0053db;
+    --primary-foreground: #ffffff;
+    --secondary: #eef1f6;
+    --secondary-foreground: #1a1d24;
+    --muted: #eceff5;
+    --muted-foreground: #575d6b;
+    --accent: #e8edf3;
+    --accent-foreground: #1a1d24;
+    --destructive: #ba1a1a;
+    --destructive-foreground: #ffffff;
+    --border: #e2e8f0;
+    --input: #d8deea;
+    --ring: #0053db;
     --radius: 0.5rem;
-    --success: 158 64% 34%;
-    --warning: 41 87% 48%;
-    --sidebar-bg: 228 42% 97%;
-    --sidebar-border: 228 20% 88%;
-    --surface-elevated: 0 0% 100%;
+    --success: #0b8a5f;
+    --warning: #b45309;
+    --sidebar-bg: #f8fafc;
+    --sidebar-border: #e2e8f0;
+    --surface-elevated: #ffffff;
+
+    /* Material-3 container / accent roles — light */
+    --primary-container: #dbe1ff;
+    --on-primary-container: #00174b;
+    --secondary-container: #acedff;
+    --on-secondary-container: #001f26;
+    --tertiary: #4a4ec0;
+    --tertiary-foreground: #ffffff;
+    --tertiary-container: #e1e0ff;
+    --on-tertiary-container: #07006c;
+    --error-container: #ffdad6;
+    --on-error-container: #690005;
+    --outline: #767a86;
+    --outline-variant: #e2e8f0;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f4f6fa;
+    --surface-container: #eceff5;
+    --surface-container-high: #e5e9f0;
+    --surface-container-highest: #dfe4eb;
+    --surface-variant: #e3e7ee;
+    --on-surface-variant: #575d6b;
+
+    /* Brand identity */
+    --logo-gradient-from: #5b6cf6;
+    --logo-gradient-to: #7c8bff;
+
+    /* Output-type identity colors */
+    --output-summary: #a78bfa;
+    --output-linkedin: #38bdf8;
+    --output-advisory: #f4b740;
+    --output-presentation: #2dd4bf;
+    --output-x: #e2e8f0;
+    --output-infographic: #fb923c;
+    --output-video: #f472b6;
+
     color-scheme: light;
   }
 
   .dark {
-    --background: 222 47% 5%;
-    --foreground: 228 100% 97%;
-    --card: 222 35% 7%;
-    --card-foreground: 228 100% 97%;
-    --popover: 222 35% 7%;
-    --popover-foreground: 228 100% 97%;
-    --primary: 237 75% 64%;
-    --primary-foreground: 228 100% 97%;
-    --secondary: 222 30% 10%;
-    --secondary-foreground: 228 100% 97%;
-    --muted: 222 25% 12%;
-    --muted-foreground: 222 20% 55%;
-    --accent: 222 30% 10%;
-    --accent-foreground: 228 100% 97%;
-    --destructive: 4 78% 62%;
-    --destructive-foreground: 228 100% 97%;
-    --border: 218 22% 17%;
-    --input: 218 22% 17%;
-    --ring: 237 75% 64%;
-    --radius: 0.5rem;
-    --success: 158 64% 51%;
-    --warning: 41 87% 60%;
-    --sidebar-bg: 222 40% 6%;
-    --sidebar-border: 218 22% 13%;
-    --surface-elevated: 222 30% 9%;
+    /* Material-3 brand tokens — dark (operational default) */
+    --background: #0f131c;
+    --foreground: #dfe2ee;
+    --card: #1c2028;
+    --card-foreground: #dfe2ee;
+    --popover: #1c2028;
+    --popover-foreground: #dfe2ee;
+    --primary: #b4c5ff;
+    --primary-foreground: #002a78;
+    --secondary: #262a33;
+    --secondary-foreground: #dfe2ee;
+    --muted: #262a33;
+    --muted-foreground: #c3c6d7;
+    --accent: #31353e;
+    --accent-foreground: #dfe2ee;
+    --destructive: #ffb4ab;
+    --destructive-foreground: #690005;
+    --border: #31353e;
+    --input: #262a33;
+    --ring: #b4c5ff;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --sidebar-bg: #0f131c;
+    --sidebar-border: #262a33;
+    --surface-elevated: #1c2028;
+
+    /* Material-3 container / accent roles — dark */
+    --primary-container: #2563eb;
+    --on-primary-container: #eeefff;
+    --secondary-container: #03b5d3;
+    --on-secondary-container: #00424e;
+    --tertiary: #c0c1ff;
+    --tertiary-foreground: #1000a9;
+    --tertiary-container: #585be6;
+    --on-tertiary-container: #f1eeff;
+    --error-container: #93000a;
+    --on-error-container: #ffdad6;
+    --outline: #8d90a0;
+    --outline-variant: #434655;
+    --surface-container-lowest: #0a0e16;
+    --surface-container-low: #181c24;
+    --surface-container: #1c2028;
+    --surface-container-high: #262a33;
+    --surface-container-highest: #31353e;
+    --surface-variant: #31353e;
+    --on-surface-variant: #c3c6d7;
+
     color-scheme: dark;
   }
 }
@@ -67,13 +129,13 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground tabular-nums;
   }
 }
 
 @layer components {
   .input-base {
-    @apply w-full rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply w-full rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-[color:color-mix(in_srgb,var(--muted-foreground)_60%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 }
 
@@ -81,7 +143,7 @@
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: var(--border) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -90,7 +152,25 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--border));
+    background-color: var(--border);
     border-radius: 3px;
+  }
+
+  /* Monospaced data labels (material label-mono roles) */
+  .label-mono-md {
+    font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+      Menlo, monospace;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .label-mono-sm {
+    font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+      Menlo, monospace;
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
   }
 }

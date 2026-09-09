@@ -119,7 +119,7 @@ describe("HomeWorkspace", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Run Transformation" }),
+      screen.getByRole("button", { name: "Transform" }),
     ).toBeDisabled();
     expect(
       screen.getByText(/Describe what to create and\/or attach a source/),
@@ -135,7 +135,7 @@ describe("HomeWorkspace", () => {
       ).toBeInTheDocument(),
     );
 
-    const run = () => screen.getByRole("button", { name: "Run Transformation" });
+    const run = () => screen.getByRole("button", { name: "Transform" });
     expect(run()).toBeDisabled();
 
     await userEvent.type(
@@ -167,7 +167,7 @@ describe("HomeWorkspace", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Summary/ }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Run Transformation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Transform" }));
 
     await waitFor(() =>
       expect(mockFetch).toHaveBeenCalledWith(
@@ -209,7 +209,7 @@ describe("HomeWorkspace", () => {
       screen.getByRole("checkbox", { name: /Summary/ }),
     );
 
-    const run = () => screen.getByRole("button", { name: "Run Transformation" });
+    const run = () => screen.getByRole("button", { name: "Transform" });
     expect(run()).toBeEnabled();
     expect(
       screen.getByText(/your source \(no additional instruction\)/),
@@ -224,7 +224,7 @@ describe("HomeWorkspace", () => {
       ).toBeInTheDocument(),
     );
 
-    const run = () => screen.getByRole("button", { name: "Run Transformation" });
+    const run = () => screen.getByRole("button", { name: "Transform" });
     await userEvent.type(
       screen.getByLabelText("Transformation prompt"),
       "Summarize the quarterly results",

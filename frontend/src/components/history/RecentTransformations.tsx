@@ -131,7 +131,7 @@ export function RecentTransformations({
                 {job.error_message}
               </p>
             )}
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="label-mono-sm mt-1 text-muted-foreground">
               {formatDateTime(job.created_at)}
             </p>
           </Link>

@@ -46,7 +46,7 @@ export default function HelpPage() {
             <li className="flex gap-2"><span className="font-medium text-primary">1.</span> Open Home and describe what you want to create.</li>
             <li className="flex gap-2"><span className="font-medium text-primary">2.</span> Optionally add a source (PDF, DOCX or TXT) for grounded output.</li>
             <li className="flex gap-2"><span className="font-medium text-primary">3.</span> Choose a tone, audience and output language.</li>
-            <li className="flex gap-2"><span className="font-medium text-primary">4.</span> Select one or more outputs and click Run Transformation.</li>
+            <li className="flex gap-2"><span className="font-medium text-primary">4.</span> Select one or more outputs and click Transform.</li>
             <li className="flex gap-2"><span className="font-medium text-primary">5.</span> Review each output&apos;s verification results (grounding, consistency, claims).</li>
             <li className="flex gap-2"><span className="font-medium text-primary">6.</span> Download available artifacts (text, PPTX, PNG, PDF, SRT), or copy text outputs.</li>
           </ol>

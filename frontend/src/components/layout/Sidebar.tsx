@@ -133,7 +133,12 @@ export function SidebarNav({ active }: { active?: string }) {
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 pt-2">
+        <nav className="flex-1 space-y-1 px-3 pt-3">
+          {!collapsed && (
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              Workspace
+            </p>
+          )}
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const isCurrent = resolveActive(href);
             return (
@@ -145,7 +150,7 @@ export function SidebarNav({ active }: { active?: string }) {
                   "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                   collapsed && "justify-center px-2",
                   isCurrent
-                    ? "bg-accent font-medium text-foreground"
+                    ? "bg-primary/10 font-medium text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                 )}
                 aria-current={isCurrent ? "page" : undefined}
@@ -158,6 +163,11 @@ export function SidebarNav({ active }: { active?: string }) {
         </nav>
 
         <div className="space-y-1 border-t border-sidebar-border px-3 py-3">
+          {!collapsed && (
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              System
+            </p>
+          )}
           {BOTTOM_ITEMS.map(({ href, label, icon: Icon }) => {
             const isCurrent = resolveActive(href);
             return (
@@ -169,7 +179,7 @@ export function SidebarNav({ active }: { active?: string }) {
                   "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                   collapsed && "justify-center px-2",
                   isCurrent
-                    ? "bg-accent font-medium text-foreground"
+                    ? "bg-primary/10 font-medium text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                 )}
                 aria-current={isCurrent ? "page" : undefined}
@@ -388,7 +398,10 @@ function MobileDrawer({ active }: { active?: string }) {
               </Link>
             </div>
 
-            <nav className="flex-1 space-y-1 px-3 pt-2">
+            <nav className="flex-1 space-y-1 px-3 pt-3">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                Workspace
+              </p>
               {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
                 const isCurrent = resolveActive(href);
                 return (
@@ -398,7 +411,7 @@ function MobileDrawer({ active }: { active?: string }) {
                     className={cn(
                       "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm",
                       isCurrent
-                        ? "bg-accent font-medium text-foreground"
+                        ? "bg-primary/10 font-medium text-primary-foreground"
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                     )}
                     aria-current={isCurrent ? "page" : undefined}
@@ -411,6 +424,9 @@ function MobileDrawer({ active }: { active?: string }) {
             </nav>
 
             <div className="space-y-1 border-t border-sidebar-border px-3 py-3">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                System
+              </p>
               {BOTTOM_ITEMS.map(({ href, label, icon: Icon }) => {
                 const isCurrent = resolveActive(href);
                 return (
@@ -420,7 +436,7 @@ function MobileDrawer({ active }: { active?: string }) {
                     className={cn(
                       "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm",
                       isCurrent
-                        ? "bg-accent font-medium text-foreground"
+                        ? "bg-primary/10 font-medium text-primary-foreground"
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                     )}
                     aria-current={isCurrent ? "page" : undefined}

@@ -22,6 +22,8 @@ interface AppShellProps {
   subtitle?: string;
   /** Right-side top bar actions (buttons/links). */
   actions?: ReactNode;
+  /** Optional inspector rail (pinned right dock on xl+). */
+  inspector?: ReactNode;
   /** Additional classes for the main area. */
   mainClassName?: string;
   /** Active nav section override. */
@@ -33,6 +35,7 @@ export function AppShell({
   title,
   subtitle,
   actions,
+  inspector,
   mainClassName,
   active,
 }: AppShellProps) {
@@ -82,6 +85,18 @@ export function AppShell({
           {children}
         </main>
       </div>
+
+      {/* Optional inspector dock (pinned right rail on xl+). */}
+      {inspector && (
+        <aside
+          aria-label="Inspector"
+          className="hidden w-96 shrink-0 border-l border-sidebar-border bg-surface-elevated/40 xl:block"
+        >
+          <div className="sticky top-0 max-h-screen overflow-y-auto p-4">
+            {inspector}
+          </div>
+        </aside>
+      )}
       </div>
     </RequireAuth>
   );

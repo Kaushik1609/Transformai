@@ -108,7 +108,7 @@ export function HistoryPanel({
           >
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <span className="flex items-center gap-2 text-xs font-medium text-foreground">
-                Job {job.id.slice(0, 8)}…
+                <span className="label-mono-sm">Job {job.id.slice(0, 8)}…</span>
                 {(() => {
                   const completion = jobCompletionStatus(
                     job,
@@ -124,7 +124,7 @@ export function HistoryPanel({
                   <span className="text-[11px] text-primary">(current)</span>
                 )}
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="label-mono-sm text-muted-foreground">
                 {formatDateTime(job.created_at)}
               </span>
             </div>
@@ -140,7 +140,7 @@ export function HistoryPanel({
             )}
 
             {isTerminalJobStatus(job.status) && job.completed_at && (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="label-mono-sm mt-0.5 text-muted-foreground">
                 Completed {formatDateTime(job.completed_at)}
               </p>
             )}

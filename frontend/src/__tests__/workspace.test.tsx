@@ -109,7 +109,7 @@ describe("TransformationWorkspace", () => {
     expect(screen.getByText(/Add a source first/)).toBeInTheDocument();
     expect(screen.getByText(/Save a configuration/)).toBeInTheDocument();
     expect(screen.getByText(/Select at least one output type/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Generate outputs" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Transform" })).toBeDisabled();
     expect(screen.getByText("1 · Source")).toBeInTheDocument();
   });
 
@@ -125,7 +125,7 @@ describe("TransformationWorkspace", () => {
     expect(
       screen.getByText("Processing source… you can continue configuring while it completes."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Generate outputs" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Transform" })).toBeDisabled();
     expect(screen.getByText(/Wait for the source to become ready/)).toBeInTheDocument();
   });
 
@@ -153,12 +153,12 @@ describe("TransformationWorkspace", () => {
     expect(screen.getByText("2 selected")).toBeInTheDocument();
 
     // Generate.
-    await userEvent.click(screen.getByRole("button", { name: "Generate outputs" }));
+    await userEvent.click(screen.getByRole("button", { name: "Transform" }));
 
     // Generating state (job queued by the fake backend).
     await waitFor(
       () =>
-        expect(screen.getAllByText("Generating…").length).toBeGreaterThan(0),
+        expect(screen.getAllByText("Transforming…").length).toBeGreaterThan(0),
       { interval: 10 },
     );
     expect(screen.getByText("In progress…")).toBeInTheDocument();
@@ -205,7 +205,7 @@ describe("TransformationWorkspace", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Summary/ }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Generate outputs" }));
+    await userEvent.click(screen.getByRole("button", { name: "Transform" }));
 
     await waitFor(() => expect(screen.getByText("Failed")).toBeInTheDocument(), {
       timeout: 2000,

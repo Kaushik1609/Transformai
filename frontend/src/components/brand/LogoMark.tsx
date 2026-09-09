@@ -14,8 +14,8 @@ export function LogoMark({ size = 32 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="tiq-mark" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#5B6CF6" />
-          <stop offset="1" stopColor="#7C8BFF" />
+          <stop style={{ stopColor: "var(--logo-gradient-from)" }} />
+          <stop offset="1" style={{ stopColor: "var(--logo-gradient-to)" }} />
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="8" fill="url(#tiq-mark)" />

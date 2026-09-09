@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import "@fontsource-variable/geist/index.css";
+import { JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
 
 export const metadata: Metadata = {
   title: "TransformIQ — One source, every format",
@@ -20,7 +24,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body
+        className={`${jetbrainsMono.variable} font-sans antialiased`}
+      >
         <script
           dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }}
         />

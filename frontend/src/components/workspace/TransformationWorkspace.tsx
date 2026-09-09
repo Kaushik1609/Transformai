@@ -228,7 +228,7 @@ export function TransformationWorkspace({
       case "processing":
         return "Processing source…";
       case "generating":
-        return "Generating…";
+        return "Transforming…";
       case "verifying":
         return "Verifying outputs…";
       case "completed":
@@ -344,9 +344,9 @@ export function TransformationWorkspace({
             />
           </SectionCard>
 
-          <SectionCard
-            title="3 · Outputs"
-            description="Choose what to generate."
+<SectionCard
+              title="3 · Outputs"
+              description="Choose what to transform."
             right={
               selectedOutputs.length > 0 && (
                 <StatusBadge variant="info">
@@ -368,7 +368,7 @@ export function TransformationWorkspace({
         {/* ------------------------------------------------------ */}
         <div className="space-y-6">
           <SectionCard
-            title="4 · Generate"
+            title="4 · Transform"
             description="Start an asynchronous transformation job."
           >
             <div className="space-y-4">
@@ -380,11 +380,11 @@ export function TransformationWorkspace({
               >
                 {phase === "generating" ? (
                   <>
-                    <LoadingSpinner size="sm" label="Generating…" />
-                    Generating…
+                    <LoadingSpinner size="sm" label="Transforming…" />
+                    Transforming…
                   </>
                 ) : (
-                  "Generate outputs"
+                  "Transform"
                 )}
               </button>
 
@@ -422,7 +422,7 @@ export function TransformationWorkspace({
           {job && (
             <SectionCard
               title="5 · Results & verification"
-              description="Generated artifacts and their verification state."
+              description="Transformed artifacts and their verification state."
             >
               <div className="space-y-3">
                 {job.status === "failed" && job.error_message && (
@@ -440,7 +440,7 @@ export function TransformationWorkspace({
 
           {!job && (
             <p className="hidden text-xs text-muted-foreground lg:block">
-              Results and verification will appear here after you generate.
+              Results and verification will appear here after you transform.
             </p>
           )}
 
@@ -501,13 +501,13 @@ function JobProgress({
   return (
     <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-xs font-medium text-foreground">
+        <span className="label-mono-sm flex items-center gap-2 font-medium text-foreground">
           Job {job.id.slice(0, 8)}…
           <StatusBadge variant={jobStatusVariant(job.status)}>
             {job.status}
           </StatusBadge>
         </span>
-        <span className="text-xs text-muted-foreground">
+        <span className="label-mono-sm text-muted-foreground">
           {running ? "In progress…" : `${job.progress}%`}
         </span>
       </div>

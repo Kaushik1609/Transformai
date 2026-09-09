@@ -365,7 +365,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         </h2>
         <p className="mx-auto max-w-xl text-sm text-muted-foreground">
           Give TransformIQ your source and instructions. Choose one or more
-          outputs and we&apos;ll generate them together.
+          outputs and we&apos;ll transform them together.
         </p>
       </section>
 
@@ -415,7 +415,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
               onClick={() => void handleRun()}
               disabled={!canRun}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Run transformation"
+              aria-label="Start transformation"
             >
               {phase === "generating" ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -490,7 +490,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
             Choose your outputs
           </h3>
           <p className="text-xs text-muted-foreground">
-            Select one or more formats. TransformIQ will generate them from the
+            Select one or more formats. TransformIQ will create them from the
             same source and instructions.
           </p>
         </div>
@@ -551,7 +551,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
           ) : (
             <Send className="h-4 w-4" aria-hidden="true" />
           )}
-          Run Transformation
+          Transform
         </button>
         {!canRun && (
           <ul className="space-y-0.5 text-center text-xs text-muted-foreground">
@@ -709,7 +709,7 @@ function RecentList({
                     : ""}
                 </span>
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="label-mono-sm text-muted-foreground">
                 {timeAgo(job.created_at)}
               </span>
             </Link>
@@ -740,7 +740,7 @@ function RecentProjectsList({ projects }: { projects: ProjectResponse[] }) {
               <span className="truncate text-foreground">
                 {isQuickProjectName(project.name) ? "Quick Transformations" : project.name}
               </span>
-              <span className="shrink-0 text-xs text-muted-foreground">
+              <span className="label-mono-sm shrink-0 text-muted-foreground">
                 {timeAgo(project.updated_at)}
               </span>
             </a>

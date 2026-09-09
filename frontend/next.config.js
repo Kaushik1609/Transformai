@@ -5,6 +5,9 @@ const nextConfig = {
   env: {
     INTERNAL_API_URL: process.env.INTERNAL_API_URL || "http://localhost:8000",
   },
+  // Standalone output for production: the frontend/Dockerfile runner stage
+  // copies .next/standalone (self-contained Next.js server) at build time.
+  output: "standalone",
   // Strict mode for highlighting potential issues in development.
   reactStrictMode: true,
 };

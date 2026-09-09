@@ -407,28 +407,42 @@ a storage key.
 
 ## 6. Authentication and Authorization
 
-### Current authentication mechanism (PARTIALLY IMPLEMENTED)
+### Current authentication mechanism (11F + 11I-1 — IMPLEMENTED)
 
-- **Development identity (`DEV_AUTH_BYPASS`, default `true` in dev):** FastAPI's
-  `get_current_user` injects a **stable, deterministic** development identity
-  (`DEV_USER_ID = 00000000-0000-0000-0000-000000000001`, email `dev@transformiq.local`,
-  role `operator`). It is stable across requests/restarts so test data and the DB
-  ownership model remain usable.
-- **When `DEV_AUTH_BYPASS=false`:** the dependency raises `401` ("Authentication is
-  required"). **Real production authentication (JWT / session / SSO) is not implemented.**
-- `AUTH_SECRET_KEY`, `AUTH_ALGORITHM`, `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` are declared in
-  settings but real token issuance/verification is not wired up. The default
-  `AUTH_SECRET_KEY` warns at startup that it must be replaced before deployment.
-- The frontend mirrors this with a lightweight local dev session (`localStorage`), no
-  credentials transmitted.
+- **OTP passwordless login (11F):** `POST /api/v1/auth/register` creates a user (email,
+  name, bcrypt-hashed password, role `analyst` by default); `POST /api/v1/auth/login`
+  issues a **time-limited, single-use OTP** delivered through
+  `app/auth/otp_delivery.py` (console by default; an SMS gateway adapter is stubbed);
+  `POST /api/v1/auth/verify` exchanges the OTP for a **JWT**. OTP values persist only as
+  salted HMAC digests (`app/auth/otp_service.py`, `app/auth/otp_store.py`) and the verify
+  endpoint is rate-limited (`rate_limit_bucket("otp_verify")`).
+- **JWT issuance / verification:** `app/core/security.py` — `create_access_token` /
+  `decode_access_token` (python-jose, `AUTH_ALGORITHM`, `AUTH_SECRET_KEY`,
+  `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES`). The default `AUTH_SECRET_KEY` warns at startup that
+  it must be replaced before deployment.
+- **Bearer enforcement:** `app/api/deps.py` `get_current_user` requires
+  `Authorization: Bearer <jwt>`, verifies signature and expiry, then loads the user from
+  the `users` table. Identity is resolved server-side from the token, never from the
+  client.
+- **Role-based access control (11F):** roles `analyst` (default), `operator`, `admin`;
+  `require_analyst` / `require_admin` dependencies gate routes (e.g. `app/api/v1/admin.py`).
+- **Frontend (11I-1):** `frontend/src/lib/auth.ts` stores the JWT in `localStorage`;
+  `frontend/src/components/auth/RequireAuth.tsx` + `AuthShell` gate client and server
+  routes; `login` / `register` pages drive the OTP flow.
+- **Development identity remains available as an explicit dev-only bypass:** with
+  `DEV_AUTH_BYPASS=true` (default in dev only) `get_current_user` returns a **stable,
+  deterministic** dev identity (`DEV_USER_ID = 00000000-0000-0000-0000-000000000001`,
+  email `dev@transformiq.local`, role `operator`). When `DEV_AUTH_BYPASS=false` an
+  unauthenticated request raises `401`.
 
 ### Development bypass vs production security — clearly distinguished
 
 - `DEV_AUTH_BYPASS` is a **development-only** convenience. The configuration docstring
-  states it **must be false in staging and production**, and there is no fallback to an
-  arbitrary user when it is false.
-- Production-grade identity, secrets management, and session security are **PLANNED**
-  (see [§22](#22-planned-architecture-extensions)); they are not claimed as implemented.
+  states it **must be false in staging and production**, the bypass never synthesizes an
+  arbitrary user, and there is no fallback when it is off.
+- Real identity providers, refresh-token rotation, MFA, secrets management, and session
+  security remain **PLANNED** (see [§22](#22-planned-architecture-extensions)); they are
+  not claimed as implemented.
 
 ### Authorization model (IMPLEMENTED, Phase 9A)
 
@@ -1029,8 +1043,10 @@ completed|failed`, incremental `progress`, savepoint isolation, partial success.
   Sourced exclusively from `backend/app/core/config.py` `WORKER_JOB_TIMEOUT` (nowhere else).
 - **Per-output timeout decoupling is future work** — the current implementation does not
   split the transformation into separate RQ jobs per output, nor does it enforce
-  per-output timeouts. Provider retry/backoff and per-output timeout orchestration are
-  Phase 11D work ([§22](#22-planned-architecture-extensions)).
+  per-output timeouts. Provider retry/backoff, 429 handling, circuit breaking and
+  fallback are implemented via the Phase 11D `ProviderManager`
+  ([§11](#11-llm-architecture)); per-output timeout orchestration remains future work
+  ([§22](#22-planned-architecture-extensions)).
 
 ---
 
@@ -1465,6 +1481,82 @@ flowchart TB
     note2["Generation sequential within one worker; per-output savepoint isolation"]
 ```
 
+### 20.8 Layered security architecture
+
+```mermaid
+flowchart TB
+    subgraph L1["L1 — Presentation (Next.js 14 / React 18)"]
+        UI["frontend/src/app — login · register · projects · workspace · history"]
+        AUTHUI["components/auth/RequireAuth + AuthShell (client + server route gate)"]
+        LIB["lib/auth.ts (JWT in localStorage) · lib/api.ts (Bearer header)"]
+    end
+
+    subgraph L2["L2 — API Perimeter (FastAPI /api/v1)"]
+        DEPS["api/deps.py get_current_user (Bearer JWT verify)"]
+        RBAC["require_analyst / require_admin (analyst · operator · admin)"]
+        RL["core/ratelimit.py rate_limit_bucket(otp_verify, source_upload, …)"]
+        OWN["ownership-scoped service lookups — 404 on DENY (9A)"]
+    end
+
+    subgraph L3["L3 — Authentication & Identity (11F / 11I-1)"]
+        OTP["auth/otp_service + otp_store + otp_delivery (salted, single-use)"]
+        JWT["core/security.py create/decode_access_token (python-jose)"]
+        USERS[("db/models/user.py — bcrypt hash + role")]
+    end
+
+    subgraph L4["L4 — Trust Gates (content & output)"]
+        GV["ingestion/validation.py validate_source (type / MIME / size / filename)"]
+        GEX["transformation/schemas.py — canonical-content availability gate"]
+        GR["rag + retrieval/service.py — SQL-level project/source isolation"]
+        GI["Source evidence = UNTRUSTED data (prompt-injection boundary, §9)"]
+        GO["transformation/security/output_validator.py → BLOCKED / warning / valid (11H)"]
+    end
+
+    subgraph L5["L5 — Data & Artifact Integrity"]
+        PG[("PostgreSQL + pgvector — ownership scoping, job state")]
+        ST["ingestion/storage.py LocalStorage + authorized storage keys"]
+        H["transformation/artifacts.py sha256_hex → output_metadata (artifact integrity)"]
+        RD[("Redis — RQ queues + rate-limit backing")]
+    end
+
+    subgraph L6["L6 — External AI Boundary"]
+        LLM["llm/factory.py ProviderManager — retry / backoff / 429 / circuit (11D)"]
+        EMB["embeddings/factory.py — OpenAI-compatible + fake providers (11G / 11I-2)"]
+    end
+
+    UI --> AUTHUI
+    AUTHUI --> LIB
+    LIB --> DEPS
+    DEPS --> RBAC
+    DEPS --> RL
+    DEPS --> OWN
+    DEPS --> JWT
+    OTP --> JWT
+    USERS --> OTP
+    USERS --> JWT
+
+    OWN --> GV
+    GV --> GEX
+    GEX --> GR
+    GR --> GI
+    GI --> GENS["LangGraph generators (generators/*)"]
+    GENS --> LLM
+    GENS --> GO
+    LLM --> GO
+    GO --> H
+    GO --> PG
+    H --> ST
+    OWN --> PG
+    OWN --> RD
+    GENS --> EMB
+    EMB --> PG
+
+    style GI fill:#fbb,stroke:#f66
+    style GO fill:#fdd,stroke:#d33
+    style JWT fill:#efe,stroke:#484
+    style DEPS fill:#efe,stroke:#484
+```
+
 ---
 
 ## 21. Current Limitations
@@ -1482,12 +1574,15 @@ The following limitations are **actually present** in the repository:
 - **No multimodal extraction / vision understanding.**
 - **Video output is a structured MVP package** (script/storyboard/narration/subtitles →
   PDF + SRT), **not** an MP4 video.
-- **Authentication is a development bypass** (`DEV_AUTH_BYPASS`). Real production
-  authentication/session is not implemented.
+- **OTP + JWT authentication is implemented** (11F / 11I-1) with roles and rate limits,
+  but the env-controlled dev bypass (`DEV_AUTH_BYPASS`) is still the default in `dev`;
+  production identity hardening (SSO / MFA / refresh rotation / secrets manager) is not
+  present.
 - **Embedding and content-intelligence providers are deterministic (fake)** in the
   worker path.
-- **LLM resilience** (fallback, circuit breaker, advanced retry/backoff, controlled
-  concurrency, per-output timeouts) is future work.
+- **LLM resilience** (retry/backoff, 429 handling, circuit breaker, health tracking,
+  optional fallback) is implemented (11D); **controlled concurrency and per-output
+  timeouts** remain future work.
 - **Production hardening** (identity, secrets management, scaling, monitoring, secure
   deployment, backup/recovery, HA) is future work.
 - **Transformations execute sequentially** per job (no physical parallelism).
@@ -1532,6 +1627,9 @@ every possible future feature as a limitation.
 - Permissioned blockchain / ledger **if adopted**.
 - **Important:** confidential source documents must **not** be stored directly
   on-chain.
+- **Note:** deterministic per-artifact SHA-256 digests are already recorded in
+  `output_metadata` (`app/transformation/artifacts.py`); chaining these digests into a
+  tamper-evident audit trail / ledger is what remains future.
 
 ### Future Evaluation
 
@@ -1584,32 +1682,33 @@ every possible future feature as a limitation.
 | AREA | STATUS | PHASE | NOTES |
 |------|--------|-------|-------|
 | Frontend (Next.js/React/TS/shadcn) | IMPLEMENTED | 1–10 | Home, projects, workspace, history, settings, help |
-| Frontend auth/session | PARTIALLY IMPLEMENTED | 1–2 | Dev local session only; real auth PLANNED |
+| Frontend auth/session | IMPLEMENTED | 11I-1 | OTP + JWT flow, RequireAuth gate; dev bypass opt-in |
 | Backend API (FastAPI `/api/v1`) | IMPLEMENTED | 1–10 | Projects, sources, configs, transformations, outputs |
-| Authentication | PARTIALLY IMPLEMENTED | 1–9A | `DEV_AUTH_BYPASS` dev identity |
+| Authentication | IMPLEMENTED | 11F | OTP login + JWT Bearer + RBAC + rate limits; dev bypass dev-only |
 | Authorization / isolation | IMPLEMENTED | 9A | DB-level ownership scoping, 404 on DENY |
 | Ingestion validation | IMPLEMENTED | 3A–3B | MIME/size/filename/empty checks |
 | Document extraction (PDF/DOCX/text) | PARTIALLY IMPLEMENTED | 3C | Text only; no OCR/tables |
 | Normalization / chunking | IMPLEMENTED | 3B | Boundary-aware, provenance metadata |
-| Embedding / indexing | PARTIALLY IMPLEMENTED | 3E | Deterministic fake provider; pgvector column; no ANN index |
+| Embedding / indexing | PARTIALLY IMPLEMENTED | 3E/11G/11I-2 | OpenAI-compatible + fake providers via factory + retry ceiling; pgvector column; no ANN index |
 | Retrieval / RAG | PARTIALLY IMPLEMENTED | 3F/5/11A-B | Dense + lexical fusion; no BM25/reranker |
 | RAG security (injection boundary) | IMPLEMENTED | 11A-C | UNTRUSTED evidence block, bounded, cited |
 | Content intelligence (canonical) | PARTIALLY IMPLEMENTED | 4 | Deterministic fake provider |
 | Transformation orchestration | IMPLEMENTED | 6 | LangGraph workflow |
 | Multi-output orchestration | IMPLEMENTED | 11C | One job / many outputs, savepoint isolation, progress |
-| LLM provider abstraction | IMPLEMENTED | 7D | Fake + OpenAI provider, factory |
-| LLM resilience (retry/backoff/fallback/circuit) | PLANNED | 11D | Not implemented |
+| LLM provider abstraction | IMPLEMENTED | 7D | Fake + OpenAI + Gemini providers, factory |
+| LLM resilience (retry/backoff/fallback/circuit) | IMPLEMENTED | 11D | `ProviderManager`: backoff+jitter, 429, circuit breaker, health, optional fallback; per-output timeout PLANNED |
 | Output generators (7 types) | IMPLEMENTED | 7 | Registry, deterministic fallbacks |
 | Output schemas / validation | IMPLEMENTED | 7 | Pydantic `extra="forbid"`, parser |
+| Output security validation | IMPLEMENTED | 11H | Deterministic BLOCKED/warning verdict (`transformation/security/output_validator.py`) |
 | Verification engine | IMPLEMENTED | 8 | Deterministic grounding/consistency |
 | Artifact rendering (PPTX/PNG+PDF/PDF+SRT) | IMPLEMENTED | 8A-D | Deterministic renderers |
 | Video output | PARTIALLY IMPLEMENTED | 8D | MVP structured package PDF/SRT; not MP4 |
 | Storage / persistence | IMPLEMENTED | 1–8 | PostgreSQL + storage abstraction |
-| Worker / RQ / async processing | IMPLEMENTED | 1/6 | One job per transformation; per-output timeout PLANNED |
+| Worker / RQ / async processing | IMPLEMENTED | 1/6/11I-2 | One job per transformation; 605 s job timeout single-sourced; per-output timeout PLANNED |
 | History | IMPLEMENTED | 10A | Job history reload + output persistence |
 | Export (DOCX/PDF) | IMPLEMENTED | 10B | summary/advisory only |
 | Deployment (Docker Compose local) | IMPLEMENTED | 1 | 5 services |
 | Production deployment | PLANNED | — | Not implemented |
 | Cybersecurity gates (PII/secret/malware/safety) | PLANNED | — | Not implemented |
-| Provenance (hashing / audit / ledger) | PLANNED | — | Not implemented |
+| Artifact integrity (SHA-256) | PARTIALLY IMPLEMENTED | 8D/11H | Per-artifact digests in `output_metadata`; chained ledger / audit trail PLANNED |
 | Evaluation / observability | PLANNED | — | Not implemented |

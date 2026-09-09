@@ -59,3 +59,9 @@ python-pptx==1.0.2
 # Retry / resilience
 # ---------------------------------------------------------------------------
 tenacity==9.0.0
+
+# ---------------------------------------------------------------------------
+# Object storage (S3-compatible, e.g. MinIO) — transformation workers write
+# output artifacts and read source blobs through the storage layer.
+# ---------------------------------------------------------------------------
+boto3==1.43.89

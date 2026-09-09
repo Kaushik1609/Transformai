@@ -733,12 +733,22 @@ class TestTextInputBudgetCaps:
 
 
 def _prod(**overrides) -> Settings:
+    # Phase 14D tightened the production contract: fake/mock providers,
+    # unkeyed real providers, memory-backed shared stores, and the in-memory
+    # audit sink are refused in production. This helper encodes a fully valid
+    # production configuration so the assertions below stay green.
     kwargs = dict(
         ENVIRONMENT="production",
         AUTH_SECRET_KEY="a" * 64,
         OTP_PROVIDER="email",
         OTP_STORE_BACKEND="redis",
         ALLOWED_ORIGINS="https://app.transformiq.example",
+        LLM_API_KEY="test-llm-key",
+        EMBEDDING_PROVIDER="openai",
+        EMBEDDING_API_KEY="test-embedding-key",
+        SECURITY_AUDIT_SINK="database",
+        AUTH_TOKEN_REVOCATION_STORE="redis",
+        RATE_LIMIT_BACKEND="redis",
         _env_file=None,
     )
     kwargs.update(overrides)

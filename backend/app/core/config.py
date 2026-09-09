@@ -813,6 +813,92 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _validate_production_provider_and_stores(self) -> "Settings":
+        """Fail closed for production provider/storage configuration (Phase 14).
+
+        In ``production`` the API refuses to boot with:
+          * the security audit emitter disabled or the in-memory sink (a
+            per-replica sink cannot persist events across replicas);
+          * a fake/mock LLM or embedding provider, or a real provider without
+            its API key;
+          * memory-backed revocation / rate-limit / cache stores (per-replica
+            and non-shared, which breaks revocation and coordinated limiting);
+          * an incomplete S3 configuration (never silently falling back to
+            local storage).
+
+        ``staging`` stays permissive on providers (deployment validation uses
+        deterministic offline providers), but an incomplete S3 configuration is
+        still rejected so a staging/staging-like misconfiguration fails at boot
+        instead of at first upload.
+        """
+        if self.ENVIRONMENT == "production":
+            if not self.SECURITY_AUDIT_ENABLED:
+                raise ValueError(
+                    "SECURITY_AUDIT_ENABLED must be True in production; "
+                    "refusing to run without the security audit emitter."
+                )
+            if self.SECURITY_AUDIT_SINK != "database":
+                raise ValueError(
+                    "SECURITY_AUDIT_SINK must be 'database' in production; "
+                    "the in-memory sink cannot persist audit events across "
+                    "replicas."
+                )
+            if self.LLM_PROVIDER == "fake":
+                raise ValueError(
+                    "LLM_PROVIDER='fake' is not allowed in production; "
+                    "a real model provider is required."
+                )
+            if self.EMBEDDING_PROVIDER == "fake":
+                raise ValueError(
+                    "EMBEDDING_PROVIDER='fake' is not allowed in production; "
+                    "a real embedding provider is required."
+                )
+            if self.LLM_PROVIDER != "fake" and not self.LLM_API_KEY:
+                raise ValueError(
+                    f"LLM_API_KEY is required in production when "
+                    f"LLM_PROVIDER='{self.LLM_PROVIDER}'."
+                )
+            if self.EMBEDDING_PROVIDER == "openai" and not self.EMBEDDING_API_KEY:
+                raise ValueError(
+                    "EMBEDDING_API_KEY is required in production when "
+                    "EMBEDDING_PROVIDER='openai'."
+                )
+            if self.AUTH_TOKEN_REVOCATION_STORE != "redis":
+                raise ValueError(
+                    "AUTH_TOKEN_REVOCATION_STORE must be 'redis' in production; "
+                    "the in-memory store cannot share revocations across replicas."
+                )
+            if self.RATE_LIMIT_BACKEND != "redis":
+                raise ValueError(
+                    "RATE_LIMIT_BACKEND must be 'redis' in production; "
+                    "the in-memory limiter is per-replica."
+                )
+            if self.CACHE_ENABLED and self.CACHE_BACKEND != "redis":
+                raise ValueError(
+                    "CACHE_BACKEND must be 'redis' in production when "
+                    "CACHE_ENABLED is True."
+                )
+
+        if self.ENVIRONMENT in ("staging", "production"):
+            if self.STORAGE_BACKEND == "s3":
+                missing = [
+                    name
+                    for name, value in (
+                        ("STORAGE_BUCKET", self.STORAGE_BUCKET),
+                        ("STORAGE_ACCESS_KEY", self.STORAGE_ACCESS_KEY),
+                        ("STORAGE_SECRET_KEY", self.STORAGE_SECRET_KEY),
+                    )
+                    if not value
+                ]
+                if missing:
+                    raise ValueError(
+                        "STORAGE_BACKEND='s3' requires "
+                        f"{', '.join(missing)} to be set in {self.ENVIRONMENT}; "
+                        "refusing to silently fall back to local storage."
+                    )
+        return self
+
 
 @lru_cache
 def get_settings() -> Settings:

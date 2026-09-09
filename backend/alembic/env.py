@@ -76,6 +76,14 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        # Run the version-table fix in its OWN committed transaction.
+        # Without the explicit `with connection.begin():` the DDL autobegins an
+        # outer transaction; alembic's `context.begin_transaction()` then nests
+        # as a savepoint and the outer transaction silently rolls back on
+        # connection close — migrations would appear to succeed yet never
+        # commit. This makes the ensure idempotent AND durable.
+        with connection.begin():
+            _ensure_wide_version_table(connection)
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -83,6 +91,36 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+
+
+def _ensure_wide_version_table(connection) -> None:
+    """
+    Ensure ``alembic_version.version_num`` can hold every revision id.
+
+    Alembic's default version table column is VARCHAR(32), but this project's
+    revision ids are long (e.g. ``0004_phase6_transformation_output_error`` is
+    40 characters) and exceeding the width aborts a fresh deployment with
+    ``StringDataRightTruncation``. Dev databases were widened manually to
+    VARCHAR(100); this makes fresh production databases match by pre-creating
+    or widening the table identically. Idempotent and transaction-safe.
+    """
+    from sqlalchemy import inspect, text
+
+    table_name = "alembic_version"
+    if table_name in inspect(connection).get_table_names():
+        connection.execute(
+            text(
+                f"ALTER TABLE {table_name} "
+                "ALTER COLUMN version_num TYPE VARCHAR(100)"
+            )
+        )
+    else:
+        connection.execute(
+            text(
+                f"CREATE TABLE {table_name} "
+                "(version_num VARCHAR(100) NOT NULL PRIMARY KEY)"
+            )
+        )
 
 
 if context.is_offline_mode():

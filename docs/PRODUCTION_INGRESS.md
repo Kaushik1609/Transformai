@@ -75,7 +75,7 @@ server {
 
 ## Protections in the application (do not weaken at the proxy)
 
-- `CORS` — configured via `BACKEND_CORS_ORIGINS`; credentials-based auth means
+- `CORS` — configured via `ALLOWED_ORIGINS`; credentials-based auth means
   wildcard origins are never valid in production.
 - `AUTH_SECRET_KEY` — must be a strong random secret. The development default is
   used only when unset and triggers a startup warning (see 11L-F).

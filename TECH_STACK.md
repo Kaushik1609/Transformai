@@ -2,591 +2,170 @@
 
 ## TransformIQ — Gen AI Platform for Automated Content Transformation
 
-**SIH Problem Statement:** 26154  
-**Version:** 1.0  
-**Status:** Approved for MVP planning
+**SIH Problem Statement:** 26154
+**Version:** 2.0
+**Status:** Implemented stack — verified from the repository (requirements.txt, worker/requirements.txt, frontend/package.json, docker-compose.yml)
+**Supersedes:** v1.0 "Approved for MVP planning" (retains constraints that are still in force, §4)
+
+> This document reflects what is **actually pinned and running** today, not a target
+> stack. Everything listed is traceable to a dependency file or a tested module. Ground
+> truth for live test counts: `docs/test_report.md` (backend 794 passed / 1 skipped,
+> frontend 171 passed).
 
 ---
 
-## 1. Purpose
+## 1. Implemented Stack by Layer
 
-This document defines the approved technology stack for TransformIQ.
-
-The stack is optimized for SIH 2026 prototype delivery, rapid AI-assisted/vibe-coded development, IBM Bob compatibility, six-member team capabilities, simple local development, Docker-based deployment, cloud portability, maintainability, AI/RAG capabilities, and reliable demonstration.
-
-The team should not introduce additional technologies without a clear requirement.
-
----
-
-## 2. Technology Selection Principles
-
-1. Prefer mature and well-documented technologies.
-2. Prefer technologies that IBM Bob can scaffold and maintain effectively.
-3. Minimize the number of independent infrastructure components.
-4. Prefer one database over multiple databases where practical.
-5. Keep AI providers replaceable.
-6. Keep business logic independent from frontend code.
-7. Use typed/schema-validated contracts between AI components.
-8. Use asynchronous processing for long-running jobs.
-9. Containerize the application with Docker.
-10. Optimize for a reliable SIH demonstration rather than architectural complexity.
-
----
-
-## 3. Approved Stack
-
-| Layer | Technology | Status |
+| Layer | Technology (pinned) | Status |
 |---|---|---|
-| Frontend framework | Next.js + React | Approved |
-| Frontend language | TypeScript | Approved |
-| UI styling | Tailwind CSS | Approved |
-| UI components | shadcn/ui | Approved |
-| Backend language | Python | Approved |
-| Backend framework | FastAPI | Approved |
-| AI orchestration | LangGraph | Approved |
-| LLM integration | Provider-agnostic adapter | Approved |
-| Database | PostgreSQL | Approved |
-| Vector search | pgvector | Approved |
-| Background jobs | Redis + Worker | Approved |
-| File storage | Object storage through storage adapter | Approved |
-| Document processing | Python document-processing libraries | Approved |
-| Presentation generation | PPTX generation library | Approved |
-| Containerization | Docker + Docker Compose | Approved |
-| Version control | Git + GitHub | Approved |
-| CI/CD | GitHub Actions | Approved |
-| Backend testing | pytest | Approved |
-| Frontend testing | TypeScript/React testing tools | Approved |
-| Cloud provider | To be finalized during deployment design | Pending |
+| Frontend framework | Next.js **14.2.18** + React **18.3.1** | Implemented |
+| Frontend language | TypeScript **5.7.2** | Implemented |
+| UI styling | Tailwind CSS **3.4.17** (+ PostCSS/Autoprefixer) | Implemented |
+| UI components | Radix UI + shadcn/ui-style (class-variance-authority, tailwind-merge, lucide-react) | Implemented |
+| Frontend testing | Jest **29.7.0**, ts-jest, @testing-library/react **16.1.0** + user-event + jest-dom | Implemented |
+| Backend framework | FastAPI **0.115.6** + Uvicorn **0.32.1** | Implemented |
+| Backend language | Python (see §2 for pinned versions) | Implemented |
+| Config / validation | Pydantic **2.10.4** + pydantic-settings **2.7.0** | Implemented |
+| Structured logging | structlog **24.4.0** | Implemented |
+| Orchestration (AI graph) | LangGraph **0.2.60** (`GraphState`, `StateGraph`) + langchain-core **0.3.29** | Implemented |
+| LLM integration | Provider-agnostic adapter: OpenAI-compatible (langchain-openai **0.3.0** / openai **1.59.6**), Gemini, deterministic Fake; resilience via 11D `ProviderManager` | Implemented |
+| Embeddings | OpenAI-compatible provider + deterministic Fake, factory + retry ceiling (11G / 11I-2) | Implemented |
+| Database | PostgreSQL (pg16, `pgvector/pgvector:pg16` image); SQLite (aiosqlite) for dev/tests | Implemented |
+| Vector search | pgvector **0.3.6** — `VECTOR(1536)` column in `source_chunks` | Implemented |
+| ORM / migrations | SQLAlchemy **2.0.36** (async) + Alembic **1.14.0** | Implemented |
+| Background jobs | Redis **5.2.1** + RQ **2.0.0** (7 queues; 605 s job timeout) | Implemented |
+| File storage | Local storage adapter (`LocalStorage`) on a Docker volume; keys `projects/{id}/sources/…`, `…/outputs/{id}/…` | Implemented |
+| Document processing | PyMuPDF **1.25.1** (PDF), python-docx **1.1.2** (DOCX) | Implemented |
+| Presentation / media | python-pptx **1.0.2**; deterministic renderers (PPTX, PNG+PDF infographic, PDF+SRT video package) | Implemented |
+| Containerization | Docker + Docker Compose (5 services: postgres, redis, backend, worker, frontend) | Implemented |
+| Backend testing | pytest **8.3.4** (+ pytest-asyncio, pytest-cov) | Implemented |
+| CI/CD | None in repo (`/.github/workflows` absent) — treated as PENDING | Pending |
+| Cloud provider | Not selected — application remains portable | Pending |
 
 ---
 
-## 4. Frontend
+## 2. Pinned Backend Dependencies
 
-### Next.js + React + TypeScript
+Web: `fastapi==0.115.6`, `uvicorn[standard]==0.32.1`
+Validation: `pydantic==2.10.4`, `pydantic-settings==2.7.0`
+Logging: `structlog==24.4.0`
+DB: `sqlalchemy[asyncio]==2.0.36`, `asyncpg==0.30.0`, `alembic==1.14.0`, `psycopg2-binary==2.9.10`
+Vector: `pgvector==0.3.6`
+Queue: `redis==5.2.1`, `rq==2.0.0`
+HTTP client: `httpx==0.28.1`
+Auth: `python-jose[cryptography]==3.3.0`, `passlib[bcrypt]==1.7.4`, `python-multipart==0.0.20`
+Documents: `pymupdf==1.25.1`, `python-docx==1.1.2`
+AI: `langchain-core==0.3.29`, `langgraph==0.2.60`, `langchain-openai==0.3.0`, `openai==1.59.6`, `tiktoken==0.8.0`
+Presentation: `python-pptx==1.0.2`
+Resilience: `tenacity==9.0.0`
+Testing: `pytest==8.3.4`, `pytest-asyncio==0.24.0`, `pytest-cov==6.0.0`, `aiosqlite==0.20.0`
 
-Responsibilities:
-- Transformation dashboard
-- Source upload
-- Configuration controls
-- Output selection
-- Job status
-- Results display
-- Verification display
-- Export controls
+---
 
-TypeScript is mandatory for frontend application code. Avoid unnecessary use of `any`.
+## 3. Security Stack (verified modules)
 
-Suggested component organization:
+| Concern | Mechanism | Module |
+|---|---|---|
+| Passwordless login | Time-limited, single-use OTP; salted HMAC digests; rate-limited verify | `app/auth/otp_service.py`, `otp_store.py`, `otp_delivery.py` |
+| Bearer authentication | JWT create/decode (python-jose) | `app/core/security.py` |
+| API enforcement | `get_current_user` Bearer check; dev bypass gated behind `DEV_AUTH_BYPASS` (dev-only) | `app/api/deps.py` |
+| Role-based access | Roles `analyst`/`operator`/`admin`; `require_analyst`/`require_admin` | `app/api/deps.py`, `app/api/v1/admin.py` |
+| Object ownership | Ownership-scoped lookups; `404` (not `403`) on DENY | `app/api/v1/*`, service layer |
+| Rate limiting | Token-bucket buckets (`otp_verify`, `source_upload`, …) | `app/core/ratelimit.py` |
+| Ingestion gate | Type/MIME/size/filename/empty validation | `app/ingestion/validation.py` |
+| RAG security | SQL-level project/source isolation; evidence treated as untrusted data | `app/rag/`, `app/retrieval/service.py`, ARCHITECTURE.md §9 |
+| Output gate (11H) | Deterministic `BLOCKED`/`warning`/`valid` verdicts, no LLM/network | `app/transformation/security/output_validator.py` |
+| Artifact integrity | Per-artifact SHA-256 digests in `output_metadata` (not a ledger) | `app/transformation/artifacts.py` |
+| Worker isolation | Ownership-integrity re-check in worker; 605 s job timeout single-sourced | `worker/worker.py`, `app/core/config.py` |
 
-```text
-components/
-├── upload/
-├── configuration/
-├── output-selection/
-├── results/
-├── verification/
-├── export/
-└── common/
+---
+
+## 4. Layered Security Architecture
+
+```mermaid
+flowchart TB
+    subgraph L1["L1 — Presentation (Next.js 14 / React 18)"]
+        UI["frontend/src/app — login · register · projects · workspace · history"]
+        AUTHUI["components/auth/RequireAuth + AuthShell (client + server route gate)"]
+        LIB["lib/auth.ts (JWT in localStorage) · lib/api.ts (Bearer header)"]
+    end
+    subgraph L2["L2 — API Perimeter (FastAPI /api/v1)"]
+        DEPS["api/deps.py get_current_user (Bearer JWT verify)"]
+        RBAC["require_analyst / require_admin (analyst · operator · admin)"]
+        RL["core/ratelimit.py rate_limit_bucket(otp_verify, source_upload, …)"]
+        OWN["ownership-scoped service lookups — 404 on DENY"]
+    end
+    subgraph L3["L3 — Authentication & Identity (11F / 11I-1)"]
+        OTP["auth/otp_service + otp_store + otp_delivery (salted, single-use)"]
+        JWT["core/security.py create/decode_access_token (python-jose)"]
+        USERS[("db/models/user.py — bcrypt hash + role")]
+    end
+    subgraph L4["L4 — Trust Gates (content & output)"]
+        GV["ingestion/validation.py validate_source (type / MIME / size / filename)"]
+        GEX["transformation/schemas.py — canonical-content availability gate"]
+        GR["rag + retrieval/service.py — SQL-level project/source isolation"]
+        GI["Source evidence = UNTRUSTED data (prompt-injection boundary)"]
+        GO["transformation/security/output_validator.py → BLOCKED / warning / valid (11H)"]
+    end
+    subgraph L5["L5 — Data & Artifact Integrity"]
+        PG[("PostgreSQL + pgvector — ownership scoping, job state")]
+        ST["ingestion/storage.py LocalStorage + authorized storage keys"]
+        H["transformation/artifacts.py sha256_hex → output_metadata (artifact integrity)"]
+        RD[("Redis — RQ queues + rate-limit backing")]
+    end
+    subgraph L6["L6 — External AI Boundary"]
+        LLM["llm/factory.py ProviderManager — retry / backoff / 429 / circuit (11D)"]
+        EMB["embeddings/factory.py — OpenAI-compatible + fake providers (11G / 11I-2)"]
+    end
+    UI --> AUTHUI
+    AUTHUI --> LIB
+    LIB --> DEPS
+    DEPS --> RBAC
+    DEPS --> RL
+    DEPS --> OWN
+    DEPS --> JWT
+    OTP --> JWT
+    USERS --> OTP
+    USERS --> JWT
+    OWN --> GV
+    GV --> GEX
+    GEX --> GR
+    GR --> GI
+    GI --> GENS["LangGraph generators (generators/*)"]
+    GENS --> LLM
+    GENS --> GO
+    LLM --> GO
+    GO --> H
+    GO --> PG
+    H --> ST
+    OWN --> PG
+    OWN --> RD
+    GENS --> EMB
+    EMB --> PG
+    style GI fill:#fbb,stroke:#f66
+    style GO fill:#fdd,stroke:#d33
+    style JWT fill:#efe,stroke:#484
+    style DEPS fill:#efe,stroke:#484
 ```
 
 ---
 
-## 5. UI and Styling
-
-### Tailwind CSS
-Used for rapid, responsive and consistent styling.
-
-### shadcn/ui
-Used for reusable UI components such as buttons, cards, dialogs, tabs, forms, alerts, tables and progress indicators.
-
-Avoid multiple overlapping UI component libraries unless a real requirement appears.
-
----
-
-## 6. Backend
-
-### Python + FastAPI
-
-FastAPI responsibilities:
-- API endpoints
-- Request validation
-- Authentication/authorization integration
-- Source management
-- Transformation job creation
-- Job status
-- Output retrieval
-- Verification results
-- Export access
-- Health checks
-
-Backend APIs should use explicit request/response schemas.
-
----
-
-## 7. AI Architecture
-
-### LangGraph
-
-LangGraph will manage the core AI workflow:
-
-```text
-Source
-  ↓
-Ingestion
-  ↓
-Content Intelligence
-  ↓
-Canonical Content
-  ↓
-Retrieval when required
-  ↓
-Transformation
-  ↓
-Verification
-  ↓
-Result
-```
-
-Do not create a large number of independent agents without a demonstrated need.
-
----
-
-## 8. LLM Provider Strategy
-
-Use an abstraction layer:
-
-```text
-Application
-     ↓
-LLM Provider Interface
-     ↓
-Provider Adapter
-     ↓
-Selected LLM
-```
-
-Requirements:
-- API keys never exposed to frontend.
-- Secrets supplied through environment/secret management.
-- Model names configurable.
-- Prompts not tightly coupled to one provider.
-- Provider switching should require minimal application changes.
-
-Final model/provider will be selected after testing quality, latency, cost, quota and availability.
-
----
-
-## 9. Structured AI Output
-
-LLM outputs should be schema validated wherever possible.
-
-Examples:
-- CanonicalContent
-- TransformationOutput
-- PresentationStructure
-- VerificationResult
-
-Invalid model output must be detected and retried/repaired where appropriate, or rejected with a controlled error.
-
----
-
-## 10. RAG
-
-### PostgreSQL + pgvector
-
-PostgreSQL will provide vector storage through pgvector for the MVP.
-
-RAG flow:
-
-```text
-Source
- ↓
-Text extraction
- ↓
-Chunking
- ↓
-Embedding generation
- ↓
-PostgreSQL + pgvector
- ↓
-Similarity retrieval
- ↓
-Relevant context
- ↓
-LLM
-```
-
-Use RAG when it improves source-grounded generation, particularly for larger documents.
-
----
-
-## 11. Database
-
-### PostgreSQL
-
-Primary relational database for:
-- Users
-- Projects
-- Sources
-- Transformation Jobs
-- Outputs
-- Verification Results
-- Metadata
-
-The schema will be defined separately in `API_DATABASE_DESIGN.md`.
-
----
-
-## 12. Background Processing
-
-### Redis + Worker
-
-Long-running operations should be asynchronous.
-
-Examples:
-- Document processing
-- Embedding generation
-- Large-document analysis
-- Multiple-output generation
-- Presentation generation
-- Future image/video processing
-
-Flow:
-
-```text
-Frontend
-   ↓
-FastAPI
-   ↓
-Create Job
-   ↓
-Redis
-   ↓
-Worker
-   ↓
-AI Processing
-   ↓
-Database / Storage
-   ↓
-Frontend retrieves status/results
-```
-
----
-
-## 13. File Storage
-
-Use object storage through a storage abstraction such as `StorageService`.
-
-Potential stored objects:
-- Original PDF/DOCX
-- Generated PDF/DOCX
-- Generated PPTX
-- Generated infographic
-- Future media packages
-
-Store metadata and storage references in PostgreSQL rather than large binary files.
-
----
-
-## 14. Document Processing
-
-MVP inputs:
-- PDF
-- DOCX
-- TXT/direct text
-
-Use established Python libraries for deterministic extraction and normalization before LLM reasoning.
-
-Flow:
-
-```text
-File
- ↓
-Validation
- ↓
-Extraction
- ↓
-Cleaning
- ↓
-Normalization
- ↓
-Canonical Content processing
-```
-
----
-
-## 15. Presentation Generation
-
-Use a two-stage approach:
-
-```text
-Source
- ↓
-LLM
- ↓
-Structured Presentation JSON
- ↓
-PPTX Generator
- ↓
-.pptx
-```
-
-The LLM generates slide structure, content, speaker notes and visual recommendations. The application creates the actual PowerPoint file.
-
----
-
-## 16. Output Generation
-
-Isolate output generators:
-
-```text
-transformations/
-├── summary/
-├── linkedin/
-├── advisory/
-├── presentation/
-├── x/
-├── infographic/
-└── video/
-```
-
-MVP priority:
-- summary
-- linkedin
-- advisory
-- presentation
-
-Advanced modules come after the MVP pipeline is stable.
-
----
-
-## 17. Verification
-
-The verification layer supports:
-- Claim extraction
-- Source matching
-- Grounding checks
-- Cross-output consistency
-- Warning generation
-
-Verification is an AI-assisted quality mechanism and must not be represented as a guarantee of factual correctness.
-
----
-
-## 18. Testing
-
-### Backend
-Use pytest for unit, API, processing, database integration, transformation and verification tests.
-
-### Frontend
-Use appropriate TypeScript/React testing tools for components, forms, API integration and workflows.
-
-### AI evaluation
-Create a fixed evaluation dataset containing representative sources and expected important facts. Evaluate required fields, important facts, grounding, structure and consistency.
-
----
-
-## 19. Docker
-
-Docker is mandatory for reproducible development and deployment.
-
-Expected local services:
-
-```text
-frontend
-backend
-worker
-postgres
-redis
-```
-
-External AI providers and cloud object storage do not need to be containerized.
-
----
-
-## 20. Environment Configuration
-
-Use environment variables/secrets.
-
-Example categories:
-
-```text
-DATABASE_URL
-REDIS_URL
-LLM_API_KEY
-LLM_MODEL
-STORAGE_ENDPOINT
-STORAGE_BUCKET
-AUTH_SECRET
-```
-
-Never commit real secret values. Provide `.env.example`.
-
----
-
-## 21. Git and GitHub
-
-GitHub is the source-control platform.
-
-Recommended workflow:
-
-```text
-main
- │
- ├── feature/frontend
- ├── feature/backend
- ├── feature/ai
- ├── feature/rag
- └── feature/deployment
-```
-
-Feature branches should preferably be tested before merging. `main` should remain runnable.
-
----
-
-## 22. CI/CD
-
-GitHub Actions pipeline:
-
-```text
-Push / Pull Request
-        ↓
-Lint
-        ↓
-Tests
-        ↓
-Build
-        ↓
-Docker Build
-        ↓
-Deployment
-```
-
-CI should fail when essential tests or builds fail.
-
----
-
-## 23. Cloud
-
-The cloud provider is intentionally not hard-coded yet.
-
-Final selection will consider:
-- Available credits
-- Free-tier limits
-- SIH requirements
-- Docker support
-- PostgreSQL support
-- Redis support
-- Object storage
-- Deployment simplicity
-- Team familiarity
-- Reliability
-
-The application must remain portable.
-
----
-
-## 24. Technologies Explicitly Avoided for MVP
-
-Unless a concrete requirement appears, do not introduce:
-- Kubernetes
-- Kafka
-- Multiple relational databases
-- Multiple vector databases
-- Custom foundation-model training
-- Complex multi-agent swarms
-- Unnecessary microservices
-- Multiple frontend frameworks
-- Multiple UI component libraries
-- Self-hosted LLM infrastructure without a clear need
-
-The objective is a reliable working system, not maximum architectural complexity.
-
----
-
-## 25. IBM Bob Development Constraints
-
-IBM Bob must:
-
-1. Read `PRD.md` before implementation.
-2. Read `ARCHITECTURE.md` before implementation.
-3. Read `TECH_STACK.md` before implementation.
-4. Follow the approved stack unless explicitly instructed otherwise.
-5. Avoid adding dependencies without justification.
-6. Avoid replacing approved technologies automatically.
-7. Implement one phase at a time.
-8. Run tests after meaningful changes.
-9. Keep the application runnable after each phase.
-10. Explain major architectural deviations before making them.
-11. Never hard-code secrets.
-12. Keep AI providers configurable.
-13. Generate schema-validated AI outputs.
-14. Preserve existing working functionality when adding features.
-
----
-
-## 26. Technology Decision Summary
-
-```text
-Frontend:
-Next.js + React + TypeScript
-
-UI:
-Tailwind CSS + shadcn/ui
-
-Backend:
-Python + FastAPI
-
-AI Workflow:
-LangGraph
-
-LLM:
-Provider-agnostic adapter
-
-Database:
-PostgreSQL
-
-Vector Search:
-pgvector
-
-Background Processing:
-Redis + Worker
-
-Storage:
-Object Storage + Storage Adapter
-
-Documents:
-Python extraction libraries
-
-Presentation:
-PPTX generation library
-
-Testing:
-pytest + TypeScript/React testing tools
-
-Containers:
-Docker + Docker Compose
-
-Source Control:
-Git + GitHub
-
-CI/CD:
-GitHub Actions
-
-Cloud:
-To be finalized
-```
-
----
-
-## 27. Definition of Done
-
-The technology stack is approved when:
-- Each PRD capability has a supporting technology.
-- No major component has an unnecessary duplicate technology.
-- The team can reasonably learn/debug the stack.
-- IBM Bob can scaffold and maintain it.
-- Docker can reproduce the development environment.
-- The architecture can be deployed to cloud infrastructure.
-- AI providers can be replaced without rewriting the application.
-- The stack supports the MVP before advanced features.
+## 5. Constraints Still in Force (from v1)
+
+1. Secrets come from environment variables, never the repo (`.env.example`, never `.env`).
+2. AI providers stay replaceable through the provider-agnostic adapter.
+3. LLM outputs are schema validated (Pydantic `extra="forbid"` + 11H output-security verdict).
+4. Rendering is deterministic — no LLM in renderers.
+5. Long-running work is asynchronous (RQ worker), never inside the HTTP request.
+6. Verification is an AI-assisted quality mechanism, not a guarantee of factual correctness.
+7. Avoid introducing technologies not listed here without a requirement.
+8. Explicitly avoided unless a real requirement appears: Kubernetes, Kafka, multiple
+   relational/vector DBs, custom foundation-model training, multi-agent swarms, extra
+   microservices, extra frontend frameworks/UI libraries, self-hosted LLM infra.
+
+## 6. Documented Gaps (see also ARCHITECTURE.md §21–§22, §24)
+
+- No OCR, malware/PII/secret scanning, reranker, or ANN index.
+- Video output is a structured MVP package (PDF + SRT), not MP4.
+- No GitHub Actions workflows; production deployment, SSO/MFA, and secrets manager are
+  pending. Artifact SHA-256 hashing is implemented; a chained audit ledger is not.

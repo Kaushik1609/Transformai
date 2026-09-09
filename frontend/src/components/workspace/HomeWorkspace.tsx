@@ -48,12 +48,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  Info,
 } from "lucide-react";
 import { ToneSelector, type Tone } from "@/components/configuration";
 import { AudienceSelector } from "@/components/configuration";
 import { LanguageSelector } from "@/components/configuration";
 import { OutputSelector } from "@/components/output-selection";
-import { TransformationProgress } from "@/components/results";
+import { TransformationProgress, PipelineStageTrack } from "@/components/results";
 import { UnifiedResults } from "@/components/results";
 import { StatusBadge, LoadingSpinner } from "@/components/common";
 
@@ -369,8 +370,16 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         </p>
       </section>
 
-      {/* Composer */}
-      <section>
+      {/* Mandate */}
+      <section className="space-y-2">
+        <div className="space-y-0.5">
+          <h3 className="text-sm font-semibold text-foreground">Mandate</h3>
+          <p className="text-xs text-muted-foreground">
+            Describe what you want TransformIQ to create. A source is optional
+            — the instruction alone is enough to transform.
+          </p>
+        </div>
+
         <div className="rounded-xl border border-border bg-surface-elevated shadow-sm">
           <textarea
             value={prompt}
@@ -426,9 +435,19 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
             </button>
           </div>
         </div>
+      </section>
 
-        {/* Source status */}
-        <div className="mt-3">
+      {/* Source */}
+      <section className="space-y-2">
+        <div className="space-y-0.5">
+          <h3 className="text-sm font-semibold text-foreground">Source</h3>
+          <p className="text-xs text-muted-foreground">
+            Attach the material to transform. TransformIQ ingests and analyzes
+            it before transforming.
+          </p>
+        </div>
+
+        <div>
           {sourceUploading ? (
             <SourceChipUploading />
           ) : source ? (
@@ -483,15 +502,15 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         />
       </section>
 
-      {/* Outputs */}
+      {/* Deliverables */}
       <section className="space-y-2">
         <div className="space-y-0.5">
           <h3 className="text-sm font-semibold text-foreground">
-            Choose your outputs
+            Deliverables
           </h3>
           <p className="text-xs text-muted-foreground">
-            Select one or more formats. TransformIQ will create them from the
-            same source and instructions.
+            Select one or more output formats. TransformIQ will create them
+            from the same source and instructions.
           </p>
         </div>
         <OutputSelector
@@ -532,6 +551,13 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         </section>
       )}
 
+      <p className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+        Every deliverable is grounded in your source with inline citations, so
+        you can trace each claim back to the originating content before using
+        it.
+      </p>
+
       {formError && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
           {formError}
@@ -544,7 +570,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
           type="button"
           onClick={() => void handleRun()}
           disabled={!canRun}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_0_18px_rgba(37,99,235,0.25)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
           {phase === "generating" ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -569,6 +595,12 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
       {/* Progress + results */}
       {job && (
         <section className="space-y-4">
+          <div className="rounded-xl border border-border bg-surface-elevated p-5">
+            <span className="label-mono-sm mb-4 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Execution pipeline
+            </span>
+            <PipelineStageTrack job={job} outputs={outputs} />
+          </div>
           <TransformationProgress job={job} outputs={outputs} />
           {isTerminalJobStatus(job.status) && (
             <UnifiedResults job={job} outputs={outputs} loading={outputsLoading} />

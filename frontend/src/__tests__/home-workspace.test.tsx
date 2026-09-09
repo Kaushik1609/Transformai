@@ -126,6 +126,64 @@ describe("HomeWorkspace", () => {
     ).toBeInTheDocument();
   });
 
+  it("groups composer inputs with Source/Mandate/Deliverables/Language hierarchy", async () => {
+    render(<HomeWorkspace />);
+    await waitFor(() =>
+      expect(
+        screen.getByText("What would you like to transform?"),
+      ).toBeInTheDocument(),
+    );
+
+    // UI-4 composer hierarchy labels.
+    expect(screen.getByText("Mandate")).toBeInTheDocument();
+    expect(screen.getByText("Source")).toBeInTheDocument();
+    expect(screen.getByText("Deliverables")).toBeInTheDocument();
+    expect(screen.getByText("Output language")).toBeInTheDocument();
+
+    // The mini-composer quick action keeps the "Start transformation" label.
+    expect(
+      screen.getByRole("button", { name: "Start transformation" }),
+    ).toBeInTheDocument();
+    // The primary CTA uses the controlled "Transform" lexicon.
+    expect(
+      screen.getByRole("button", { name: "Transform" }),
+    ).toBeInTheDocument();
+
+    // Grounding/provenance guidance is shown (no fabricated claims or numbers).
+    expect(
+      screen.getByText(/grounded in your source with inline citations/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\d+\.?\d*% safe/)).not.toBeInTheDocument();
+  });
+
+  it("shows the execution pipeline observer while a job is running", async () => {
+    mockFetch.mockImplementation(handler());
+    render(<HomeWorkspace />);
+    await waitFor(() =>
+      expect(
+        screen.getByText("What would you like to transform?"),
+      ).toBeInTheDocument(),
+    );
+
+    await userEvent.type(
+      screen.getByLabelText("Transformation prompt"),
+      "Summarize the quarterly results",
+    );
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /Summary/ }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Transform" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Execution pipeline")).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("list", { name: "Pipeline stages" }),
+    ).toBeInTheDocument();
+    // The track is driven by real job signals, never a made-up percentage.
+    expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument();
+  });
+
   it("allows a prompt-only run (no source attached)", async () => {
     mockFetch.mockImplementation(handler());
     render(<HomeWorkspace />);

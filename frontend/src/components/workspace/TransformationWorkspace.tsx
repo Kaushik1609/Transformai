@@ -48,7 +48,7 @@ import { SourceUpload, CurrentSource } from "@/components/upload";
 import { SourceAnalysis } from "./SourceAnalysis";
 import { ConfigurationForm } from "@/components/configuration";
 import { OutputSelector } from "@/components/output-selection";
-import { ResultsPanel } from "@/components/results";
+import { ResultsPanel, PipelineStageTrack } from "@/components/results";
 import { HistoryPanel } from "@/components/history";
 
 interface TransformationWorkspaceProps {
@@ -516,6 +516,8 @@ function JobProgress({
         value={determinate ? job.progress : null}
         label="Job progress"
       />
+
+      <PipelineStageTrack job={job} outputs={outputs} className="pt-1" />
 
       {running && (
         <p className="text-xs text-muted-foreground">

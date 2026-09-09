@@ -2,8 +2,6 @@
  * TransformIQ — Authentication shell (split-screen).
  *
  * Left: brand + value proposition. Right: the auth form.
- * The backend currently runs with a development identity (DEV_AUTH_BYPASS),
- * so signing in proceeds to the app rather than issuing a JWT.
  */
 "use client";
 
@@ -19,7 +17,7 @@ const OUTPUTS = [
   "Presentation",
   "X Thread",
   "Infographic",
-  "Video",
+  "Video Package",
 ];
 
 export function AuthShell({
@@ -65,7 +63,7 @@ export function AuthShell({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          7 output formats · 1 source
+          7 output formats · 1 prompt or source
         </p>
       </div>
 

@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { ToneSelector, type Tone } from "@/components/configuration";
 import { AudienceSelector } from "@/components/configuration";
+import { LanguageSelector } from "@/components/configuration";
 import { OutputSelector } from "@/components/output-selection";
 import { TransformationProgress } from "@/components/results";
 import { UnifiedResults } from "@/components/results";
@@ -81,9 +82,10 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
   const [sourceError, setSourceError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ---- Tone / audience ---------------------------------------------------
+  // ---- Tone / audience / language ---------------------------------------
   const [tone, setTone] = useState<Tone>("Professional");
   const [audience, setAudience] = useState<string>("General");
+  const [language, setLanguage] = useState<string>("English");
 
   // ---- Outputs -----------------------------------------------------------
   const [selectedOutputs, setSelectedOutputs] = useState<OutputTypeId[]>([]);
@@ -202,24 +204,6 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
     [],
   );
 
-  const handleAddTextSource = async () => {
-    if (!quickProjectId || sourceUploading) return;
-    setSourceUploading(true);
-    setSourceError(null);
-    try {
-      const res = await sourcesApi.ingestText(quickProjectId, prompt.trim());
-      const s = await waitForReady(res.data.id);
-      setSource(s);
-      setConfiguration(null);
-    } catch (err) {
-      setSourceError(
-        errorMessage(err, "We couldn't process this source. Please try again."),
-      );
-    } finally {
-      setSourceUploading(false);
-    }
-  };
-
   // -------------------------------------------------------------------------
   // Configuration + submission
   // -------------------------------------------------------------------------
@@ -230,43 +214,33 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
       const res = await configurationsApi.create(quickProjectId, {
         target_audience: audience === "General" ? null : audience,
         tone: tone === "Professional" ? null : tone,
-        language: "English",
+        language,
         detail_level: "standard",
-        communication_objective: prompt.trim() || null,
+        communication_objective: null,
       });
       setConfiguration(res.data);
       return res.data;
     } catch {
       return null;
     }
-  }, [quickProjectId, configuration, audience, tone, prompt]);
+  }, [quickProjectId, configuration, audience, tone, language]);
+
+  const sourceReady = source?.status === "ready";
+
+  const hasInput = (prompt.trim().length > 0 || sourceReady) && selectedOutputs.length > 0;
 
   const canRun =
     phase !== "generating" &&
     phase !== "processing" &&
     phase !== "loading" &&
-    !!source &&
-    source.status === "ready" &&
-    prompt.trim().length > 0 &&
-    selectedOutputs.length > 0;
+    hasInput;
 
   const handleRun = async () => {
-    if (!canRun || !quickProjectId || !source) return;
+    if (!canRun || !quickProjectId) return;
     setFormError(null);
     setPollErrorMsg(null);
     setOutputs([]);
     setPhase("generating");
-
-    if (!configuration) {
-      const cfg = await ensureConfig();
-      if (!cfg) {
-        setFormError(
-          "We couldn't save your configuration. Please try again.",
-        );
-        setPhase("idle");
-        return;
-      }
-    }
 
     const cfg = configuration ?? (await ensureConfig());
     if (!cfg) {
@@ -275,13 +249,18 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
       return;
     }
 
+    // Phase 15 flexible inputs: prompt-only, source-only, or both. At least one
+    // of prompt / source_id is provided (backend enforces the same rule).
+    const payload = {
+      project_id: quickProjectId,
+      configuration_id: cfg.id,
+      output_types: selectedOutputs,
+      ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
+      ...(source ? { source_id: source.id } : {}),
+    };
+
     try {
-      const res = await transformationsApi.create({
-        project_id: quickProjectId,
-        source_id: source.id,
-        configuration_id: cfg.id,
-        output_types: selectedOutputs,
-      });
+      const res = await transformationsApi.create(payload);
       setJob(res.data);
       setPhase("generating");
     } catch (err) {
@@ -292,13 +271,17 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
     }
   };
 
-  // Clear config when tone/audience changes so it re-persists with new values.
+  // Clear config when tone/audience/language change so it re-persists.
   const handleToneChange = (t: Tone) => {
     setTone(t);
     setConfiguration(null);
   };
   const handleAudienceChange = (a: string | null) => {
     setAudience(a ?? "General");
+    setConfiguration(null);
+  };
+  const handleLanguageChange = (l: string | null) => {
+    setLanguage(l ?? "English");
     setConfiguration(null);
   };
 
@@ -371,7 +354,6 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
     );
   }
 
-  const sourceReady = source?.status === "ready";
   const running = (job && !isTerminalJobStatus(job.status)) || sourceUploading;
 
   return (
@@ -459,7 +441,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
             />
           ) : (
             <p className="text-xs text-muted-foreground">
-              No source added yet.
+              No source attached — a prompt alone is enough to transform.
             </p>
           )}
           {sourceError && (
@@ -482,6 +464,21 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         <AudienceSelector
           value={audience}
           onChange={handleAudienceChange}
+          disabled={running}
+        />
+      </section>
+
+      {/* Language */}
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">
+          Output language
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Write the outputs in this language.
+        </p>
+        <LanguageSelector
+          value={language}
+          onChange={handleLanguageChange}
           disabled={running}
         />
       </section>
@@ -523,8 +520,14 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
             ))}
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
-            from {sourceReady ? "1 source" : "1 source (once added)"} and 1
-            instruction.
+            from{" "}
+            {prompt.trim() && sourceReady
+              ? "your source and instruction"
+              : prompt.trim()
+                ? "your instruction (no source attached)"
+                : "your source (no additional instruction)"}
+            . Outputs will be written in{" "}
+            {language || "English"}.
           </p>
         </section>
       )}
@@ -552,11 +555,10 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         </button>
         {!canRun && (
           <ul className="space-y-0.5 text-center text-xs text-muted-foreground">
-            {!source && <li>• Add a source to begin transforming</li>}
-            {source && !sourceReady && <li>• Wait for the source to become ready</li>}
-            {sourceReady && !prompt.trim() && (
-              <li>• Describe what you want TransformIQ to create</li>
+            {!source && !prompt.trim() && (
+              <li>• Describe what to create and/or attach a source</li>
             )}
+            {source && !sourceReady && <li>• Wait for the source to become ready</li>}
             {selectedOutputs.length === 0 && (
               <li>• Choose one or more output formats to get started</li>
             )}

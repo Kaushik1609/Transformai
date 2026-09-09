@@ -26,7 +26,12 @@ import {
   X,
   LogOut,
 } from "lucide-react";
-import { getDevSession, clearDevSession } from "@/lib/auth";
+import {
+  getDevSession,
+  getAuthUser,
+  clearDevSession,
+  clearAuthToken,
+} from "@/lib/auth";
 import { authApi } from "@/lib/api";
 import { clearQuickProjectId } from "@/lib/quickWorkspace";
 
@@ -51,6 +56,34 @@ const BOTTOM_ITEMS = [
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname.startsWith(href);
+}
+
+/** Resolve the identity block truthfully: real account > dev session. */
+function identity() {
+  const user = getAuthUser();
+  if (user) {
+    return {
+      name: user.name,
+      email: user.email,
+      initial: user.name.trim().charAt(0).toUpperCase() || "U",
+      subtitle: "Signed in",
+    };
+  }
+  const session = getDevSession();
+  if (session) {
+    return {
+      name: session.name,
+      email: session.email,
+      initial: session.name.trim().charAt(0).toUpperCase() || "D",
+      subtitle: "Development identity",
+    };
+  }
+  return {
+    name: "Development User",
+    email: "dev@transformiq.local",
+    initial: "D",
+    subtitle: "Development identity",
+  };
 }
 
 export function SidebarNav({ active }: { active?: string }) {
@@ -179,10 +212,8 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const session = getDevSession();
-  const name = session?.name || "Development User";
-  const email = session?.email || "dev@transformiq.local";
-  const initial = name.trim().charAt(0).toUpperCase() || "D";
+  const viewer = identity();
+  const { name, email, initial, subtitle } = viewer;
 
   useEffect(() => {
     if (!open) return;
@@ -201,6 +232,10 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
     } catch {
       // Best-effort server-side revocation; local cleanup still proceeds.
     }
+    // Remove the real access token (and the stored identity) so protected
+    // routes cannot reopen without signing in again. Dev-session and quick
+    // workspace state are cleared afterwards for parity.
+    clearAuthToken();
     clearDevSession();
     clearQuickProjectId();
     setOpen(false);
@@ -236,7 +271,7 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
                 {email}
               </span>
               <span className="block truncate text-[11px] text-muted-foreground">
-                Development identity
+                {subtitle}
               </span>
             </span>
             <ChevronDown
@@ -260,7 +295,7 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
             <p className="truncate text-sm font-medium text-foreground">{name}</p>
             <p className="truncate text-xs text-muted-foreground">{email}</p>
             <p className="mt-1 text-[11px] text-muted-foreground/80">
-              Development identity
+              {subtitle}
             </p>
           </div>
           <div className="my-1 h-px bg-border" />
@@ -291,10 +326,8 @@ function MobileDrawer({ active }: { active?: string }) {
   const resolveActive = (href: string) =>
     active ? active === href : isActive(pathname, href);
 
-  const session = getDevSession();
-  const name = session?.name || "Development User";
-  const email = session?.email || "dev@transformiq.local";
-  const initial = name.trim().charAt(0).toUpperCase() || "D";
+  const viewer = identity();
+  const { email, initial } = viewer;
 
   const handleLogout = async () => {
     try {
@@ -302,6 +335,7 @@ function MobileDrawer({ active }: { active?: string }) {
     } catch {
       // Best-effort server-side revocation; local cleanup still proceeds.
     }
+    clearAuthToken();
     clearDevSession();
     clearQuickProjectId();
     setOpen(false);
@@ -408,7 +442,7 @@ function MobileDrawer({ active }: { active?: string }) {
                     {email}
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    Development identity
+                    {viewer.subtitle}
                   </p>
                 </div>
               </div>

@@ -49,14 +49,17 @@ def _verify_job_ownership(db: Session, job: TransformationJob) -> Transformation
         raise TransformationError(
             f"Transformation job {job.id} references a project without an owner."
         )
-    # The job's source must belong to the job's project (relationship integrity).
-    from app.db.models.source import Source
+    # The job's source (when present) must belong to the job's project
+    # (relationship integrity). Prompt-only jobs (source_id is None) skip the
+    # source assertion.
+    if job.source_id is not None:
+        from app.db.models.source import Source
 
-    source = db.get(Source, job.source_id)
-    if source is None or source.project_id != job.project_id:
-        raise TransformationError(
-            f"Transformation job {job.id} source/ownership mismatch."
-        )
+        source = db.get(Source, job.source_id)
+        if source is None or source.project_id != job.project_id:
+            raise TransformationError(
+                f"Transformation job {job.id} source/ownership mismatch."
+            )
     return job
 
 

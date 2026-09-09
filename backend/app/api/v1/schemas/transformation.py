@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.transformation.generators import KNOWN_OUTPUT_TYPES
 
@@ -22,16 +22,35 @@ class TransformationJobCreate(BaseModel):
     Body for POST /api/v1/transformations
 
     Creates a transformation job record. Phase 6 will actually enqueue the job.
+
+    Phase 15: at least one of ``source_id`` / ``prompt`` is required
+    (source-only, prompt-only, or source + prompt are all supported).
     """
     project_id: uuid.UUID = Field(..., description="Project UUID")
-    source_id: uuid.UUID = Field(..., description="Source UUID")
+    source_id: uuid.UUID | None = Field(
+        default=None,
+        description="Source UUID (optional when a prompt is supplied)",
+    )
     configuration_id: uuid.UUID = Field(..., description="Configuration UUID")
+    prompt: str | None = Field(
+        default=None,
+        max_length=500_000,
+        description="Operator prompt (optional when a source is supplied)",
+    )
     output_types: list[str] = Field(
         ...,
         min_length=1,
         max_length=10,
         description="List of output types: summary | linkedin | x | advisory | infographic | presentation | video",
     )
+
+    @field_validator("prompt")
+    @classmethod
+    def _strip_prompt(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        value = v.strip()
+        return value or None
 
     @field_validator("output_types")
     @classmethod
@@ -54,14 +73,24 @@ class TransformationJobCreate(BaseModel):
             )
         return values
 
+    @model_validator(mode="after")
+    def _require_an_input(self) -> "TransformationJobCreate":
+        if self.source_id is None and not self.prompt:
+            raise ValueError(
+                "At least one transformation input is required: provide a "
+                "source_id, a prompt, or both."
+            )
+        return self
+
 
 class TransformationJobResponse(BaseModel):
     """Serialized transformation job record."""
 
     id: uuid.UUID
     project_id: uuid.UUID
-    source_id: uuid.UUID
+    source_id: uuid.UUID | None
     configuration_id: uuid.UUID
+    prompt: str | None = None
     requested_outputs: dict[str, Any] | None
     status: str
     progress: int

@@ -1,13 +1,14 @@
 /**
- * Phase 11I-1 — Auth gate hardening tests.
+ * Phase 11I-1 / Phase 15 — Auth gate hardening tests.
  *
  * Verifies that the application gate trusts ONLY:
  *   1. a valid (non-expired) access token, or
  *   2. a development session when NEXT_PUBLIC_DEV_AUTH_BYPASS is explicitly
  *      true.
  *
- * Also verifies the login page performs the real OTP/JWT flow (verifyOtp →
- * setAuthToken with expiry) and never silently falls back to a dev session.
+ * Also verifies the login page performs the real Phase 15 password/JWT flow
+ * (login → setAuthToken with expiry) and never silently falls back to a dev
+ * session.
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -29,24 +30,15 @@ jest.mock("@/lib/api", () => ({
   authApi: {
     login: jest.fn(),
     verifyOtp: jest.fn(),
+    resendOtp: jest.fn(),
+    register: jest.fn(),
+    forgotPassword: jest.fn(),
+    resetPassword: jest.fn(),
   },
   errorMessage: (_err: unknown, fallback: string) => fallback,
 }));
 
 const mockLogin = authApi.login as jest.Mock;
-const mockVerifyOtp = authApi.verifyOtp as jest.Mock;
-
-function otpDelivery() {
-  return {
-    success: true,
-    data: {
-      channel: "email",
-      identifier: "dev@transformiq.local",
-      resend_after_seconds: 30,
-    },
-    message: "Verification code sent.",
-  };
-}
 
 function tokenResponse(): AuthTokenResponse {
   return {
@@ -70,7 +62,6 @@ beforeEach(() => {
   push.mockClear();
   replace.mockClear();
   mockLogin.mockReset();
-  mockVerifyOtp.mockReset();
 });
 
 afterEach(() => {
@@ -132,10 +123,9 @@ describe("RequireAuth — access-token gating", () => {
   });
 });
 
-describe("LoginPage — real OTP/JWT flow", () => {
-  it("signs in via verifyOtp, stores the token with its expiry, and never opens a dev session", async () => {
-    mockLogin.mockResolvedValue(otpDelivery());
-    mockVerifyOtp.mockResolvedValue(tokenResponse());
+describe("LoginPage — real password/JWT flow", () => {
+  it("signs in via password, stores the token with its expiry, and never opens a dev session", async () => {
+    mockLogin.mockResolvedValue(tokenResponse());
     const setAuthTokenSpy = jest.spyOn(authModule, "setAuthToken");
     const setDevSessionSpy = jest.spyOn(authModule, "setDevSession");
 
@@ -148,28 +138,19 @@ describe("LoginPage — real OTP/JWT flow", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() =>
-      expect(mockLogin).toHaveBeenCalledWith({ email: "dev@transformiq.local" }),
+      expect(mockLogin).toHaveBeenCalledWith({
+        email: "dev@transformiq.local",
+        password: "password123",
+      }),
     );
-    await waitFor(() =>
-      expect(screen.getByLabelText("Verification code")).toBeInTheDocument(),
-    );
-
-    await userEvent.type(screen.getByLabelText("Verification code"), "123456");
-    await userEvent.click(screen.getByRole("button", { name: "Verify code" }));
-
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
-    expect(mockVerifyOtp).toHaveBeenCalledWith({
-      email: "dev@transformiq.local",
-      otp: "123456",
-    });
     expect(setAuthTokenSpy).toHaveBeenCalledWith("jwt-token-123", expect.any(Number));
     expect(setDevSessionSpy).not.toHaveBeenCalled();
     expect(authModule.getAuthToken()).toBe("jwt-token-123");
   });
 
-  it("shows an inline error on failed verification and does not store a token", async () => {
-    mockLogin.mockResolvedValue(otpDelivery());
-    mockVerifyOtp.mockRejectedValue(new Error("Incorrect code"));
+  it("shows an inline error on failed login and does not store a token", async () => {
+    mockLogin.mockRejectedValue(new Error("Invalid email or password."));
     const setAuthTokenSpy = jest.spyOn(authModule, "setAuthToken");
 
     render(<LoginPage />);
@@ -177,25 +158,23 @@ describe("LoginPage — real OTP/JWT flow", () => {
       screen.getByLabelText("Email"),
       "dev@transformiq.local",
     );
-    await userEvent.type(screen.getByLabelText("Password"), "password123");
+    await userEvent.type(screen.getByLabelText("Password"), "wrongpass");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Verification code")).toBeInTheDocument(),
-    );
-
-    await userEvent.type(screen.getByLabelText("Verification code"), "000000");
-    await userEvent.click(screen.getByRole("button", { name: "Verify code" }));
-
-    await waitFor(() =>
       expect(
-        screen.getByText(
-          "The verification code is incorrect or has expired. Please try again.",
-        ),
+        screen.getByText("We couldn't sign you in. Please try again."),
       ).toBeInTheDocument(),
     );
     expect(setAuthTokenSpy).not.toHaveBeenCalled();
     expect(authModule.getAuthToken()).toBeNull();
     expect(replace).not.toHaveBeenCalledWith("/");
+  });
+
+  it("links to the forgot-password flow", () => {
+    render(<LoginPage />);
+    expect(
+      screen.getByRole("link", { name: "Forgot password?" }),
+    ).toHaveAttribute("href", "/forgot-password");
   });
 });

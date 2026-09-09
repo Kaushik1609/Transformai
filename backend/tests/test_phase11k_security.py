@@ -225,10 +225,29 @@ class TestRateLimiting:
         app.dependency_overrides[get_otp_delivery_provider] = override_provider
 
         client = TestClient(app)
+        # Create an ACTIVE account with a known password so successful password
+        # logins exercise the real "login" rate-limit bucket (Phase 15).
+        reg = client.post(
+            "/api/v1/auth/register",
+            json={"name": "RL", "email": "rl@x.com", "password": "Tester-pass-1!"},
+        )
+        assert reg.status_code == 201, reg.text
+        code = provider.last_otp_for("email", "rl@x.com")
+        assert code
+        verified = client.post(
+            "/api/v1/auth/verify", json={"email": "rl@x.com", "otp": code}
+        )
+        assert verified.status_code == 200, verified.text
         for _ in range(2):
-            r = client.post("/api/v1/auth/login", json={"email": "rl@x.com"})
+            r = client.post(
+                "/api/v1/auth/login",
+                json={"email": "rl@x.com", "password": "Tester-pass-1!"},
+            )
             assert r.status_code == 200
-        r = client.post("/api/v1/auth/login", json={"email": "rl@x.com"})
+        r = client.post(
+            "/api/v1/auth/login",
+            json={"email": "rl@x.com", "password": "Tester-pass-1!"},
+        )
         assert r.status_code == 429
         assert r.headers.get("retry-after")
         events = security_events()
@@ -817,7 +836,10 @@ class TestAuditEvents:
         app.dependency_overrides[get_otp_delivery_provider] = override_provider
 
         client = TestClient(app)
-        r = client.post("/api/v1/auth/register", json={"name": "A", "email": "a@x.com"})
+        r = client.post(
+            "/api/v1/auth/register",
+            json={"name": "A", "email": "a@x.com", "password": "Tester-pass-1!"},
+        )
         assert r.status_code == 201
         events = security_events()
         ev = [e for e in events if e["event_type"] == "account_registered"]

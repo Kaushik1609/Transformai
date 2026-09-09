@@ -1,8 +1,8 @@
 """
-TransformIQ Backend — Auth API Schemas (Phase 11F)
+TransformIQ Backend — Auth API Schemas (Phase 11F, extended Phase 15)
 
-Request/response models for registration, OTP login, token verification and
-the current-user admin surfaces. Follows the project's `{success, data}` style.
+Request/response models for registration, password login, registration-OTP
+activation, and password reset. Follows the project's `{success, data}` style.
 """
 import re
 import uuid
@@ -32,6 +32,16 @@ def _validate_mobile_format(v: str | None) -> str | None:
     return clean
 
 
+def _validate_password(v: str) -> str:
+    """Password policy: 8..128 characters, no leading/trailing whitespace."""
+    value = v or ""
+    if value != value.strip():
+        raise ValueError("password must not have leading or trailing whitespace.")
+    if len(value) < 8 or len(value) > 128:
+        raise ValueError("password must be between 8 and 128 characters.")
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Request schemas
 # ---------------------------------------------------------------------------
@@ -41,6 +51,12 @@ class RegisterRequest(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255, description="Display name")
     email: str = Field(..., description="Primary identity (login) email")
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description="Account password (PBKDF2-hashed server-side; never stored in the clear)",
+    )
     mobile_number: str | None = Field(
         default=None,
         min_length=5,
@@ -57,6 +73,11 @@ class RegisterRequest(BaseModel):
     def normalize_email(cls, v):
         return _validate_email_format(v)
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        return _validate_password(v)
+
     @field_validator("mobile_number")
     @classmethod
     def validate_mobile(cls, v: str | None) -> str | None:
@@ -64,29 +85,20 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Body for POST /api/v1/auth/login (requests an OTP)."""
+    """Body for POST /api/v1/auth/login (email + password)."""
 
     email: str = Field(..., description="Registered account email")
-    channel: Literal["email", "mobile"] = Field(
-        default="email",
-        description="Channel the OTP should be delivered over",
-    )
-    mobile_number: str | None = Field(
-        default=None,
-        min_length=5,
-        max_length=20,
-        description="Required when channel=mobile; must match the registered number",
+    password: str = Field(
+        ...,
+        min_length=1,
+        max_length=128,
+        description="Account password",
     )
 
     @field_validator("email")
     @classmethod
     def normalize_login_email(cls, v):
         return _validate_email_format(v)
-
-    @field_validator("mobile_number")
-    @classmethod
-    def validate_login_mobile(cls, v: str | None) -> str | None:
-        return _validate_mobile_format(v)
 
 
 class VerifyOtpRequest(BaseModel):
@@ -113,6 +125,70 @@ class VerifyOtpRequest(BaseModel):
     @field_validator("mobile_number")
     @classmethod
     def validate_verify_mobile(cls, v: str | None) -> str | None:
+        return _validate_mobile_format(v)
+
+
+class ResetPasswordRequest(BaseModel):
+    """Body for POST /api/v1/auth/reset-password (confirm reset)."""
+
+    email: str = Field(...)
+    otp: str = Field(..., min_length=6, max_length=12, description="One-time passcode")
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description="New account password",
+    )
+    channel: Literal["email", "mobile"] = Field(
+        default="email",
+        description="Channel the reset OTP was delivered over",
+    )
+    mobile_number: str | None = Field(
+        default=None,
+        min_length=5,
+        max_length=20,
+        description="Required when channel=mobile",
+    )
+
+    @field_validator("email")
+    @classmethod
+    def normalize_reset_email(cls, v):
+        return _validate_email_format(v)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v):
+        return _validate_password(v)
+
+    @field_validator("mobile_number")
+    @classmethod
+    def validate_reset_mobile(cls, v: str | None) -> str | None:
+        return _validate_mobile_format(v)
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Body for POST /api/v1/auth/forgot-password."""
+
+    email: str = Field(...)
+    channel: Literal["email", "mobile"] = Field(
+        default="email",
+        description="Channel the reset OTP should be delivered over",
+    )
+    mobile_number: str | None = Field(
+        default=None,
+        min_length=5,
+        max_length=20,
+        description="Required when channel=mobile",
+    )
+
+    @field_validator("email")
+    @classmethod
+    def normalize_forgot_email(cls, v):
+        return _validate_email_format(v)
+
+    @field_validator("mobile_number")
+    @classmethod
+    def validate_forgot_mobile(cls, v: str | None) -> str | None:
         return _validate_mobile_format(v)
 
 
@@ -148,11 +224,18 @@ class RegisterResponse(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """Generic, side-channel-free response for an OTP login request."""
+    """Generic, side-channel-free response for a password-reset request."""
 
     success: bool = True
     data: OtpDeliveryDetails
-    message: str = "If an account exists for that email, a verification code was sent."
+    message: str = "If an account exists for that email, a reset code was sent."
+
+
+class PasswordResetResponse(BaseModel):
+    """Response for a successful password reset / registration OTP resend."""
+
+    success: bool = True
+    message: str = "Password updated."
 
 
 class AuthTokenResponse(BaseModel):

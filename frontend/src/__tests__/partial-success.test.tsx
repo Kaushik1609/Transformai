@@ -17,6 +17,7 @@ import {
 } from "@/components/results";
 import { HistoryPanel } from "@/components/history";
 import type { OutputResponse, TransformationJobResponse } from "@/lib/api";
+import { outputTypeShortLabel } from "@/lib/outputTypes";
 import { jsonResponse, type FetchMock } from "./helpers";
 
 const mockFetch = jest.fn() as unknown as FetchMock;
@@ -118,7 +119,7 @@ describe("Acceptance: partial success across all seven outputs", () => {
     expect(screen.getByText("Advisory")).toBeInTheDocument();
     expect(screen.getByText("Infographic")).toBeInTheDocument();
     expect(screen.getByText("Presentation")).toBeInTheDocument();
-    expect(screen.getByText("Video")).toBeInTheDocument();
+    expect(screen.getByText("Video Package")).toBeInTheDocument();
     // Three "completed" statuses, four "failed" statuses.
     expect(screen.getAllByText("completed")).toHaveLength(3);
     expect(screen.getAllByText("failed")).toHaveLength(4);
@@ -138,8 +139,7 @@ describe("Acceptance: partial success across all seven outputs", () => {
     expect(screen.getByText("4 failed")).toBeInTheDocument();
     // All seven tabs present (failures represented as tabs, not hidden).
     for (const type of SEVEN_TYPES) {
-      const expected =
-        type.charAt(0).toUpperCase() + type.slice(1);
+      const expected = outputTypeShortLabel(type);
       expect(screen.getByRole("tab", { name: expected })).toBeInTheDocument();
     }
   });
@@ -153,7 +153,7 @@ describe("Acceptance: partial success across all seven outputs", () => {
     expect(screen.getByText("Advisory Note")).toBeInTheDocument();
     expect(screen.getByText("Infographic")).toBeInTheDocument();
     expect(screen.getByText("Presentation")).toBeInTheDocument();
-    expect(screen.getByText("Video")).toBeInTheDocument();
+    expect(screen.getByText("Video Package")).toBeInTheDocument();
 
     // Four failed outputs each show the failure message + safe resilience detail.
     expect(screen.getAllByText("This output failed to generate.")).toHaveLength(4);

@@ -3,7 +3,7 @@ Phase 11F — L1 Perimeter & Identity for TransformIQ
 
 Covers the newly introduced authentication surface:
 
-    Register / OTP login / JWT verification / me / logout
+    Register / OTP activation / password login / JWT / me / logout
     OTP security policy (hashing, expiry, single-use, attempt limits,
     resend cooldown, per-window issuance quota)
     JWT creation/decoding (issuer, audience, typed claims, expiry)
@@ -85,10 +85,11 @@ class AuthContext:
         channel: str = "email",
         mobile_number: str | None = None,
         role_override: str | None = None,
+        password: str = "Tester-pass-1!",
     ):
         """Register -> read the code from the console provider -> verify -> token."""
         client = await self.aclient()
-        body = {"name": name, "email": email, "channel": channel}
+        body = {"name": name, "email": email, "channel": channel, "password": password}
         if mobile_number:
             body["mobile_number"] = mobile_number
         resp = await client.post("/api/v1/auth/register", json=body)
@@ -411,11 +412,15 @@ class TestConfigSafety:
 # ===========================================================================
 
 class TestRegister:
-    async def test_register_returns_no_otp_and_creates_user(self, auth_ctx):
+    async def test_register_returns_no_otp_and_creates_inactive_user(self, auth_ctx):
+        from sqlalchemy import select
+
+        from app.db.models.user import User
+
         client = await auth_ctx.aclient()
         resp = await client.post(
             "/api/v1/auth/register",
-            json={"name": "Ana", "email": "ana@example.com"},
+            json={"name": "Ana", "email": "ana@example.com", "password": "Register-pw-1!"},
         )
         assert resp.status_code == 201, resp.text
         body = resp.json()
@@ -424,10 +429,44 @@ class TestRegister:
         assert body["data"]["identifier"] == "ana@example.com"
         assert body["data"]["resend_after_seconds"] > 0
 
+        # The account exists, is INACTIVE until the OTP is verified, and the
+        # password is stored only as a hash.
+        record = (
+            await auth_ctx.db.execute(
+                select(User).where(User.email == "ana@example.com")
+            )
+        ).scalar_one()
+        assert record.is_active is False
+        assert record.password_hash
+        assert record.password_hash != "Register-pw-1!"
+        assert "Register-pw-1!" not in record.password_hash
+
+    async def test_register_password_required(self, auth_ctx):
+        client = await auth_ctx.aclient()
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"name": "A", "email": "pw@example.com"},
+        )
+        assert resp.status_code == 422
+
+    async def test_register_weak_password_rejected(self, auth_ctx):
+        client = await auth_ctx.aclient()
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"name": "A", "email": "weak@example.com", "password": "short"},
+        )
+        assert resp.status_code == 422
+
     async def test_register_duplicate_conflict(self, auth_ctx):
         client = await auth_ctx.aclient()
-        await client.post("/api/v1/auth/register", json={"name": "A", "email": "dup@example.com"})
-        resp = await client.post("/api/v1/auth/register", json={"name": "B", "email": "dup@example.com"})
+        await client.post(
+            "/api/v1/auth/register",
+            json={"name": "A", "email": "dup@example.com", "password": "Register-pw-1!"},
+        )
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"name": "B", "email": "dup@example.com", "password": "Register-pw-2!"},
+        )
         assert resp.status_code == 409
 
     async def test_registration_disabled(self, auth_ctx, monkeypatch):
@@ -435,7 +474,10 @@ class TestRegister:
 
         monkeypatch.setattr(config_module.settings, "REGISTRATION_ENABLED", False)
         client = await auth_ctx.aclient()
-        resp = await client.post("/api/v1/auth/register", json={"name": "A", "email": "x@example.com"})
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"name": "A", "email": "x@example.com", "password": "Register-pw-1!"},
+        )
         assert resp.status_code == 403
 
 
@@ -456,7 +498,10 @@ class TestVerifyAndToken:
 
     async def test_verify_wrong_code(self, auth_ctx):
         client = await auth_ctx.aclient()
-        await client.post("/api/v1/auth/register", json={"name": "B", "email": "b@example.com"})
+        await client.post(
+            "/api/v1/auth/register",
+            json={"name": "B", "email": "b@example.com", "password": "Register-pw-1!"},
+        )
         resp = await client.post(
             "/api/v1/auth/verify",
             json={"email": "b@example.com", "otp": "000000"},
@@ -490,10 +535,12 @@ class TestVerifyAndToken:
 
 
 # ===========================================================================
-# 7. Login channels + side-channel protection
+# 7. Login channels + side-channel protection (Phase 15 password login)
 # ===========================================================================
 
 class TestLoginChannels:
+    PASSWORD = "Tester-pass-1!"
+
     async def test_mobile_channel_full_flow(self, auth_ctx):
         client, token, user = await auth_ctx.register_and_verify(
             email="m@example.com",
@@ -502,43 +549,132 @@ class TestLoginChannels:
         )
         assert user["email"] == "m@example.com"
 
-        # Login over the mobile channel works too.
+        # Login over the password flow works too (no OTP involved).
+        reg_code = auth_ctx.provider.last_otp_for("mobile", "9876543210")
         resp = await client.post(
             "/api/v1/auth/login",
-            json={"email": "m@example.com", "channel": "mobile", "mobile_number": "9876543210"},
+            json={"email": "m@example.com", "password": self.PASSWORD},
         )
         assert resp.status_code == 200, resp.text
-        code = auth_ctx.provider.last_otp_for("mobile", "9876543210")
-        assert code
-        vresp = await client.post(
-            "/api/v1/auth/verify",
-            json={"email": "m@example.com", "channel": "mobile", "mobile_number": "9876543210", "otp": code},
-        )
-        assert vresp.status_code == 200
-        assert vresp.json()["access_token"]
+        assert resp.json()["access_token"]
+        # Login must NOT have issued any new OTP: the last delivered code is
+        # still the registration one standing.
+        assert auth_ctx.provider.last_otp_for("mobile", "9876543210") == reg_code
+        assert auth_ctx.provider.last_otp_for("email", "m@example.com") is None
 
-    async def test_unknown_account_login_is_generic_and_delivers_nothing(self, auth_ctx):
+    async def test_inactive_account_login_is_generic_denied(self, auth_ctx):
+        client = await auth_ctx.aclient()
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"name": "P", "email": "pending@example.com", "password": self.PASSWORD},
+        )
+        assert resp.status_code == 201
+        # Before OTP verification the account is inactive: password login fails
+        # with the same generic error as a wrong password.
+        denied = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "pending@example.com", "password": self.PASSWORD},
+        )
+        assert denied.status_code == 401
+        assert denied.json()["detail"] == "Invalid email or password."
+
+    async def test_unknown_account_login_is_generic_denied(self, auth_ctx):
         client = await auth_ctx.aclient()
         resp = await client.post(
             "/api/v1/auth/login",
-            json={"email": "ghost@example.com", "channel": "email"},
+            json={"email": "ghost@example.com", "password": self.PASSWORD},
+        )
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "Invalid email or password."
+        assert auth_ctx.provider.last_otp_for("email", "ghost@example.com") is None
+
+    async def test_wrong_password_login_is_generic_denied(self, auth_ctx):
+        client, token, _ = await auth_ctx.register_and_verify(email="wp@example.com")
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "wp@example.com", "password": "Wrong-pass-1!"},
+        )
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "Invalid email or password."
+
+    async def test_forgot_password_reset_flow(self, auth_ctx):
+        client, token, _ = await auth_ctx.register_and_verify(email="fp@example.com")
+
+        # Request a reset code (200, generic-format response).
+        first = await client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "fp@example.com"},
+        )
+        assert first.status_code == 200
+        code = auth_ctx.provider.last_otp_for("email", "fp@example.com")
+        assert code
+
+        # Reset with the code -> new password stored; old password now fails.
+        ok = await client.post(
+            "/api/v1/auth/reset-password",
+            json={"email": "fp@example.com", "otp": code, "new_password": "New-pass-99!"},
+        )
+        assert ok.status_code == 200
+
+        old_login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "fp@example.com", "password": self.PASSWORD},
+        )
+        assert old_login.status_code == 401
+
+        new_login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "fp@example.com", "password": "New-pass-99!"},
+        )
+        assert new_login.status_code == 200
+        assert new_login.json()["access_token"]
+
+    async def test_forgot_password_wrong_code_rejected(self, auth_ctx):
+        client, token, _ = await auth_ctx.register_and_verify(email="fpw@example.com")
+        await client.post("/api/v1/auth/forgot-password", json={"email": "fpw@example.com"})
+        resp = await client.post(
+            "/api/v1/auth/reset-password",
+            json={"email": "fpw@example.com", "otp": "000000", "new_password": "New-pass-99!"},
+        )
+        assert resp.status_code == 401
+
+    async def test_forgot_password_unknown_account_is_generic(self, auth_ctx):
+        client = await auth_ctx.aclient()
+        resp = await client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "ghost@example.com"},
         )
         assert resp.status_code == 200
         assert auth_ctx.provider.last_otp_for("email", "ghost@example.com") is None
 
-    async def test_mobile_login_mismatch_delivers_nothing(self, auth_ctx):
-        await auth_ctx.register_and_verify(
-            email="r@example.com",
-            channel="mobile",
-            mobile_number="9876543210",
-        )
+    async def test_resend_otp_inactive_reissues_and_active_is_generic(self, auth_ctx):
         client = await auth_ctx.aclient()
-        resp = await client.post(
-            "/api/v1/auth/login",
-            json={"email": "r@example.com", "channel": "mobile", "mobile_number": "1112223333"},
+        first = await client.post(
+            "/api/v1/auth/register",
+            json={"name": "R", "email": "res@example.com", "password": self.PASSWORD},
         )
-        assert resp.status_code == 200
-        assert auth_ctx.provider.last_otp_for("mobile", "1112223333") is None
+        assert first.status_code == 201
+        code1 = auth_ctx.provider.last_otp_for("email", "res@example.com")
+        assert code1
+
+        # Cooldown makes the immediate resend silently uniform without delivery.
+        second = await client.post("/api/v1/auth/resend-otp", json={"email": "res@example.com"})
+        assert second.status_code == 200
+        assert auth_ctx.provider.last_otp_for("email", "res@example.com") == code1
+
+        # An active account is generic (no delivery) from this endpoint.
+        await client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "res@example.com"},
+        )
+        await client.post(
+            "/api/v1/auth/verify",
+            json={"email": "res@example.com", "otp": code1},
+        )
+        generic = await client.post("/api/v1/auth/resend-otp", json={"email": "res@example.com"})
+        assert generic.status_code == 200
+        # The last delivered code is unchanged (no new delivery for an active account).
+        assert auth_ctx.provider.last_otp_for("email", "res@example.com") == code1
 
     async def test_resend_cooldown_is_silent_uniform(self, auth_ctx):
         """Resend during cooldown: generic 200 (no account-existence leak),
@@ -547,13 +683,13 @@ class TestLoginChannels:
 
         _, token, _ = await auth_ctx.register_and_verify(email="s@example.com")
         client = await auth_ctx.aclient()
-        first = await client.post("/api/v1/auth/login", json={"email": "s@example.com"})
+        first = await client.post("/api/v1/auth/forgot-password", json={"email": "s@example.com"})
         assert first.status_code == 200
         code1 = auth_ctx.provider.last_otp_for("email", "s@example.com")
         assert code1
 
         # Window inside the resend cooldown → still 200 and no second OTP.
-        second = await client.post("/api/v1/auth/login", json={"email": "s@example.com"})
+        second = await client.post("/api/v1/auth/forgot-password", json={"email": "s@example.com"})
         assert second.status_code == 200
         assert auth_ctx.provider.last_otp_for("email", "s@example.com") == code1
         assert second.json()["data"]["resend_after_seconds"] == 0
@@ -695,23 +831,34 @@ class TestRateLimiting:
     async def test_login_bucket_429_with_retry_after(self, auth_ctx, monkeypatch):
         import app.core.config as config_module
 
+        await auth_ctx.register_and_verify(email="rl@example.com")
         monkeypatch.setattr(config_module.settings, "RATE_LIMIT_LOGIN_MAX", 2)
         client = await auth_ctx.aclient()
         for _ in range(2):
-            resp = await client.post("/api/v1/auth/login", json={"email": "rl@example.com"})
+            resp = await client.post(
+                "/api/v1/auth/login",
+                json={"email": "rl@example.com", "password": "Tester-pass-1!"},
+            )
             assert resp.status_code == 200
-        resp = await client.post("/api/v1/auth/login", json={"email": "rl@example.com"})
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "rl@example.com", "password": "Tester-pass-1!"},
+        )
         assert resp.status_code == 429
         assert resp.headers.get("retry-after")
 
     async def test_rate_limiting_can_be_disabled(self, auth_ctx, monkeypatch):
         import app.core.config as config_module
 
+        await auth_ctx.register_and_verify(email="rloff@example.com")
         monkeypatch.setattr(config_module.settings, "RATE_LIMIT_ENABLED", False)
         monkeypatch.setattr(config_module.settings, "RATE_LIMIT_LOGIN_MAX", 1)
         client = await auth_ctx.aclient()
         for _ in range(3):
-            resp = await client.post("/api/v1/auth/login", json={"email": "rloff@example.com"})
+            resp = await client.post(
+                "/api/v1/auth/login",
+                json={"email": "rloff@example.com", "password": "Tester-pass-1!"},
+            )
             assert resp.status_code == 200
 
 
@@ -736,3 +883,174 @@ class TestDependencyCompat:
         with pytest.raises(HTTPException) as exc:
             asyncio.run(get_current_user())
         assert exc.value.status_code == 401
+
+
+# ===========================================================================
+# 12. Phase 15 — password-login denial reasons (service unit level)
+# ===========================================================================
+
+class TestPhase15LoginDenialReasons:
+    async def test_unknown_account_reason(self, auth_ctx):
+        from app.auth.service import InvalidCredentialsError, login_with_password
+
+        with pytest.raises(InvalidCredentialsError) as exc:
+            await login_with_password(
+                auth_ctx.db, email="ghost@x.com", password="Whatever-1!"
+            )
+        assert exc.value.reason == "account_not_found"
+
+    async def test_inactive_account_reason(self, auth_ctx):
+        from app.auth.service import InvalidCredentialsError, login_with_password, register_user
+
+        await register_user(
+            auth_ctx.db,
+            name="P",
+            email="pending@x.com",
+            password="Tester-pass-1!",
+            mobile_number=None,
+            channel="email",
+            store=auth_ctx.store,
+            delivery=auth_ctx.provider,
+        )
+        with pytest.raises(InvalidCredentialsError) as exc:
+            await login_with_password(
+                auth_ctx.db, email="pending@x.com", password="Tester-pass-1!"
+            )
+        assert exc.value.reason == "account_inactive"
+
+    async def test_missing_hash_reason(self, auth_ctx):
+        from app.auth.service import InvalidCredentialsError, login_with_password
+        from app.db.models.user import User
+
+        # A legacy account row with no password hash (passwordless migration).
+        auth_ctx.db.add(
+            User(
+                email="nohash@x.com",
+                name="NoHash",
+                role="analyst",
+                is_active=True,
+                password_hash=None,
+            )
+        )
+        await auth_ctx.db.flush()
+        with pytest.raises(InvalidCredentialsError) as exc:
+            await login_with_password(
+                auth_ctx.db, email="nohash@x.com", password="Whatever-1!"
+            )
+        assert exc.value.reason == "account_no_password"
+
+    async def test_wrong_password_reason(self, auth_ctx):
+        from app.auth.service import InvalidCredentialsError, login_with_password
+
+        await auth_ctx.register_and_verify(email="wp@x.com")
+        with pytest.raises(InvalidCredentialsError) as exc:
+            await login_with_password(auth_ctx.db, email="wp@x.com", password="Wrong-pass-1!")
+        assert exc.value.reason == "password_mismatch"
+
+    async def test_successful_login_returns_token(self, auth_ctx):
+        from app.auth.service import login_with_password
+
+        await auth_ctx.register_and_verify(email="ok@x.com")
+        user, token, expires_in = await login_with_password(
+            auth_ctx.db, email="ok@x.com", password="Tester-pass-1!"
+        )
+        assert user.email == "ok@x.com"
+        assert token
+        assert expires_in > 0
+
+
+# ===========================================================================
+# 13. Phase 15 — registration stores a PBKDF2 hash, never plaintext
+# ===========================================================================
+
+class TestPhase15PasswordStorage:
+    async def test_register_stores_hash_not_plaintext(self, auth_ctx):
+        from sqlalchemy import select
+
+        from app.db.models.user import User
+
+        client = await auth_ctx.aclient()
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"name": "H", "email": "h@x.com", "password": "Register-pw-1!"},
+        )
+        assert resp.status_code == 201, resp.text
+        record = (
+            await auth_ctx.db.execute(select(User).where(User.email == "h@x.com"))
+        ).scalar_one()
+        assert record.password_hash
+        assert record.password_hash.startswith("pbkdf2_sha256$")
+        assert "Register-pw-1!" not in record.password_hash
+        assert record.is_active is False
+
+    async def test_reset_hash_replaces_old_and_verifies(self, auth_ctx):
+        from sqlalchemy import select
+
+        from app.db.models.user import User
+        from app.core.password import verify_password
+
+        await auth_ctx.register_and_verify(email="rs@x.com")
+        client = await auth_ctx.aclient()
+        await client.post("/api/v1/auth/forgot-password", json={"email": "rs@x.com"})
+        code = auth_ctx.provider.last_otp_for("email", "rs@x.com")
+        ok = await client.post(
+            "/api/v1/auth/reset-password",
+            json={"email": "rs@x.com", "otp": code, "new_password": "New-pass-99!"},
+        )
+        assert ok.status_code == 200
+        record = (
+            await auth_ctx.db.execute(select(User).where(User.email == "rs@x.com"))
+        ).scalar_one()
+        assert verify_password("New-pass-99!", record.password_hash)
+
+
+# ===========================================================================
+# 14. Phase 15 — API accepts prompt-only transformations (auth-scoped)
+# ===========================================================================
+
+class TestPhase15PromptTransformationAPI:
+    async def _project_and_config(self, auth_ctx, client, token):
+        proj = await client.post(
+            "/api/v1/projects", json={"name": "P15 prompt"}, headers=auth_ctx.auth(token)
+        )
+        assert proj.status_code == 201, proj.text
+        pid = proj.json()["data"]["id"]
+        cfg = await client.post(
+            f"/api/v1/projects/{pid}/configurations",
+            json={"language": "English"},
+            headers=auth_ctx.auth(token),
+        )
+        assert cfg.status_code == 201, cfg.text
+        return pid, cfg.json()["data"]["id"]
+
+    async def test_prompt_only_job_created_without_source(self, auth_ctx):
+        client, token, _ = await auth_ctx.register_and_verify(email="p15@x.com")
+        pid, cid = await self._project_and_config(auth_ctx, client, token)
+        job = await client.post(
+            "/api/v1/transformations",
+            json={
+                "project_id": pid,
+                "configuration_id": cid,
+                "output_types": ["summary"],
+                "prompt": "Draft a briefing about coastal erosion.",
+            },
+            headers=auth_ctx.auth(token),
+        )
+        assert job.status_code == 201, job.text
+        data = job.json()["data"]
+        assert data["source_id"] is None
+        assert data["status"] == "queued"
+
+    async def test_transform_with_neither_input_rejected(self, auth_ctx):
+        client, token, _ = await auth_ctx.register_and_verify(email="p15b@x.com")
+        pid, cid = await self._project_and_config(auth_ctx, client, token)
+        job = await client.post(
+            "/api/v1/transformations",
+            json={
+                "project_id": pid,
+                "configuration_id": cid,
+                "output_types": ["summary"],
+            },
+            headers=auth_ctx.auth(token),
+        )
+        assert job.status_code == 422

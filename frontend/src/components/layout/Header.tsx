@@ -28,7 +28,7 @@ export function Header({ className }: HeaderProps) {
             TransformIQ
           </Link>
           <span className="hidden rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline-flex">
-            Phase 9
+            Beta
           </span>
         </div>
 

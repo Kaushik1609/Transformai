@@ -13,11 +13,17 @@ import userEvent from "@testing-library/user-event";
 import LoginPage from "@/app/login/page";
 import RegisterPage from "@/app/register/page";
 import { AppShell } from "@/components/layout";
+import { RequireAuth } from "@/components/auth";
 import {
   getDevSession,
   setDevSession,
   clearDevSession,
   isDevAuthBypassEnabled,
+  setAuthToken,
+  setAuthUser,
+  getAuthToken,
+  AUTH_STORE_KEY,
+  AUTH_USER_KEY,
 } from "@/lib/auth";
 
 const push = jest.fn();
@@ -182,5 +188,41 @@ describe("application session gate", () => {
       expect.stringContaining("/api/v1/auth/logout"),
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("logs out a real password account: clears JWT + identity and locks protected routes", async () => {
+    setAuthToken("jwt-real", Date.now() + 60_000);
+    setAuthUser({
+      id: "user-real",
+      email: "analyst@transformiq.example",
+      name: "Real Analyst",
+      role: "operator",
+    });
+    localStorage.setItem("transformiq.quick_project_id", "quick-2");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true }),
+    }) as unknown as typeof fetch;
+    render(<AppShell>app content</AppShell>);
+    await waitFor(() =>
+      expect(screen.getByText("app content")).toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Log out" }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
+    expect(getAuthToken()).toBeNull();
+    expect(localStorage.getItem(AUTH_STORE_KEY)).toBeNull();
+    expect(localStorage.getItem(AUTH_USER_KEY)).toBeNull();
+    expect(getDevSession()).toBeNull();
+    expect(localStorage.getItem("transformiq.quick_project_id")).toBeNull();
+
+    // The protected route cannot reopen without signing in again.
+    replace.mockClear();
+    render(<RequireAuth>protected content</RequireAuth>);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
+    expect(screen.queryByText("protected content")).not.toBeInTheDocument();
   });
 });

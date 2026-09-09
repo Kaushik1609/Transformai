@@ -1,10 +1,9 @@
 /**
  * TransformIQ — Register page.
  *
- * Primary flow (Phase 11F): register the account (creates the user record and
- * issues an OTP), then exchange the code for a short-lived access token via
- * POST /api/v1/auth/verify. On success the JWT and its expiry are stored with
- * setAuthToken().
+ * Phase 15 flow: register with a password (creates the account as INACTIVE and
+ * issues a verification OTP), then exchange the code for a short-lived access
+ * token via POST /api/v1/auth/verify. Verifying activates the account.
  *
  * Development bypass: only when the frontend build explicitly enables it
  * (NEXT_PUBLIC_DEV_AUTH_BYPASS=true) does registration proceed with a local
@@ -23,6 +22,7 @@ import {
 import {
   isDevAuthBypassEnabled,
   setAuthToken,
+  setAuthUser,
   setDevSession,
 } from "@/lib/auth";
 import { authApi, errorMessage } from "@/lib/api";
@@ -41,6 +41,7 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
 
   const devBypass = isDevAuthBypassEnabled();
 
@@ -71,7 +72,11 @@ export default function RegisterPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await authApi.register({ name: name.trim(), email: email.trim() });
+      await authApi.register({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
       setStep("otp");
     } catch (err) {
       setError(
@@ -93,6 +98,7 @@ export default function RegisterPage() {
     try {
       const result = await authApi.verifyOtp({ email: email.trim(), otp: otp.trim() });
       setAuthToken(result.access_token, Date.now() + result.expires_in * 1000);
+      setAuthUser(result.user);
       router.replace("/");
     } catch (err) {
       setError(
@@ -101,6 +107,22 @@ export default function RegisterPage() {
           "The verification code is incorrect or has expired. Please try again.",
         ),
       );
+      setSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await authApi.resendOtp({ email: email.trim() });
+      setResent(true);
+    } catch (err) {
+      setError(
+        errorMessage(err, "We couldn't send a new code. Please try again."),
+      );
+    } finally {
       setSubmitting(false);
     }
   };
@@ -198,6 +220,11 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                 />
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                Use 8–128 characters. Your password is stored only as a
+                cryptographic hash.
+              </p>
             </>
           ) : (
             <>
@@ -220,13 +247,29 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={backToDetails}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Use a different email
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={submitting}
+                  className="text-sm text-primary hover:underline disabled:opacity-60"
+                >
+                  Resend code
+                </button>
+                <button
+                  type="button"
+                  onClick={backToDetails}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Use a different email
+                </button>
+              </div>
+
+              {resent && (
+                <p className="text-xs font-medium text-muted-foreground">
+                  A new code has been sent.
+                </p>
+              )}
             </>
           )}
 

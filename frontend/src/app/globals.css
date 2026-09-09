@@ -4,6 +4,35 @@
 
 @layer base {
   :root {
+    --background: 228 50% 98%;
+    --foreground: 228 34% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 228 34% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 34% 9%;
+    --primary: 237 75% 56%;
+    --primary-foreground: 228 100% 98%;
+    --secondary: 228 26% 94%;
+    --secondary-foreground: 228 30% 12%;
+    --muted: 228 22% 94%;
+    --muted-foreground: 228 14% 42%;
+    --accent: 228 26% 93%;
+    --accent-foreground: 228 30% 12%;
+    --destructive: 4 78% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 228 20% 88%;
+    --input: 228 20% 86%;
+    --ring: 237 75% 56%;
+    --radius: 0.5rem;
+    --success: 158 64% 34%;
+    --warning: 41 87% 48%;
+    --sidebar-bg: 228 42% 97%;
+    --sidebar-border: 228 20% 88%;
+    --surface-elevated: 0 0% 100%;
+    color-scheme: light;
+  }
+
+  .dark {
     --background: 222 47% 5%;
     --foreground: 228 100% 97%;
     --card: 222 35% 7%;
@@ -29,6 +58,7 @@
     --sidebar-bg: 222 40% 6%;
     --sidebar-border: 218 22% 13%;
     --surface-elevated: 222 30% 9%;
+    color-scheme: dark;
   }
 }
 
@@ -47,11 +77,11 @@
   }
 }
 
-/* Scrollbar styling for dark theme */
+/* Scrollbar styling follows the active theme */
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(222 22% 17%) transparent;
+    scrollbar-color: hsl(var(--border)) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -60,7 +90,7 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(222 22% 17%);
+    background-color: hsl(var(--border));
     border-radius: 3px;
   }
 }

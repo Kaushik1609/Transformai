@@ -169,7 +169,7 @@ class TransformationWorkflow:
         )
 
         project_id = str(job.project_id)
-        source_id = str(job.source_id)
+        source_id = str(job.source_id) if job.source_id is not None else None
         configuration_id = str(job.configuration_id)
 
         # Load user configuration for generation context.
@@ -194,6 +194,7 @@ class TransformationWorkflow:
             "configuration_id": configuration_id,
             "requested_output_types": requested,
             "config": config,
+            "prompt": job.prompt,
             "canonical_ready": False,
             "canonical_missing": False,
             "outputs": [],
@@ -219,6 +220,13 @@ class TransformationWorkflow:
 
     def load_canonical_content(self, state: TransformationState) -> TransformationState:
         session = self.deps.session
+        # Phase 15 prompt-only mode: no source exists, so there is no canonical
+        # content to load. The operator prompt (carried in state) drives the
+        # generation instead; canonical readiness is satisfied with an empty
+        # canonical payload so the graph continues through the normal pipeline.
+        if not state.get("source_id"):
+            return {"canonical": {}, "canonical_ready": True, "canonical_missing": False}
+
         result = session.execute(
             select(CanonicalContent).where(CanonicalContent.source_id == uuid.UUID(state["source_id"]))
         ).scalar_one_or_none()
@@ -270,6 +278,9 @@ class TransformationWorkflow:
         if not state.get("canonical_ready"):
             return {}
         if not state.get("rag_required"):
+            return {}
+        if not state.get("source_id"):
+            # Prompt-only mode has no source to retrieve evidence from.
             return {}
 
         session = self.deps.session
@@ -328,7 +339,12 @@ class TransformationWorkflow:
         canonical = state.get("canonical", {})
         config = state.get("config", {})
         rag_context = state.get("rag_context")
-        brief = build_canonical_brief(canonical, rag_context, config)
+        brief = build_canonical_brief(
+            canonical,
+            rag_context,
+            config,
+            operator_prompt=state.get("prompt"),
+        )
 
         # Persist a reference to the shared brief on the job so it is durable
         # and inspectable (bounded by RAG_MAX_CONTEXT_CHARS).

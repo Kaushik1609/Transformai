@@ -28,14 +28,19 @@ async def create_job(
     db: AsyncSession,
     *,
     project_id: uuid.UUID,
-    source_id: uuid.UUID,
+    source_id: uuid.UUID | None,
     configuration_id: uuid.UUID,
     output_types: list[str],
+    prompt: str | None = None,
 ) -> TransformationJob:
     """
     Create a new transformation job record.
     Phase 2: Record is persisted with status='queued'.
     Phase 6 will add the Redis enqueueing step.
+
+    Phase 15: ``source_id`` is optional when an operator ``prompt`` is
+    supplied (prompt-only transformations). Validation that at least one input
+    mode is present happens at the API layer.
     """
     job = TransformationJob(
         id=uuid.uuid4(),
@@ -43,6 +48,7 @@ async def create_job(
         source_id=source_id,
         configuration_id=configuration_id,
         requested_outputs={"output_types": output_types},
+        prompt=prompt,
         status="queued",
         progress=0,
         created_at=_utcnow(),

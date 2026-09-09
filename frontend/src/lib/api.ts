@@ -10,6 +10,7 @@
  *   transformations, outputs, verification results, and artifact downloads.
  * Phase 11F adds the auth surface (register / login / verify / me / logout)
  * and transparent bearer-token attachment via lib/auth.
+ * Phase 15 moves login to email + password and adds forgot/reset-password.
  */
 
 import { authHeaders, clearAuthToken, getAuthToken } from "./auth";
@@ -76,6 +77,11 @@ export interface RegisterResponse {
 export interface LoginResponse {
   success: boolean;
   data: OtpDeliveryDetails;
+  message: string;
+}
+
+export interface PasswordResetResponse {
+  success: boolean;
   message: string;
 }
 
@@ -254,7 +260,7 @@ export type OutputTypeId =
 export interface TransformationJobResponse {
   id: string;
   project_id: string;
-  source_id: string;
+  source_id: string | null;
   configuration_id: string;
   requested_outputs: Record<string, unknown> | null;
   status: string;
@@ -267,8 +273,10 @@ export interface TransformationJobResponse {
 
 export interface TransformationJobPayload {
   project_id: string;
-  source_id: string;
   configuration_id: string;
+  /** One of source_id OR prompt is required (Phase 15). */
+  source_id?: string;
+  prompt?: string;
   output_types: OutputTypeId[];
 }
 
@@ -626,20 +634,20 @@ export const healthApi = {
 };
 
 // ---------------------------------------------------------------------------
-// Auth API (Phase 11F)
+// Auth API (Phase 11F, Phase 15 password login)
 // ---------------------------------------------------------------------------
 
 export interface RegisterPayload {
   name: string;
   email: string;
+  password: string;
   mobile_number?: string;
   channel?: OtpChannel;
 }
 
 export interface LoginPayload {
   email: string;
-  channel?: OtpChannel;
-  mobile_number?: string;
+  password: string;
 }
 
 export interface VerifyOtpPayload {
@@ -649,24 +657,59 @@ export interface VerifyOtpPayload {
   otp: string;
 }
 
+export interface ForgotPasswordPayload {
+  email: string;
+  channel?: OtpChannel;
+  mobile_number?: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  new_password: string;
+  channel?: OtpChannel;
+  mobile_number?: string;
+}
+
 export const authApi = {
-  /** Register a new analyst account and deliver an OTP. */
+  /** Register a new analyst account (inactive until the OTP is verified). */
   register: (body: RegisterPayload) =>
     apiFetch<RegisterResponse>("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
-  /** Request an OTP for an existing account (response is uniform). */
+  /** Log in with email + password and receive a short-lived JWT. */
   login: (body: LoginPayload) =>
-    apiFetch<LoginResponse>("/api/v1/auth/login", {
+    apiFetch<AuthTokenResponse>("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
-  /** Exchange an OTP for a short-lived access token. */
+  /** Exchange a registration OTP for a short-lived access token. */
   verifyOtp: (body: VerifyOtpPayload) =>
     apiFetch<AuthTokenResponse>("/api/v1/auth/verify", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Re-issue a registration OTP for a pending (inactive) account. */
+  resendOtp: (body: ForgotPasswordPayload) =>
+    apiFetch<LoginResponse>("/api/v1/auth/resend-otp", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Request a password-reset code (generic, non-enumerating response). */
+  forgotPassword: (body: ForgotPasswordPayload) =>
+    apiFetch<LoginResponse>("/api/v1/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Confirm a password-reset code and set the new password. */
+  resetPassword: (body: ResetPasswordPayload) =>
+    apiFetch<PasswordResetResponse>("/api/v1/auth/reset-password", {
       method: "POST",
       body: JSON.stringify(body),
     }),

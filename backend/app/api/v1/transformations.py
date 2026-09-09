@@ -136,13 +136,14 @@ async def create_transformation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Project {body.project_id} not found.",
         )
-    # Verify source exists in project
-    source = await source_service.get_source(db, source_id=body.source_id)
-    if source is None or source.project_id != body.project_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Source {body.source_id} not found in project {body.project_id}.",
-        )
+    # Verify source exists in project (source-only / source+prompt modes).
+    if body.source_id is not None:
+        source = await source_service.get_source(db, source_id=body.source_id)
+        if source is None or source.project_id != body.project_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Source {body.source_id} not found in project {body.project_id}.",
+            )
     # Verify configuration exists in project
     config = await configuration_service.get_configuration(
         db, configuration_id=body.configuration_id
@@ -158,6 +159,7 @@ async def create_transformation(
         source_id=body.source_id,
         configuration_id=body.configuration_id,
         output_types=body.output_types,
+        prompt=body.prompt,
     )
     # Enqueue the transformation job for asynchronous processing. Enqueueing is
     # best-effort: if Redis is unavailable the job record still persists in the

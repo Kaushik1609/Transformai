@@ -18,6 +18,7 @@
  */
 export const DEV_SESSION_KEY = "transformiq.dev_session";
 export const AUTH_STORE_KEY = "transformiq.auth";
+export const AUTH_USER_KEY = "transformiq.auth_user";
 export const LEGACY_AUTH_TOKEN_KEY = "transformiq.access_token";
 
 export interface DevSession {
@@ -25,6 +26,13 @@ export interface DevSession {
   name: string;
   role: string;
   signedInAt: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
 }
 
 export interface StoredAuth {
@@ -45,6 +53,17 @@ function isSession(value: unknown): value is DevSession {
     typeof session.name === "string" &&
     typeof session.role === "string" &&
     typeof session.signedInAt === "string"
+  );
+}
+
+function isAuthUser(value: unknown): value is AuthUser {
+  if (typeof value !== "object" || value === null) return false;
+  const user = value as Record<string, unknown>;
+  return (
+    typeof user.id === "string" &&
+    typeof user.email === "string" &&
+    typeof user.name === "string" &&
+    typeof user.role === "string"
   );
 }
 
@@ -182,17 +201,49 @@ export function clearAuthToken(): void {
   if (!store) return;
   try {
     store.removeItem(AUTH_STORE_KEY);
+    store.removeItem(AUTH_USER_KEY);
     store.removeItem(LEGACY_AUTH_TOKEN_KEY);
   } catch {
     // storage unavailable — ignore
   }
 }
 
-/**
- * Headers merged into every API request. Returns an empty object when no
+/** Headers merged into every API request. Returns an empty object when no
  * valid token exists so the development-session flow is untouched.
  */
 export function authHeaders(): Record<string, string> {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ---------------------------------------------------------------------------
+// Authenticated-user helpers (Phase 15 — real password login)
+// ---------------------------------------------------------------------------
+
+/**
+ * Persist the identity returned with the access token so the UI can display
+ * the real account instead of the development identity.
+ */
+export function setAuthUser(user: AuthUser): void {
+  const store = storage();
+  if (!store || !isAuthUser(user)) return;
+  try {
+    store.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  } catch {
+    // storage unavailable — ignore
+  }
+}
+
+/** Return the stored authenticated user, or null on SSR / missing. */
+export function getAuthUser(): AuthUser | null {
+  const store = storage();
+  if (!store) return null;
+  try {
+    const raw = store.getItem(AUTH_USER_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isAuthUser(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }

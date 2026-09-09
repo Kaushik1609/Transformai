@@ -12,7 +12,7 @@ import {
   type OutputResponse,
   type TransformationJobResponse,
 } from "@/lib/api";
-import { isTerminalJobStatus } from "@/lib/outputTypes";
+import { isTerminalJobStatus, outputTypeShortLabel } from "@/lib/outputTypes";
 import { cn } from "@/lib/utils";
 import { Check, AlertTriangle } from "lucide-react";
 import { ResultsPanel } from "./ResultsPanel";
@@ -91,7 +91,7 @@ export function UnifiedResults({ job, outputs, loading = false }: UnifiedResults
                 )}
               >
                 {tabIcon(output.status)}
-                {output.output_type.charAt(0).toUpperCase() + output.output_type.slice(1)}
+                {outputTypeShortLabel(output.output_type)}
               </button>
             );
           })}

@@ -42,7 +42,7 @@ const OUTPUT_TYPE_LABELS: Record<OutputTypeId, string> = {
   advisory: "Advisory Note",
   infographic: "Infographic",
   presentation: "Presentation",
-  video: "Video",
+  video: "Video Package",
 };
 
 const SHORT_LABELS: Record<OutputTypeId, string> = {
@@ -52,7 +52,7 @@ const SHORT_LABELS: Record<OutputTypeId, string> = {
   advisory: "Advisory",
   infographic: "Infographic",
   presentation: "Presentation",
-  video: "Video",
+  video: "Video Package",
 };
 
 export const OUTPUT_TYPES: OutputTypeInfo[] = [

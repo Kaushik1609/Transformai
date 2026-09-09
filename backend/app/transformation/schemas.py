@@ -20,12 +20,16 @@ class TransformationState(TypedDict, total=False):
     """
     job_id: str
     project_id: str
-    source_id: str
+    source_id: str | None
     configuration_id: str
     requested_output_types: list[str]
 
     # Canonical content (Phase 4), serialized for generators.
     canonical: dict[str, Any]
+
+    # Phase 15 operator prompt (traversed when source_id is None). Rendered
+    # into the shared brief as a trusted operator-instruction block.
+    prompt: str | None
 
     # User configuration (audience, tone, language, detail, objective...).
     config: dict[str, Any]

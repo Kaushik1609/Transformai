@@ -8,3 +8,4 @@ export { TrustStatus } from "./TrustStatus";
 export { SecurityPipeline } from "./SecurityPipeline";
 export { SecurityActivity } from "./SecurityActivity";
 export { ArtifactIntegrity } from "./ArtifactIntegrity";
+export { TrustCockpit, trustCounts } from "./TrustCockpit";

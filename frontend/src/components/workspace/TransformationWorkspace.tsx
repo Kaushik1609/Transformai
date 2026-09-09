@@ -53,6 +53,8 @@ import { HistoryPanel } from "@/components/history";
 
 interface TransformationWorkspaceProps {
   projectId: string;
+  /** Preferred source to preselect once the workspace boots (UI-7). */
+  initialSourceId?: string | null;
   /** Polling interval for job status (default 2000ms; shorter in tests). */
   pollIntervalMs?: number;
 }
@@ -68,6 +70,7 @@ type WorkspacePhase =
 
 export function TransformationWorkspace({
   projectId,
+  initialSourceId,
   pollIntervalMs = 2000,
 }: TransformationWorkspaceProps) {
   // ---- Project / sources / configs -------------------------------------
@@ -100,7 +103,11 @@ export function TransformationWorkspace({
       setProject(projectRes.data);
       const sourceList = sourcesRes.data;
       setSources(sourceList);
-      setCurrentSource(sourceList[0] ?? null);
+      const preferred =
+        initialSourceId != null
+          ? (sourceList.find((s) => s.id === initialSourceId) ?? null)
+          : null;
+      setCurrentSource(preferred ?? sourceList[0] ?? null);
       if (configsRes.data.length > 0) {
         setConfiguration(configsRes.data[0]);
       }
@@ -111,7 +118,7 @@ export function TransformationWorkspace({
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, initialSourceId]);
 
   useEffect(() => {
     void loadWorkspace();

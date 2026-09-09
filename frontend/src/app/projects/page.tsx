@@ -8,39 +8,30 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   type ProjectResponse,
-  type SourceResponse,
-  type TransformationJobResponse,
   projectsApi,
   sourcesApi,
   transformationsApi,
   errorMessage,
 } from "@/lib/api";
-import { timeAgo } from "@/lib/outputTypes";
 import { AppShell } from "@/components/layout";
 import {
   EmptyState,
   ErrorState,
   LoadingSpinner,
-  StatusBadge,
 } from "@/components/common";
-import { isQuickProjectName } from "@/lib/quickWorkspace";
-import { Plus, Folder, Search, X } from "lucide-react";
+import {
+  ProjectCard,
+  type ProjectCardMeta,
+} from "@/components/projects";
+import { Plus, Search, X } from "lucide-react";
 
 type Filter = "all" | "active" | "completed";
 
-interface ProjectMeta {
-  project: ProjectResponse;
-  sourceCount: number;
-  outputCount: number;
-  latestJob: TransformationJobResponse | null;
-}
-
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectResponse[] | null>(null);
-  const [meta, setMeta] = useState<Record<string, ProjectMeta>>({});
+  const [meta, setMeta] = useState<Record<string, ProjectCardMeta>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
@@ -58,7 +49,8 @@ export default function ProjectsPage() {
     try {
       const res = await projectsApi.list();
       setProjects(res.data);
-      // Load per-project stats
+      // Load per-project stats. A project whose stats fail to load is shown
+      // as "Unavailable" — the failure is never hidden behind fabricated zeros.
       void Promise.all(
         res.data.map(async (p) => {
           try {
@@ -71,14 +63,15 @@ export default function ProjectsPage() {
               ? await transformationsApi
                   .listOutputs(latest.id)
                   .then((o) => o.count)
-                  .catch(() => 0)
+                  .catch(() => null)
               : 0;
             setMeta((prev) => ({
               ...prev,
               [p.id]: {
                 project: p,
+                statsState: "ok",
                 sourceCount: sources.count,
-                outputCount: jobMeta,
+                outputCount: jobMeta === null ? 0 : jobMeta,
                 latestJob: latest,
               },
             }));
@@ -87,6 +80,7 @@ export default function ProjectsPage() {
               ...prev,
               [p.id]: {
                 project: p,
+                statsState: "unavailable",
                 sourceCount: 0,
                 outputCount: 0,
                 latestJob: null,
@@ -228,70 +222,14 @@ export default function ProjectsPage() {
             ) : (
               <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filtered.map((project) => {
-                  const m = meta[project.id] ?? {
+                  const card = meta[project.id] ?? {
                     project,
+                    statsState: "loading" as const,
                     sourceCount: 0,
                     outputCount: 0,
                     latestJob: null,
                   };
-                  const latest = m.latestJob;
-                  const isCompleted = latest?.status === "completed";
-                  const displayName = isQuickProjectName(project.name)
-                    ? "Quick Transformations"
-                    : project.name;
-                  return (
-                    <li
-                      key={project.id}
-                      className="flex flex-col rounded-xl border border-border bg-surface-elevated p-4 transition-colors hover:border-input"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <Folder className="h-5 w-5 text-primary" aria-hidden="true" />
-                          <Link
-                            href={`/projects/${project.id}`}
-                            className="font-semibold text-foreground transition-colors hover:text-primary"
-                          >
-                            {displayName}
-                          </Link>
-                        </div>
-                        <StatusBadge variant={isCompleted ? "success" : "info"}>
-                          {isCompleted ? "Completed" : "Active"}
-                        </StatusBadge>
-                      </div>
-
-                      {project.description && (
-                        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                          {project.description}
-                        </p>
-                      )}
-
-                      <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>
-                          <span className="font-medium text-foreground">
-                            {m.sourceCount}
-                          </span>{" "}
-                          Source{m.sourceCount !== 1 ? "s" : ""}
-                        </span>
-                        <span>
-                          <span className="font-medium text-foreground">
-                            {m.outputCount}
-                          </span>{" "}
-                          Output{m.outputCount !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {latest ? timeAgo(latest.created_at) : "No activity yet"}
-                      </p>
-
-                      <Link
-                        href={`/projects/${project.id}`}
-                        className="mt-4 inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                      >
-                        Open Project
-                      </Link>
-                    </li>
-                  );
+                  return <ProjectCard key={project.id} meta={card} />;
                 })}
               </ul>
             )}

@@ -97,12 +97,61 @@ const PARTIAL_OUTPUTS = [
   failedOutput("video"),
 ];
 
+interface ConsistencyLike {
+  job_id: string;
+  trust_statuses: unknown[];
+  cross_output: {
+    status: string;
+    completed_output_count: number;
+    conflicts: unknown[];
+    checked_pairs: number;
+    note: string;
+  };
+}
+
+const JOB_ID = "22222222-2222-2222-2222-222222222222";
+
+/**
+ * Default fetch handler for these suites. The UI-6 trust cockpit now composes
+ * the existing panels and auto-loads the consistency + security-events
+ * endpoints, so those routes return realistic (unremarkable) payloads while
+ * everything else keeps the original empty defaults.
+ */
+function cockpitHandler(consistency?: ConsistencyLike) {
+  return async (input: RequestInfo | URL) => {
+    const url = String(input);
+    const path = url.split("?")[0].replace("http://localhost:8000", "");
+
+    if (path.endsWith("/consistency")) {
+      return jsonResponse({
+        success: true,
+        data: consistency ?? {
+          job_id: JOB_ID,
+          trust_statuses: [],
+          cross_output: {
+            status: "CONSISTENT",
+            completed_output_count: 0,
+            conflicts: [],
+            checked_pairs: 0,
+            note: "",
+          },
+        },
+      });
+    }
+    if (path.endsWith("/security-events")) {
+      return jsonResponse({ success: true, count: 0, data: [] });
+    }
+    if (/^\/api\/v1\/sources\/[^/]+$/.test(path)) {
+      return jsonResponse({ success: true, data: null });
+    }
+    return jsonResponse({ success: true, data: [], count: 0 });
+  };
+}
+
 beforeEach(() => {
   mockFetch.mockReset();
   // VerificationPanel fetches for each completed output.
-  mockFetch.mockResolvedValue(
-    jsonResponse({ success: true, data: [], count: 0 }),
-  );
+  mockFetch.mockImplementation(cockpitHandler());
 });
 
 describe("Acceptance: partial success across all seven outputs", () => {
@@ -130,7 +179,20 @@ describe("Acceptance: partial success across all seven outputs", () => {
     expect(screen.getByText(/4 outputs failed/)).toBeInTheDocument();
   });
 
-  it("UnifiedResults reports 3 generated and 4 failed for a partial job", () => {
+  it("UnifiedResults reports 3 generated and 4 failed for a partial job, and shows the trust cockpit", async () => {
+    mockFetch.mockImplementation(
+      cockpitHandler({
+        job_id: JOB_ID,
+        trust_statuses: [],
+        cross_output: {
+          status: "CONSISTENT",
+          completed_output_count: 3,
+          conflicts: [],
+          checked_pairs: 3,
+          note: "",
+        },
+      }),
+    );
     render(
       <UnifiedResults job={jobWith({})} outputs={PARTIAL_OUTPUTS} />,
     );
@@ -142,6 +204,23 @@ describe("Acceptance: partial success across all seven outputs", () => {
       const expected = outputTypeShortLabel(type);
       expect(screen.getByRole("tab", { name: expected })).toBeInTheDocument();
     }
+
+    // UI-6 — the trust cockpit composes the existing verification panels in
+    // a single hierarchy and surfaces real consistency data.
+    await waitFor(() =>
+      expect(
+        screen.getByText("Consistent across 3 completed outputs."),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Trust status")).toBeInTheDocument();
+    expect(screen.getByText("Why this status")).toBeInTheDocument();
+    expect(screen.getByText("Cross-output consistency")).toBeInTheDocument();
+    expect(screen.getByText("Fact verification")).toBeInTheDocument();
+    expect(screen.getByText("Security signals")).toBeInTheDocument();
+    expect(screen.getByText("Artifact integrity & provenance")).toBeInTheDocument();
+    expect(screen.getByText("What remains unverified")).toBeInTheDocument();
+    expect(screen.queryByText(/\d+\.?\d*% safe/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/blockchain/i)).not.toBeInTheDocument();
   });
 
   it("ResultsPanel renders all 7 cards and never hides the 4 failures", async () => {

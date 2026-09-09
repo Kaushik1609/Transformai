@@ -16,9 +16,7 @@ import { isTerminalJobStatus, outputTypeShortLabel } from "@/lib/outputTypes";
 import { cn } from "@/lib/utils";
 import { Check, AlertTriangle } from "lucide-react";
 import { ResultsPanel } from "./ResultsPanel";
-import { ConsistencyPanel } from "@/components/verification/ConsistencyPanel";
-import { SecurityPipeline } from "@/components/verification/SecurityPipeline";
-import { SecurityActivity } from "@/components/verification/SecurityActivity";
+import { TrustCockpit } from "@/components/verification/TrustCockpit";
 
 interface UnifiedResultsProps {
   job: TransformationJobResponse;
@@ -61,16 +59,8 @@ export function UnifiedResults({ job, outputs, loading = false }: UnifiedResults
         )}
       </div>
 
-      {/* Phase 12B — job-level trust + cross-output consistency */}
-      <ConsistencyPanel jobId={job.id} />
-
-      {/* Phase 12D — security pipeline (7 stages) + security activity */}
-      <SecurityPipeline
-        projectId={job.project_id}
-        jobSourceId={job.source_id}
-        outputs={outputs}
-      />
-      <SecurityActivity projectId={job.project_id} limit={15} />
+      {/* UI-6 — trust / verification cockpit (composes the existing panels) */}
+      <TrustCockpit job={job} outputs={outputs} />
 
       {/* Output tabs */}
         <div role="tablist" aria-label="Generated outputs" className="flex flex-wrap gap-1.5">

@@ -15,7 +15,7 @@ import {
 import { isTerminalJobStatus, outputTypeShortLabel } from "@/lib/outputTypes";
 import { cn } from "@/lib/utils";
 import { Check, AlertTriangle } from "lucide-react";
-import { ResultsPanel } from "./ResultsPanel";
+import { ArtifactInspector } from "./ArtifactInspector";
 import { TrustCockpit } from "@/components/verification/TrustCockpit";
 
 interface UnifiedResultsProps {
@@ -88,7 +88,7 @@ export function UnifiedResults({ job, outputs, loading = false }: UnifiedResults
         </div>
 
         <div role="tabpanel">
-          <ResultsPanel outputs={[activeOutput]} loading={false} />
+          <ArtifactInspector output={activeOutput} />
         </div>
       </div>
     );

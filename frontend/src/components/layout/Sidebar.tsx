@@ -11,6 +11,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useModalA11y } from "@/lib/useModalA11y";
 import { LogoMark } from "@/components/brand";
 import {
   Home,
@@ -146,6 +147,7 @@ export function SidebarNav({ active }: { active?: string }) {
                 key={href}
                 href={href}
                 title={collapsed ? label : undefined}
+                aria-label={collapsed ? label : undefined}
                 className={cn(
                   "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                   collapsed && "justify-center px-2",
@@ -175,6 +177,7 @@ export function SidebarNav({ active }: { active?: string }) {
                 key={href}
                 href={href}
                 title={collapsed ? label : undefined}
+                aria-label={collapsed ? label : undefined}
                 className={cn(
                   "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                   collapsed && "justify-center px-2",
@@ -328,6 +331,9 @@ function MobileDrawer({ active }: { active?: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useModalA11y(open, () => setOpen(false), drawerRef);
 
   useEffect(() => {
     setOpen(false);
@@ -364,7 +370,14 @@ function MobileDrawer({ active }: { active?: string }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+        <div
+          ref={drawerRef}
+          tabIndex={-1}
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation"
+        >
           <div
             className="absolute inset-0 bg-black/60"
             onClick={() => setOpen(false)}

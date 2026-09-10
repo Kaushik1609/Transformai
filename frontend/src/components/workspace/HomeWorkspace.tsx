@@ -413,6 +413,8 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
                 type="button"
                 disabled
                 title="Voice input is not available yet"
+                aria-label="Voice input is not available yet"
+                aria-disabled="true"
                 className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground/50 transition-colors"
               >
                 <Mic className="h-4 w-4" aria-hidden="true" />

@@ -73,9 +73,9 @@ function ProjectDetailInner({ projectId }: { projectId: string }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Folder className="h-5 w-5 text-primary" aria-hidden="true" />
-                <h1 className="text-xl font-semibold text-foreground">
+                <h2 className="text-xl font-semibold text-foreground">
                   {displayName}
-                </h1>
+                </h2>
                 <StatusBadge variant="info">OWNER-SCOPED</StatusBadge>
               </div>
             </div>

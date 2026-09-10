@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ProjectResponse,
   projectsApi,
@@ -26,6 +26,7 @@ import {
   type ProjectCardMeta,
 } from "@/components/projects";
 import { Plus, Search, X } from "lucide-react";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 type Filter = "all" | "active" | "completed";
 
@@ -43,6 +44,9 @@ export default function ProjectsPage() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const createDialogRef = useRef<HTMLDivElement>(null);
+
+  useModalA11y(creating, () => setCreating(false), createDialogRef);
 
   const loadProjects = useCallback(async () => {
     setLoadError(null);
@@ -240,6 +244,8 @@ export default function ProjectsPage() {
       {/* Create modal */}
       {creating && (
         <div
+          ref={createDialogRef}
+          tabIndex={-1}
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
@@ -250,7 +256,7 @@ export default function ProjectsPage() {
             onClick={() => setCreating(false)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-md rounded-xl border border-border bg-surface-elevated p-6">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface-elevated p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 Create a new project

@@ -68,9 +68,9 @@ export function AuthShell({
       </div>
 
       {/* Right — form panel */}
-      <div className="flex w-full flex-1 items-center justify-center p-6">
+      <main className="flex w-full flex-1 items-center justify-center p-6">
         <div className="w-full max-w-sm">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

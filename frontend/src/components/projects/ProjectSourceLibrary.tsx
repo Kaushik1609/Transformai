@@ -166,7 +166,7 @@ export function ProjectSourceLibrary({
                   selected && "border-primary/50 bg-muted/40",
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <FileUp className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />

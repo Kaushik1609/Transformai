@@ -137,7 +137,7 @@ function OutputCard({ output }: { output: OutputResponse }) {
   );
 }
 
-function FailureDetails({
+export function FailureDetails({
   output,
   failure,
 }: {
@@ -183,7 +183,7 @@ function FailureDetails({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+export function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="shrink-0 uppercase tracking-wide">{label}</dt>
@@ -192,7 +192,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function OutputContent({ output }: { output: OutputResponse }) {
+export function OutputContent({ output }: { output: OutputResponse }) {
   // Structured, type-specific previews (safe enumerable fields only).
   if (output.output_type === "x") {
     return <XThreadView output={output} />;
@@ -222,7 +222,7 @@ function OutputContent({ output }: { output: OutputResponse }) {
   );
 }
 
-function XThreadView({ output }: { output: OutputResponse }) {
+export function XThreadView({ output }: { output: OutputResponse }) {
   const thread = (output.structured_content as { thread?: unknown } | null)
     ?.thread;
   if (Array.isArray(thread) && thread.length > 0) {
@@ -256,7 +256,7 @@ interface SlideData {
   key_message?: unknown;
 }
 
-function SlideView({ output }: { output: OutputResponse }) {
+export function SlideView({ output }: { output: OutputResponse }) {
   const raw = output.structured_content as {
     slides?: unknown;
     title?: unknown;
@@ -301,7 +301,7 @@ interface SectionData {
   message?: unknown;
 }
 
-function InfographicView({ output }: { output: OutputResponse }) {
+export function InfographicView({ output }: { output: OutputResponse }) {
   const raw = output.structured_content as {
     sections?: unknown;
     key_messages?: unknown;
@@ -349,7 +349,7 @@ interface SceneData {
   narration?: unknown;
 }
 
-function VideoView({ output }: { output: OutputResponse }) {
+export function VideoView({ output }: { output: OutputResponse }) {
   const raw = output.structured_content as {
     storyboard?: unknown;
     script?: unknown;

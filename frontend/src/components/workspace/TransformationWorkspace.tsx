@@ -275,9 +275,9 @@ export function TransformationWorkspace({
       {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
             {project?.name ?? "Transformation workspace"}
-          </h1>
+          </h2>
           {project?.description && (
             <p className="text-sm text-muted-foreground">
               {project.description}

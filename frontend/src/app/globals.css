@@ -133,6 +133,19 @@
   }
 }
 
+/* Respect OS reduced-motion: collapse animations/transitions for users who
+   request it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer components {
   .input-base {
     @apply w-full rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-[color:color-mix(in_srgb,var(--muted-foreground)_60%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;

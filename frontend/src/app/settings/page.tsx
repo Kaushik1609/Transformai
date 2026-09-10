@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { AppShell } from "@/components/layout";
 import { useTheme, type Theme } from "@/components/theme";
 import {
@@ -90,12 +90,14 @@ export default function SettingsPage() {
 // --------------------------------------------------------------------------
 
 function Field({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-foreground">
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-foreground">
         {label}
       </label>
       <input
+        id={id}
         value={value}
         readOnly
         aria-label={label}
@@ -185,10 +187,13 @@ function PreferencesSection() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-default-tone"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Default tone
           </label>
-          <select className="input-base">
+          <select id="settings-default-tone" className="input-base">
             <option>Professional</option>
             <option>Conversational</option>
             <option>Executive</option>
@@ -198,10 +203,13 @@ function PreferencesSection() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-default-audience"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Default audience
           </label>
-          <select className="input-base">
+          <select id="settings-default-audience" className="input-base">
             <option>General</option>
             <option>Executives</option>
             <option>Technical</option>
@@ -211,10 +219,19 @@ function PreferencesSection() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-language"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Language
           </label>
-          <input value="English" readOnly aria-label="Language" className="input-base opacity-70" />
+          <input
+            id="settings-language"
+            value="English"
+            readOnly
+            aria-label="Language"
+            className="input-base opacity-70"
+          />
         </div>
       </div>
       <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
@@ -238,10 +255,13 @@ function AISection() {
       </div>
       <div className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-llm-provider"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             LLM provider
           </label>
-          <select className="input-base" aria-label="LLM provider">
+          <select id="settings-llm-provider" className="input-base" aria-label="LLM provider">
             <option>OpenAI (server-configured)</option>
             <option>Development (fake)</option>
           </select>
@@ -251,10 +271,17 @@ function AISection() {
           </p>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-source-grounding"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Source grounding
           </label>
-          <select className="input-base" aria-label="Source grounding">
+          <select
+            id="settings-source-grounding"
+            className="input-base"
+            aria-label="Source grounding"
+          >
             <option>Auto</option>
             <option>Always on</option>
             <option>Off</option>

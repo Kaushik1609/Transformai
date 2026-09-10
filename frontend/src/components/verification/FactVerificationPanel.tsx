@@ -89,7 +89,7 @@ function ReportView({ report }: { report: FactVerificationResponse }) {
         </StatusBadge>
       </div>
       <p className="mt-1 text-[11px] text-muted-foreground">{data.summary}</p>
-      <dl className="mt-2 grid grid-cols-4 gap-x-4 gap-y-1">
+      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
         <Metric label="Checked" value={data.claims_checked} />
         <Metric label="Supported" value={data.claims_supported} />
         <Metric label="Contradicted" value={data.claims_contradicted} />

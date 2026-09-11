@@ -42,7 +42,7 @@ def _clamav_reachable() -> bool:
         return False
 
 
-@router.get("/", summary="Root API health & status")
+@router.api_route("/", methods=["GET", "HEAD"], summary="Root API health & status")
 async def root() -> JSONResponse:
     """Return 200 with service info, health status, and links to interactive documentation."""
     return JSONResponse(
@@ -60,7 +60,7 @@ async def root() -> JSONResponse:
     )
 
 
-@router.get("/health", summary="Liveness probe")
+@router.api_route("/health", methods=["GET", "HEAD"], summary="Liveness probe")
 async def health() -> JSONResponse:
     """
     Returns 200 if the process is alive.
@@ -78,7 +78,7 @@ async def health() -> JSONResponse:
     )
 
 
-@router.get("/ready", summary="Readiness probe")
+@router.api_route("/ready", methods=["GET", "HEAD"], summary="Readiness probe")
 async def ready() -> JSONResponse:
     """
     Returns 200 if all required dependencies are reachable.

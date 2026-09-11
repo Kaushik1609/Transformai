@@ -10,7 +10,6 @@ from typing import Literal
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 def _positive_bounded(value: int, name: str, upper: int) -> int:
     """Validate that a configuration value is a bounded positive integer."""
     if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
@@ -76,6 +75,8 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Database
     # -------------------------------------------------------------------------
+
+
     DATABASE_URL: str = (
         "postgresql+asyncpg://transformiq:changeme@localhost:5432/transformiq"
     )

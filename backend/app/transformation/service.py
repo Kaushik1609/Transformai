@@ -274,6 +274,18 @@ def execute_transformation_job_sync(
             else:
                 base_provider = build_resilient_provider()
 
+            if job_record.source_id:
+                from app.db.models.canonical_content import CanonicalContent
+                canonical = session.execute(
+                    select(CanonicalContent).where(CanonicalContent.source_id == job_record.source_id)
+                ).scalar_one_or_none()
+                if canonical is None or canonical.status != "completed":
+                    from app.content_intelligence.service import ContentIntelligenceService
+                    from app.content_intelligence.fake_provider import FakeContentAnalysisProvider
+                    ci = ContentIntelligenceService(provider=FakeContentAnalysisProvider())
+                    ci.analyze_source(session, job_record.source_id)
+                    session.commit()
+
             llm_provider = MeteredLLMProvider(base_provider)
             res = run_transformation_job(session, job_uuid, llm_provider=llm_provider)
             _logger.info("execute_transformation_job_sync completed", job_id=str(job_id), result=res)

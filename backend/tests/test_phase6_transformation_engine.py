@@ -667,3 +667,25 @@ def test_api_cancel_completed_job_conflict(client, monkeypatch):
     assert resp.status_code == 200
     second = client.post(f"/api/v1/transformations/{job_id}/cancel")
     assert second.status_code == 409
+
+
+def test_api_create_transformation_with_fake_llm_provider(client, monkeypatch):
+    monkeypatch.setattr(settings, "MALWARE_SCAN_ENABLED", False)
+    fake_queue = FakeQueue()
+    monkeypatch.setattr("app.api.v1.transformations.get_transformation_queue", lambda: fake_queue)
+    pid, sid, cid = _seed_project_sources_configuration(client)
+    resp = client.post(
+        "/api/v1/transformations",
+        json={
+            "project_id": pid,
+            "source_id": sid,
+            "configuration_id": cid,
+            "output_types": ["summary"],
+            "llm_provider": "fake",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()["data"]
+    assert data["status"] == "queued"
+    assert data["requested_outputs"]["llm_provider"] == "fake"
+

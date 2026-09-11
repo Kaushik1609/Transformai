@@ -96,7 +96,7 @@ export function SourceUpload({
             disabled={disabled || submitting}
             placeholder="Paste the source content here…"
             rows={6}
-            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="flex items-center gap-2">
             <button

@@ -160,6 +160,7 @@ async def create_transformation(
         configuration_id=body.configuration_id,
         output_types=body.output_types,
         prompt=body.prompt,
+        llm_provider=body.llm_provider,
     )
     # Enqueue the transformation job for asynchronous processing. Enqueueing is
     # best-effort: if Redis is unavailable the job record still persists in the

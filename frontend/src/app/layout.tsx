@@ -10,9 +10,14 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TransformIQ — One source, every format",
+  title: "KaryaSetu AI — One source, every format",
   description:
-    "TransformIQ turns one source and one instruction into many communication-ready output formats.",
+    "KaryaSetu AI turns one source and one instruction into many communication-ready output formats.",
+  icons: {
+    icon: "/karyasetu-logo.png",
+    shortcut: "/karyasetu-logo.png",
+    apple: "/karyasetu-logo.png",
+  },
 };
 
 const THEME_BOOTSTRAP = `(function(){try{var t=localStorage.getItem('transformiq:theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d){r.classList.add('dark');}else{r.classList.remove('dark');}}catch(e){}})();`;

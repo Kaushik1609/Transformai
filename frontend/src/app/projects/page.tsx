@@ -120,6 +120,36 @@ export default function ProjectsPage() {
     });
   }, [projects, search, filter, meta]);
 
+  const tiles = useMemo(() => {
+    const ok = Object.values(meta).filter((m) => m.statsState === "ok");
+    const sources = ok.reduce((s, m) => s + m.sourceCount, 0);
+    const outputs = ok.reduce((s, m) => s + m.outputCount, 0);
+    const completed = ok.filter((m) => m.latestJob?.status === "completed").length;
+    const statsLoaded = ok.length > 0;
+    return [
+      {
+        label: "Projects",
+        value: projects ? String(projects.length) : "—",
+        bar: "w-2/5 bg-secondary",
+      },
+      {
+        label: "Sources",
+        value: statsLoaded ? String(sources) : "—",
+        bar: "w-3/5 bg-primary",
+      },
+      {
+        label: "Outputs",
+        value: statsLoaded ? String(outputs) : "—",
+        bar: "w-2/3 bg-tertiary-container",
+      },
+      {
+        label: "Completed",
+        value: statsLoaded ? String(completed) : "—",
+        bar: "w-1/3 bg-success/70",
+      },
+    ];
+  }, [meta, projects]);
+
   const handleCreate = async () => {
     if (!name.trim() || submitting) return;
     setSubmitting(true);
@@ -154,11 +184,77 @@ export default function ProjectsPage() {
       }
     >
       <div className="space-y-6">
-        {/* Search + filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full max-w-sm">
+        {/* Page heading */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-1">
+            <p className="label-mono-xs uppercase text-muted-foreground">
+              Directory
+            </p>
+            <h1 className="headline-xl font-semibold text-foreground">
+              Projects
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Organize sources, transformations, and outputs by workspace.
+            </p>
+          </div>
+          <span className="label-mono-xs rounded bg-surface-container-lowest px-2 py-1 uppercase text-muted-foreground shadow-sm">
+            {projects ? `${projects.length} workspace${projects.length !== 1 ? "s" : ""}` : "Loading…"}
+          </span>
+        </div>
+
+        {/* Summary tiles — real counts from backend data, never fabricated */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {tiles.map((tile) => (
+            <div
+              key={tile.label}
+              className="relative flex flex-col justify-between overflow-hidden rounded bg-surface-container-low p-3.5 shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <span className="label-mono-xs uppercase text-muted-foreground">
+                  {tile.label}
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-semibold tracking-tight text-foreground">
+                  {tile.value}
+                </span>
+              </div>
+              <div
+                aria-hidden="true"
+                className="mt-2.5 h-1 w-full overflow-hidden rounded bg-surface-container-highest"
+              >
+                <div className={`h-full rounded ${tile.bar}`} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters + search pill strip */}
+        <div className="flex flex-col items-stretch justify-between gap-3 rounded bg-surface-container-low p-2 shadow-sm sm:flex-row sm:items-center">
+          <div
+            role="group"
+            aria-label="Project filters"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0"
+          >
+            {(["all", "active", "completed"] as Filter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`rounded px-3 py-1.5 text-sm capitalize transition-colors ${
+                  filter === f
+                    ? "bg-surface-container-lowest font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-surface-container-high hover:text-foreground"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex w-full items-center gap-2 rounded bg-surface-container-lowest px-3 py-1.5 shadow-inner sm:w-80">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground"
               aria-hidden="true"
             />
             <input
@@ -166,25 +262,8 @@ export default function ProjectsPage() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search projects…"
               aria-label="Search projects"
-              className="input-base pl-9"
+              className="w-full border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
-          </div>
-
-          <div role="group" aria-label="Project filters" className="inline-flex gap-1">
-            {(["all", "active", "completed"] as Filter[]).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                className={`rounded-md px-3 py-1.5 text-sm capitalize transition-colors ${
-                  filter === f
-                    ? "bg-primary/10 font-medium text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -224,7 +303,7 @@ export default function ProjectsPage() {
                 description="Try adjusting your search or filters."
               />
             ) : (
-              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filtered.map((project) => {
                   const card = meta[project.id] ?? {
                     project,
@@ -256,7 +335,7 @@ export default function ProjectsPage() {
             onClick={() => setCreating(false)}
             aria-hidden="true"
           />
-          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface-elevated p-6">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded bg-surface-container-low p-6 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 Create a new project
@@ -300,7 +379,7 @@ export default function ProjectsPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What is this project about? (optional)"
                   rows={3}
-                  className="w-full resize-y rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="w-full resize-y rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
             </div>

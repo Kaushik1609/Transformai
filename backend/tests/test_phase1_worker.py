@@ -113,3 +113,46 @@ class TestWorkerModule:
             )
 
         assert exc_info.value.code == 1
+
+    def test_process_transformation_with_fake_provider(self, monkeypatch):
+        """Transformation jobs with llm_provider='fake' use FakeLLMProvider and succeed offline."""
+        import uuid
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from sqlalchemy.pool import StaticPool
+        from app.db.base import Base
+        from app.db.models import User, Project, Source, CanonicalContent, GenerationConfiguration, TransformationJob
+        worker_dir = os.path.join(os.path.dirname(__file__), "..", "..", "worker")
+        if os.path.abspath(worker_dir) not in sys.path:
+            sys.path.insert(0, os.path.abspath(worker_dir))
+        import worker as worker_module
+
+        engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+        Base.metadata.create_all(engine)
+        monkeypatch.setattr(worker_module.settings, "DATABASE_SYNC_URL", "sqlite://")
+        monkeypatch.setattr("worker.create_engine", lambda *args, **kwargs: engine)
+
+        with Session(engine) as db:
+            user = User(id=uuid.uuid4(), email="fake-test@example.com", name="Fake Worker Test", role="operator")
+            proj = Project(id=uuid.uuid4(), user_id=user.id, name="Test")
+            src = Source(id=uuid.uuid4(), project_id=proj.id, source_type="text", status="ready", extracted_text="Hello world test source")
+            db.add_all([user, proj, src])
+            db.flush()
+            can = CanonicalContent(
+                id=uuid.uuid4(), source_id=src.id, project_id=proj.id, status="completed",
+                title="Hello", summary="Test summary", key_points=[{"text": "Key pt"}], recommendations=[],
+            )
+            cfg = GenerationConfiguration(id=uuid.uuid4(), project_id=proj.id, language="English")
+            job = TransformationJob(
+                id=uuid.uuid4(), project_id=proj.id, source_id=src.id, configuration_id=cfg.id,
+                requested_outputs={"output_types": ["summary"], "llm_provider": "fake"},
+                status="queued",
+            )
+            db.add_all([can, cfg, job])
+            db.commit()
+            job_id = str(job.id)
+
+        result = worker_module.process_transformation(job_id)
+        assert result["outputs_completed"] == 1
+        assert result["outputs_failed"] == 0
+

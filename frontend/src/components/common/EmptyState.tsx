@@ -33,7 +33,7 @@ export function EmptyState({
       <svg
         aria-hidden="true"
         xmlns="http://www.w3.org/2000/svg"
-        className="h-10 w-10 text-muted-foreground/50"
+        className="h-10 w-10 text-muted-foreground"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

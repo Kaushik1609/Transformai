@@ -41,11 +41,11 @@ function StatValue({
   }
   if (statsState === "unavailable") {
     return (
-      <span className="font-medium text-muted-foreground/70">Unavailable</span>
+      <span className="font-medium text-muted-foreground">Unavailable</span>
     );
   }
   return (
-    <span className="font-medium text-muted-foreground/70" aria-hidden="true">
+    <span className="font-medium text-muted-foreground" aria-hidden="true">
       …
     </span>
   );
@@ -59,48 +59,64 @@ export function ProjectCard({ meta }: { meta: ProjectCardMeta }) {
     : project.name;
 
   return (
-    <li className="flex flex-col rounded-xl border border-border bg-surface-elevated p-4 transition-colors hover:border-input">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Folder className="h-5 w-5 text-primary" aria-hidden="true" />
+    <li className="group relative flex flex-col justify-between rounded bg-surface-container-low p-4 shadow-md transition-all duration-200 hover:bg-surface-container">
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <span className="label-mono-xs rounded bg-surface-container-highest px-2 py-0.5 uppercase text-muted-foreground">
+            Project
+          </span>
+          <StatusBadge variant={isCompleted ? "success" : "info"}>
+            {isCompleted ? "Completed" : "Active"}
+          </StatusBadge>
+        </div>
+
+        <div>
           <Link
             href={`/projects/${project.id}`}
-            className="font-semibold text-foreground transition-colors hover:text-primary"
+            className="flex items-center gap-2 font-semibold text-foreground transition-colors hover:text-primary"
           >
-            {displayName}
+            <Folder className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <span className="truncate">{displayName}</span>
           </Link>
+          {project.description && (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+              {project.description}
+            </p>
+          )}
         </div>
-        <StatusBadge variant={isCompleted ? "success" : "info"}>
-          {isCompleted ? "Completed" : "Active"}
-        </StatusBadge>
+
+        <div className="space-y-2 rounded bg-surface-container-lowest p-2.5 font-label-mono-sm text-label-mono-sm text-on-surface-variant">
+          <div className="flex items-center justify-between">
+            <span className="uppercase">Sources</span>
+            <StatValue statsState={statsState} value={sourceCount} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="uppercase">Outputs</span>
+            <StatValue statsState={statsState} value={outputCount} />
+          </div>
+        </div>
+
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center gap-1.5 font-label-mono-sm text-label-mono-sm">
+            <span className={isCompleted ? "text-success" : "text-primary"}>
+              {statsState === "ok" && latestJob
+                ? `Job ${latestJob.status.toUpperCase()}`
+                : statsState === "unavailable"
+                  ? "Unavailable"
+                  : "Loading…"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            {statsState === "ok" && latestJob
+              ? timeAgo(latestJob.created_at)
+              : "No activity yet"}
+          </div>
+        </div>
       </div>
-
-      {project.description && (
-        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-          {project.description}
-        </p>
-      )}
-
-      <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-        <span>
-          <StatValue statsState={statsState} value={sourceCount} /> Source
-          {sourceCount !== 1 ? "s" : ""}
-        </span>
-        <span>
-          <StatValue statsState={statsState} value={outputCount} /> Output
-          {outputCount !== 1 ? "s" : ""}
-        </span>
-      </div>
-
-      <p className="mt-1 text-xs text-muted-foreground">
-        {statsState === "ok" && latestJob
-          ? timeAgo(latestJob.created_at)
-          : "No activity yet"}
-      </p>
 
       <Link
         href={`/projects/${project.id}`}
-        className="mt-4 inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        className="-mx-4 -mb-4 mt-4 flex w-[calc(100%+2rem)] items-center justify-center gap-2 rounded-b bg-surface-container-lowest/40 px-3 py-2.5 text-center text-sm font-medium text-primary transition-colors hover:bg-surface-container-high"
       >
         Open Project
       </Link>

@@ -278,6 +278,7 @@ export interface TransformationJobPayload {
   source_id?: string;
   prompt?: string;
   output_types: OutputTypeId[];
+  llm_provider?: string;
 }
 
 export interface TransformationJobDetailResponse {
@@ -480,6 +481,24 @@ export function errorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * Resolve the base URL for API requests.
+ *
+ * In the browser, when NEXT_PUBLIC_API_URL is unset, route requests through
+ * Next.js's same-origin reverse proxy (/api/...) so that development servers
+ * running on non-standard ports (such as 3001) are not blocked by backend CORS.
+ */
+export function getApiBaseUrl(): string {
+  if (
+    typeof window !== "undefined" &&
+    process.env.NODE_ENV !== "test" &&
+    !process.env.NEXT_PUBLIC_API_URL
+  ) {
+    return "";
+  }
+  return API_BASE_URL;
+}
+
 // ---------------------------------------------------------------------------
 // Core fetch helpers
 // ---------------------------------------------------------------------------
@@ -516,7 +535,7 @@ function handleUnauthorized(): void {
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+  const url = `${getApiBaseUrl()}${path}`;
   const hadBearerToken = getAuthToken() !== null;
 
   let response: Response;
@@ -548,7 +567,7 @@ async function apiFetchForm<T>(
   formData: FormData,
   options?: RequestInit,
 ): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+  const url = `${getApiBaseUrl()}${path}`;
   const hadBearerToken = getAuthToken() !== null;
 
   let response: Response;
@@ -593,7 +612,7 @@ async function apiFetchBlob(
   const search = query
     ? `?${new URLSearchParams(query).toString()}`
     : "";
-  const url = `${API_BASE_URL}${path}${search}`;
+  const url = `${getApiBaseUrl()}${path}${search}`;
   const fetchInit: RequestInit =
     init?.method === "POST"
       ? { method: "POST" as const, headers: authHeaders() }

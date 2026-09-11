@@ -198,12 +198,19 @@ export function TransformationWorkspace({
     if (!canGenerate || !currentSource || !configuration) return;
     setFormError(null);
     setOutputs([]);
+    const selectedProvider =
+      typeof window !== "undefined"
+        ? localStorage.getItem("transformiq.llm_provider")
+        : null;
     try {
       const res = await transformationsApi.create({
         project_id: projectId,
         source_id: currentSource.id,
         configuration_id: configuration.id,
         output_types: selectedOutputs,
+        ...(selectedProvider && selectedProvider !== "server"
+          ? { llm_provider: selectedProvider }
+          : {}),
       });
       setJob(res.data);
     } catch (err) {

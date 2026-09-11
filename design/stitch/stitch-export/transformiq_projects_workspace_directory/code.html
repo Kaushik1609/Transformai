@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary":"#003640","on-secondary-container":"#00424e","surface-tint":"#b4c5ff","primary-fixed-dim":"#b4c5ff","on-background":"#dfe2ee","on-error":"#690005","inverse-surface":"#dfe2ee","on-surface-variant":"#c3c6d7","inverse-on-surface":"#2c3039","surface-bright":"#353942","error":"#ffb4ab","outline":"#8d90a0","error-container":"#93000a","surface-dim":"#0f131c","surface-container":"#1c2028","tertiary-fixed":"#e1e0ff","surface-container-high":"#262a33","on-tertiary-fixed":"#07006c","secondary-fixed":"#acedff","surface":"#0f131c","tertiary-fixed-dim":"#c0c1ff","background":"#0f131c","on-primary-container":"#eeefff","on-secondary-fixed-variant":"#004e5c","tertiary":"#c0c1ff","secondary-fixed-dim":"#4cd7f6","on-primary-fixed-variant":"#003ea8","outline-variant":"#434655","on-secondary-fixed":"#001f26","on-primary":"#002a78","surface-variant":"#31353e","on-tertiary":"#1000a9","on-error-container":"#ffdad6","primary":"#b4c5ff","secondary":"#4cd7f6","surface-container-lowest":"#0a0e16","surface-container-highest":"#31353e","on-tertiary-container":"#f1eeff","tertiary-container":"#585be6","primary-fixed":"#dbe1ff","surface-container-low":"#181c24","on-tertiary-fixed-variant":"#2f2ebe","on-primary-fixed":"#00174b","secondary-container":"#03b5d3","on-surface":"#dfe2ee","inverse-primary":"#0053db","primary-container":"#2563eb"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"inspector-width":"24rem","grid-margin-tablet":"1rem","rail-width-collapsed":"4rem","grid-margin-desktop":"1.5rem","grid-margin-mobile":"0.75rem","card-padding-dense":"0.75rem","rail-width-expanded":"16rem","panel-gap":"1rem","card-padding-regular":"1.25rem"},fontFamily:{"label-mono-sm":["JetBrains Mono"],"headline-md":["Geist"],"body-md":["Geist"],caption:["Geist"],"headline-xl":["Geist"],"headline-lg":["Geist"],"label-mono-md":["JetBrains Mono"],"body-sm":["Geist"],"body-lg":["Geist"],"headline-sm":["Geist"],"headline-xl-mobile":["Geist"]},fontSize:{"label-mono-sm":["11px",{lineHeight:"14px",letterSpacing:"0.04em",fontWeight:"500"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.015em",fontWeight:"500"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],caption:["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-xl":["36px",{lineHeight:"44px",letterSpacing:"-0.025em",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.02em",fontWeight:"600"}],"label-mono-md":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"500"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",letterSpacing:"-0.005em",fontWeight:"400"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-xl-mobile":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-rail-width-expanded bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-4 flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">T</div><span class="font-headline-sm text-headline-sm tracking-tight text-on-surface">TransformIQ</span></div><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">ENTERPRISE</span></div><div class="px-3 pt-2 pb-4"><button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-headline-sm rounded shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all"><span class="material-symbols-outlined text-[18px]">add_circle</span><span>+ Create Transformation</span></button></div><nav class="flex flex-col gap-1 px-3" data-active-classes="bg-surface-container-high text-on-surface font-headline-sm"><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-colors bg-surface-container-high text-on-surface font-headline-sm" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md text-body-md">Home</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="projects" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-body-md text-body-md">Projects</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="history" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-body-md text-body-md">History</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="security-activity" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span class="font-body-md text-body-md">Security Activity</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">Settings</span></a></nav></div><div class="p-3 flex flex-col gap-3"><div class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Pipeline Active · Grounded RAG</span></div><div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-label-mono-md text-primary">EV</div><div class="flex flex-col"><span class="font-headline-sm text-body-sm text-on-surface leading-tight">Elena Vance</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Director of Threat Comms</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-[18px]">unfold_more</span></div></div></aside><div class="pl-rail-width-expanded flex flex-col min-h-screen"><header class="fixed top-0 left-rail-width-expanded right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-6 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-secondary text-[18px]">corporate_fare</span><span class="font-body-sm text-body-sm text-on-surface">Global Threat Intelligence Workspace</span><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div><div class="flex items-center flex-1 gap-2 bg-surface-container-lowest px-3 py-1.5 rounded max-w-md"><span class="material-symbols-outlined text-outline text-[18px]">search</span><input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" placeholder="Search sources, transformations, artifacts... (Cmd + K)" type="text"/></div></div><div class="flex items-center gap-3.5"><div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high"><span class="material-symbols-outlined text-secondary text-[16px]">verified_user</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface">FIPS 140-3 Compliant</span></div><button class="relative p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button><div class="flex items-center gap-2 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Wb0FI5CBqMnx2ey5yRvFNJugjQNyoWPB0cVo8k2zqEAFWD3IMv1NqZEPiFkT-9iCicYO9EBT88ttxHDPLe7fqBURm46knL6RcDFAZpKrZRsr6g8T2y_6P_Qa7Om9jqlsnR7lmSRy3kWlwaOfW72oAfLIt2ofZGuZXPz-E7Rz7odsPKQkbYPZUzVFFpvmDlD5XlWgoAZRqOdcbnF3V00Ytp6DkYtFBqhi6KYbgwx_FIIEZkdOmZVzcg1Hg"/><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div></div></header><main class="w-full pt-16 px-6 py-6 bg-background flex-1"><div class="flex flex-col w-full space-y-6">
+<!-- Top Context / Breadcrumbs & Control Bar -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 font-caption text-caption text-on-surface-variant">
+<span class="flex items-center gap-1.5 hover:text-on-surface transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-secondary">corporate_fare</span>
+          Global Threat Intelligence
+        </span>
+<span>/</span>
+<span class="text-on-surface font-label-mono-sm uppercase tracking-wider">Projects Directory</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1 rounded shadow-sm">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">SOC-2 TYPE II / AIR-GAPPED SYNCED</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">LATENCY: 14ms</span>
+</div>
+</div>
+<!-- Page Title & Main Utility CTAs -->
+<div class="flex flex-wrap items-end justify-between gap-4">
+<div class="space-y-1">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight flex items-center gap-3">
+          Projects
+          <span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-high text-primary tracking-normal">8 ACTIVE PODS</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+          Organize sources, transformations, and communication packages by enterprise workspace and classification tier.
+        </p>
+</div>
+<div class="flex items-center gap-2.5">
+<button class="flex items-center gap-2 px-3 py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline-sm text-body-sm rounded shadow-sm transition-colors" id="importWorkspaceBtn">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span>
+<span>Import Workspace</span>
+</button>
+<button class="flex items-center gap-2 px-3.5 py-2 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm rounded shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all" id="openModalBtn">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>+ New Project</span>
+</button>
+</div>
+</div>
+<!-- Analytical Filter Bar & View Options -->
+<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2 bg-surface-container-low rounded shadow-sm">
+<div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+<button class="px-3 py-1.5 rounded bg-surface-container-highest text-on-surface font-label-mono-sm text-label-mono-sm whitespace-nowrap shadow-sm">
+          All Workspaces (8)
+        </button>
+<button class="px-3 py-1.5 rounded bg-transparent hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-label-mono-sm text-label-mono-sm whitespace-nowrap transition-colors">
+          Active (6)
+        </button>
+<button class="px-3 py-1.5 rounded bg-transparent hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-label-mono-sm text-label-mono-sm whitespace-nowrap transition-colors flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+          Classified / High-Assurance (3)
+        </button>
+<button class="px-3 py-1.5 rounded bg-transparent hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-label-mono-sm text-label-mono-sm whitespace-nowrap transition-colors">
+          Archived (2)
+        </button>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded flex-1 sm:w-80 shadow-inner">
+<span class="material-symbols-outlined text-outline text-[16px]">search</span>
+<input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" placeholder="Search projects by name, clearance, or tags..." type="text"/>
+<span class="font-label-mono-sm text-[10px] text-outline px-1 rounded bg-surface-container-high">/</span>
+</div>
+<button class="p-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Grid View">
+<span class="material-symbols-outlined text-[18px]">grid_view</span>
+</button>
+<button class="p-1.5 rounded bg-transparent hover:bg-surface-container-high text-outline hover:text-on-surface transition-colors" title="List View">
+<span class="material-symbols-outlined text-[18px]">format_list_bulleted</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Operational Metric Overview Row -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+<div class="bg-surface-container-low p-3.5 rounded flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">TOTAL INGESTED SOURCES</span>
+<span class="material-symbols-outlined text-secondary text-[18px]">database</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface">54</span>
+<span class="font-label-mono-sm text-label-mono-sm text-emerald-400">+4 this week</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded mt-2.5 overflow-hidden">
+<div class="bg-secondary h-full rounded" style="width: 72%"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-3.5 rounded flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">TRANSFORMATIONS EXECUTED</span>
+<span class="material-symbols-outlined text-primary text-[18px]">alt_route</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface">81</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">100% Grounded</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded mt-2.5 overflow-hidden">
+<div class="bg-primary-container h-full rounded" style="width: 88%"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-3.5 rounded flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">DISPATCH ARTIFACTS</span>
+<span class="material-symbols-outlined text-tertiary text-[18px]">send_time_extension</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface">218</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">FIPS Validated</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded mt-2.5 overflow-hidden">
+<div class="bg-tertiary-container h-full rounded" style="width: 64%"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-3.5 rounded flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">PII SCRUB EFFICIENCY</span>
+<span class="material-symbols-outlined text-emerald-400 text-[18px]">security</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-emerald-400">99.98%</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Zero Leaks</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded mt-2.5 overflow-hidden">
+<div class="bg-emerald-500 h-full rounded" style="width: 99.8%"></div>
+</div>
+</div>
+</div>
+<!-- Projects Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- Card 1: Threat Intelligence (Primary / Active) -->
+<div class="bg-surface-container-low hover:bg-surface-container transition-all duration-200 rounded p-4 flex flex-col justify-between shadow-md relative group">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm uppercase tracking-wider">TOP_INTEL_FIPS</span>
+<span class="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 font-label-mono-sm text-label-mono-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Active
+            </span>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">radar</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors">Threat Intelligence</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 line-clamp-2">
+            Continuous monitoring, CVE bulletins, TTP extraction, and adversary threat actor intelligence.
+          </p>
+</div>
+<!-- Telemetry Pill / Stats -->
+<div class="bg-surface-container-lowest p-2.5 rounded font-label-mono-sm text-label-mono-sm text-on-surface space-y-2">
+<div class="flex items-center justify-between text-secondary">
+<span>18 Transformations</span>
+<span class="text-outline">·</span>
+<span>44 Artifacts</span>
+<span class="text-outline">·</span>
+<span>12 Sources</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded overflow-hidden flex">
+<div class="bg-primary-container h-full" style="width: 45%"></div>
+<div class="bg-secondary h-full" style="width: 35%"></div>
+<div class="bg-tertiary-container h-full" style="width: 20%"></div>
+</div>
+</div>
+<!-- Trust & Security Overview -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center gap-1.5 text-emerald-400 font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">verified_user</span>
+<span>Strict RAG Grounding · Zero Retention · 100% Scrubbed</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[15px] text-outline">history</span>
+<span class="truncate">TX-2025-0894B verified 14m ago by Elena Vance</span>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="flex items-center justify-between gap-2 pt-4 mt-4 border-t-0 bg-surface-container-lowest/40 -mx-4 -mb-4 p-3 rounded-b">
+<button class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm rounded transition-all">
+<span>Open Project</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface transition-colors" title="Quick Transform Blueprint">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</button>
+</div>
+</div>
+<!-- Card 2: Policy & Regulatory Comms -->
+<div class="bg-surface-container-low hover:bg-surface-container transition-all duration-200 rounded p-4 flex flex-col justify-between shadow-md relative group">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-primary font-label-mono-sm text-label-mono-sm uppercase tracking-wider">INTERNAL_LEGAL</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm">Audit On</span>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">policy</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-secondary transition-colors">Policy & Regulatory Comms</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 line-clamp-2">
+            Government mandates, compliance guidelines, executive briefs, and regulatory disclosure packets.
+          </p>
+</div>
+<!-- Telemetry Pill / Stats -->
+<div class="bg-surface-container-lowest p-2.5 rounded font-label-mono-sm text-label-mono-sm text-on-surface space-y-2">
+<div class="flex items-center justify-between text-on-surface">
+<span>12 Transformations</span>
+<span class="text-outline">·</span>
+<span>31 Artifacts</span>
+<span class="text-outline">·</span>
+<span>8 Sources</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded overflow-hidden flex">
+<div class="bg-primary h-full" style="width: 35%"></div>
+<div class="bg-secondary h-full" style="width: 40%"></div>
+<div class="bg-outline h-full" style="width: 25%"></div>
+</div>
+</div>
+<!-- Trust & Security Overview -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center gap-1.5 text-primary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">verified</span>
+<span>Deterministic Sec-RAG v3.4 · Audit Recorded</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[15px] text-outline">history</span>
+<span class="truncate">New compliance source ingested 3h ago</span>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="flex items-center justify-between gap-2 pt-4 mt-4 bg-surface-container-lowest/40 -mx-4 -mb-4 p-3 rounded-b">
+<button class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline-sm text-body-sm rounded transition-all">
+<span>Open Project</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface transition-colors" title="Quick Transform Blueprint">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</button>
+</div>
+</div>
+<!-- Card 3: Incident Response -->
+<div class="bg-surface-container-low hover:bg-surface-container transition-all duration-200 rounded p-4 flex flex-col justify-between shadow-md relative group">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-red-950/70 text-red-400 font-label-mono-sm text-label-mono-sm uppercase tracking-wider">CRITICAL_DISCLOSURE</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm">P1 Active</span>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-red-400 text-[20px]">warning</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-red-400 transition-colors">Incident Response</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 line-clamp-2">
+            Real-time incident disclosure, crisis threads, stakeholder advisories, and customer notification vectors.
+          </p>
+</div>
+<!-- Telemetry Pill / Stats -->
+<div class="bg-surface-container-lowest p-2.5 rounded font-label-mono-sm text-label-mono-sm text-on-surface space-y-2">
+<div class="flex items-center justify-between text-on-surface">
+<span>29 Transformations</span>
+<span class="text-outline">·</span>
+<span>86 Artifacts</span>
+<span class="text-outline">·</span>
+<span>19 Sources</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded overflow-hidden flex">
+<div class="bg-red-500 h-full" style="width: 50%"></div>
+<div class="bg-secondary h-full" style="width: 30%"></div>
+<div class="bg-primary-container h-full" style="width: 20%"></div>
+</div>
+</div>
+<!-- Trust & Security Overview -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center gap-1.5 text-secondary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">security</span>
+<span>FIPS 140-3 Enforced · Real-time DLP</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[15px] text-outline">history</span>
+<span class="truncate">Incident Brief completed yesterday</span>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="flex items-center justify-between gap-2 pt-4 mt-4 bg-surface-container-lowest/40 -mx-4 -mb-4 p-3 rounded-b">
+<button class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline-sm text-body-sm rounded transition-all">
+<span>Open Project</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface transition-colors" title="Quick Transform Blueprint">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</button>
+</div>
+</div>
+<!-- Card 4: Research Briefs & Whitepapers -->
+<div class="bg-surface-container-low hover:bg-surface-container transition-all duration-200 rounded p-4 flex flex-col justify-between shadow-md relative group">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-mono-sm text-label-mono-sm uppercase tracking-wider">RESEARCH_PUBLIC</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm">TLP:CLEAR</span>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[20px]">science</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-tertiary transition-colors">Research Briefs & Whitepapers</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 line-clamp-2">
+            Academic papers, market syntheses, technical whitepapers, and public research communication.
+          </p>
+</div>
+<!-- Telemetry Pill / Stats -->
+<div class="bg-surface-container-lowest p-2.5 rounded font-label-mono-sm text-label-mono-sm text-on-surface space-y-2">
+<div class="flex items-center justify-between text-on-surface">
+<span>8 Transformations</span>
+<span class="text-outline">·</span>
+<span>19 Artifacts</span>
+<span class="text-outline">·</span>
+<span>6 Sources</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded overflow-hidden flex">
+<div class="bg-tertiary h-full" style="width: 55%"></div>
+<div class="bg-secondary h-full" style="width: 25%"></div>
+<div class="bg-surface-container-high h-full" style="width: 20%"></div>
+</div>
+</div>
+<!-- Trust & Security Overview -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center gap-1.5 text-tertiary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">hub</span>
+<span>Evidence-Anchored · MITRE Mapped</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[15px] text-outline">history</span>
+<span class="truncate">Infographic blueprint generated 3d ago</span>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="flex items-center justify-between gap-2 pt-4 mt-4 bg-surface-container-lowest/40 -mx-4 -mb-4 p-3 rounded-b">
+<button class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline-sm text-body-sm rounded transition-all">
+<span>Open Project</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface transition-colors" title="Quick Transform Blueprint">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</button>
+</div>
+</div>
+<!-- Card 5: Supply Chain Risk Management -->
+<div class="bg-surface-container-low hover:bg-surface-container transition-all duration-200 rounded p-4 flex flex-col justify-between shadow-md relative group">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-2">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm uppercase tracking-wider">LOGISTICS_TIER1</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm">Continuous</span>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">account_tree</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-secondary transition-colors">Supply Chain Risk Management</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 line-clamp-2">
+            Vendor security postures, hardware provenance validation, and third-party risk disclosures.
+          </p>
+</div>
+<!-- Telemetry Pill / Stats -->
+<div class="bg-surface-container-lowest p-2.5 rounded font-label-mono-sm text-label-mono-sm text-on-surface space-y-2">
+<div class="flex items-center justify-between text-on-surface">
+<span>14 Transformations</span>
+<span class="text-outline">·</span>
+<span>38 Artifacts</span>
+<span class="text-outline">·</span>
+<span>9 Sources</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded overflow-hidden flex">
+<div class="bg-secondary h-full" style="width: 40%"></div>
+<div class="bg-primary-container h-full" style="width: 35%"></div>
+<div class="bg-surface-container-high h-full" style="width: 25%"></div>
+</div>
+</div>
+<!-- Trust & Security Overview -->
+<div class="space-y-1.5 pt-1">
+<div class="flex items-center gap-1.5 text-emerald-400 font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">fingerprint</span>
+<span>Cryptographic Hash Integrity Verified</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[15px] text-outline">history</span>
+<span class="truncate">Source parsed 4d ago</span>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="flex items-center justify-between gap-2 pt-4 mt-4 bg-surface-container-lowest/40 -mx-4 -mb-4 p-3 rounded-b">
+<button class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline-sm text-body-sm rounded transition-all">
+<span>Open Project</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface transition-colors" title="Quick Transform Blueprint">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</button>
+</div>
+</div>
+<!-- Card 6: Empty State / Blueprint Starter Card -->
+<div class="bg-surface-container-lowest/70 hover:bg-surface-container-low transition-all duration-200 rounded p-5 flex flex-col justify-between shadow-sm cursor-pointer group text-left" onclick="document.getElementById('createProjectModal').classList.remove('hidden')">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-outline font-label-mono-sm text-label-mono-sm uppercase">PROVISION_POD</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">add_circle_outline</span>
+</div>
+<div class="pt-2">
+<div class="w-10 h-10 rounded bg-surface-container-high flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary-container group-hover:text-on-primary transition-all mb-3">
+<span class="material-symbols-outlined text-[22px]">space_dashboard</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors">Create from Blueprint</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5">
+            Start from scratch with a zero-retention container, or choose from pre-configured threat intel, SBOM compliance, or executive comms blueprints.
+          </p>
+</div>
+<div class="bg-surface-container-high/60 p-3 rounded space-y-1 font-label-mono-sm text-label-mono-sm text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">lock_reset</span>
+<span>Ephemeral Cache Allocation</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">encrypted</span>
+<span>Customer-Managed Key Support</span>
+</div>
+</div>
+</div>
+<div class="pt-4 mt-4">
+<div class="w-full py-2 px-3 bg-surface-container hover:bg-surface-container-high text-primary font-headline-sm text-body-sm rounded text-center flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+<span>Configure New Container</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Slide-over / Modal for '+ Create New Project' -->
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-surface-container-lowest/80 backdrop-blur-sm p-4" id="createProjectModal">
+<div class="bg-surface-container-low max-w-xl w-full rounded shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+<!-- Modal Header -->
+<div class="px-5 py-4 bg-surface-container flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">folder_special</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface leading-none">Create New Project Pod</h3>
+<span class="font-caption text-caption text-on-surface-variant">Provision an isolated, zero-retention intelligence workspace.</span>
+</div>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" id="closeModalBtn">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Modal Body -->
+<form class="p-5 space-y-4" id="newProjectForm" onsubmit="event.preventDefault(); document.getElementById('createProjectModal').classList.add('hidden');">
+<!-- Field 1: Name -->
+<div class="space-y-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-mono-sm text-label-mono-sm text-on-surface">PROJECT NAME</label>
+<span class="font-caption text-caption text-outline">Required</span>
+</div>
+<input class="w-full h-9 px-3 bg-surface-container-lowest rounded text-on-surface font-body-sm text-body-sm placeholder:text-outline focus:outline-none shadow-inner" type="text" value="Critical Infrastructure & SCADA Resilience"/>
+</div>
+<!-- Field 2: Classification / Domain Tag -->
+<div class="space-y-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-mono-sm text-label-mono-sm text-on-surface">CLASSIFICATION & DOMAIN TAG</label>
+<span class="font-caption text-caption text-secondary font-label-mono-sm text-[11px]">TLP:AMBER+STRICT</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<label class="flex items-center gap-2 p-2 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors">
+<input checked="" class="accent-primary" name="domainTag" type="radio" value="Threat Intelligence"/>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">Threat Intel</span>
+</label>
+<label class="flex items-center gap-2 p-2 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors">
+<input class="accent-primary" name="domainTag" type="radio" value="Zero Trust"/>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">Zero Trust</span>
+</label>
+<label class="flex items-center gap-2 p-2 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors">
+<input class="accent-primary" name="domainTag" type="radio" value="Incident Response"/>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">Incident Resp</span>
+</label>
+</div>
+</div>
+<!-- Field 3: Description -->
+<div class="space-y-1.5">
+<label class="font-label-mono-sm text-label-mono-sm text-on-surface">DESCRIPTION / MISSION DIRECTIVE</label>
+<textarea class="w-full p-2.5 bg-surface-container-lowest rounded text-on-surface font-body-sm text-body-sm placeholder:text-outline focus:outline-none resize-none shadow-inner" rows="3">Centralized intelligence dossier and artifact dispatch for OT/ICS perimeter threat alerts.</textarea>
+</div>
+<!-- Security Attributes Preview -->
+<div class="p-3 rounded bg-surface-container-lowest space-y-2">
+<span class="font-label-mono-sm text-label-mono-sm text-primary flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+            CONTAINER SECURITY PROFILES APPLIED
+          </span>
+<div class="grid grid-cols-2 gap-2 text-on-surface-variant font-caption text-caption">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span>Grounded Sec-RAG (Strict)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span>Hardware PII Masking Active</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span>Air-Gap Checksum Enforced</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span>MITRE ATT&CK Matrix Sync</span>
+</div>
+</div>
+</div>
+<!-- Modal Footer CTAs -->
+<div class="flex items-center justify-end gap-3 pt-3">
+<button class="px-4 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-headline-sm text-body-sm transition-colors" id="cancelModalBtn" type="button">
+            Cancel
+          </button>
+<button class="px-4 py-2 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all flex items-center gap-1.5" type="submit">
+<span class="material-symbols-outlined text-[18px]">add_task</span>
+<span>Create Project</span>
+</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const modal = document.getElementById('createProjectModal');
+    const openBtn = document.getElementById('openModalBtn');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const cancelBtn = document.getElementById('cancelModalBtn');
+
+    if (openBtn && modal) {
+      openBtn.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+      });
+    }
+
+    if (closeBtn && modal) {
+      closeBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+    }
+
+    if (cancelBtn && modal) {
+      cancelBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+    }
+
+    // Esc key close
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      }
+    });
+  })();
+</script></main></div></body></html>

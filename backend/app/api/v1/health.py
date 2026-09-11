@@ -42,6 +42,24 @@ def _clamav_reachable() -> bool:
         return False
 
 
+@router.get("/", summary="Root API health & status")
+async def root() -> JSONResponse:
+    """Return 200 with service info, health status, and links to interactive documentation."""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "ok",
+            "service": "transformiq-backend",
+            "version": "0.1.0",
+            "environment": settings.ENVIRONMENT,
+            "uptime_seconds": round(time.time() - _START_TIME, 1),
+            "docs_url": "/docs",
+            "health_url": "/health",
+            "ready_url": "/ready",
+        },
+    )
+
+
 @router.get("/health", summary="Liveness probe")
 async def health() -> JSONResponse:
     """

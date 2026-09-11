@@ -9,16 +9,16 @@ import { useState } from "react";
 
 const FAQS = [
   {
-    q: "What is TransformIQ?",
-    a: "TransformIQ turns one source and/or one instruction into many communication formats at once.",
+    q: "What is KaryaSetu AI?",
+    a: "KaryaSetu AI turns one source and/or one instruction into many communication formats at once.",
   },
   {
     q: "Do I need a source file?",
-    a: "No. TransformIQ accepts a prompt alone, a source alone, or both. Attach a source for grounded, verifiable claims.",
+    a: "No. KaryaSetu AI accepts a prompt alone, a source alone, or both. Attach a source for grounded, verifiable claims.",
   },
   {
     q: "Do I need to re-upload my source for each output?",
-    a: "No. Add your source once, choose any number of outputs, and TransformIQ orchestrates them together.",
+    a: "No. Add your source once, choose any number of outputs, and KaryaSetu AI orchestrates them together.",
   },
   {
     q: "What output formats are supported?",
@@ -37,7 +37,7 @@ export default function HelpPage() {
     <AppShell
       active="/help"
       title="Help & Documentation"
-      subtitle="Everything you need to get the most from TransformIQ"
+      subtitle="Everything you need to get the most from KaryaSetu AI"
     >
       <div className="max-w-2xl space-y-6">
         <section>

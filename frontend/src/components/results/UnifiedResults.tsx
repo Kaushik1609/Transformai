@@ -12,8 +12,14 @@ import {
   type OutputResponse,
   type TransformationJobResponse,
 } from "@/lib/api";
-import { isTerminalJobStatus, outputTypeShortLabel } from "@/lib/outputTypes";
+import {
+  isTerminalJobStatus,
+  outputTypeShortLabel,
+  jobStatusVariant,
+  formatDateTime,
+} from "@/lib/outputTypes";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common";
 import { Check, AlertTriangle } from "lucide-react";
 import { ArtifactInspector } from "./ArtifactInspector";
 import { TrustCockpit } from "@/components/verification/TrustCockpit";
@@ -45,9 +51,36 @@ export function UnifiedResults({ job, outputs, loading = false }: UnifiedResults
     const failed = outputs.filter((o) => o.status === "failed").length;
     const activeId = selectedId ?? outputs[0].id;
     const activeOutput = outputs.find((o) => o.id === activeId) ?? outputs[0];
+    const requestedTypes = (
+      (job.requested_outputs as { output_types?: string[] } | null)?.output_types ?? []
+    ).map((t) => outputTypeShortLabel(t));
+    const requestedCount = requestedTypes.length;
 
   return (
     <div className="space-y-4">
+      {/* Transformation / project context — real job record fields only */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-border bg-surface-elevated px-4 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="label-mono-sm text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Transformation
+          </span>
+          <span className="truncate font-mono text-xs text-foreground">
+            {job.id}
+          </span>
+          <StatusBadge variant={jobStatusVariant(job.status)}>
+            {job.status}
+          </StatusBadge>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>Created {formatDateTime(job.created_at)}</span>
+          {requestedCount > 0 && (
+            <span>
+              {requestedCount} format{requestedCount !== 1 ? "s" : ""} requested
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-sm font-semibold text-foreground">
           {completed} output{completed !== 1 ? "s" : ""} generated

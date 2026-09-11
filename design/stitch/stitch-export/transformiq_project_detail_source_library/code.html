@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary":"#003640","on-secondary-container":"#00424e","surface-tint":"#b4c5ff","primary-fixed-dim":"#b4c5ff","on-background":"#dfe2ee","on-error":"#690005","inverse-surface":"#dfe2ee","on-surface-variant":"#c3c6d7","inverse-on-surface":"#2c3039","surface-bright":"#353942","error":"#ffb4ab","outline":"#8d90a0","error-container":"#93000a","surface-dim":"#0f131c","surface-container":"#1c2028","tertiary-fixed":"#e1e0ff","surface-container-high":"#262a33","on-tertiary-fixed":"#07006c","secondary-fixed":"#acedff","surface":"#0f131c","tertiary-fixed-dim":"#c0c1ff","background":"#0f131c","on-primary-container":"#eeefff","on-secondary-fixed-variant":"#004e5c","tertiary":"#c0c1ff","secondary-fixed-dim":"#4cd7f6","on-primary-fixed-variant":"#003ea8","outline-variant":"#434655","on-secondary-fixed":"#001f26","on-primary":"#002a78","surface-variant":"#31353e","on-tertiary":"#1000a9","on-error-container":"#ffdad6","primary":"#b4c5ff","secondary":"#4cd7f6","surface-container-lowest":"#0a0e16","surface-container-highest":"#31353e","on-tertiary-container":"#f1eeff","tertiary-container":"#585be6","primary-fixed":"#dbe1ff","surface-container-low":"#181c24","on-tertiary-fixed-variant":"#2f2ebe","on-primary-fixed":"#00174b","secondary-container":"#03b5d3","on-surface":"#dfe2ee","inverse-primary":"#0053db","primary-container":"#2563eb"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"inspector-width":"24rem","grid-margin-tablet":"1rem","rail-width-collapsed":"4rem","grid-margin-desktop":"1.5rem","grid-margin-mobile":"0.75rem","card-padding-dense":"0.75rem","rail-width-expanded":"16rem","panel-gap":"1rem","card-padding-regular":"1.25rem"},fontFamily:{"label-mono-sm":["JetBrains Mono"],"headline-md":["Geist"],"body-md":["Geist"],caption:["Geist"],"headline-xl":["Geist"],"headline-lg":["Geist"],"label-mono-md":["JetBrains Mono"],"body-sm":["Geist"],"body-lg":["Geist"],"headline-sm":["Geist"],"headline-xl-mobile":["Geist"]},fontSize:{"label-mono-sm":["11px",{lineHeight:"14px",letterSpacing:"0.04em",fontWeight:"500"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.015em",fontWeight:"500"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],caption:["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-xl":["36px",{lineHeight:"44px",letterSpacing:"-0.025em",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.02em",fontWeight:"600"}],"label-mono-md":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"500"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",letterSpacing:"-0.005em",fontWeight:"400"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-xl-mobile":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-rail-width-expanded bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-4 flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">T</div><span class="font-headline-sm text-headline-sm tracking-tight text-on-surface">TransformIQ</span></div><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">ENTERPRISE</span></div><div class="px-3 pt-2 pb-4"><button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-headline-sm rounded shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all"><span class="material-symbols-outlined text-[18px]">add_circle</span><span>+ Create Transformation</span></button></div><nav class="flex flex-col gap-1 px-3" data-active-classes="bg-surface-container-high text-on-surface font-headline-sm"><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-colors bg-surface-container-high text-on-surface font-headline-sm" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md text-body-md">Home</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="projects" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-body-md text-body-md">Projects</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="history" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-body-md text-body-md">History</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="security-activity" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span class="font-body-md text-body-md">Security Activity</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">Settings</span></a></nav></div><div class="p-3 flex flex-col gap-3"><div class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Pipeline Active · Grounded RAG</span></div><div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-label-mono-md text-primary">EV</div><div class="flex flex-col"><span class="font-headline-sm text-body-sm text-on-surface leading-tight">Elena Vance</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Director of Threat Comms</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-[18px]">unfold_more</span></div></div></aside><div class="pl-rail-width-expanded flex flex-col min-h-screen"><header class="fixed top-0 left-rail-width-expanded right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-6 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-secondary text-[18px]">corporate_fare</span><span class="font-body-sm text-body-sm text-on-surface">Global Threat Intelligence Workspace</span><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div><div class="flex items-center flex-1 gap-2 bg-surface-container-lowest px-3 py-1.5 rounded max-w-md"><span class="material-symbols-outlined text-outline text-[18px]">search</span><input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" placeholder="Search sources, transformations, artifacts... (Cmd + K)" type="text"/></div></div><div class="flex items-center gap-3.5"><div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high"><span class="material-symbols-outlined text-secondary text-[16px]">verified_user</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface">FIPS 140-3 Compliant</span></div><button class="relative p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button><div class="flex items-center gap-2 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Wb0FI5CBqMnx2ey5yRvFNJugjQNyoWPB0cVo8k2zqEAFWD3IMv1NqZEPiFkT-9iCicYO9EBT88ttxHDPLe7fqBURm46knL6RcDFAZpKrZRsr6g8T2y_6P_Qa7Om9jqlsnR7lmSRy3kWlwaOfW72oAfLIt2ofZGuZXPz-E7Rz7odsPKQkbYPZUzVFFpvmDlD5XlWgoAZRqOdcbnF3V00Ytp6DkYtFBqhi6KYbgwx_FIIEZkdOmZVzcg1Hg"/><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div></div></header><main class="w-full pt-16 px-6 py-6 bg-background flex-1"><div class="flex flex-col w-full">
+<!-- PROJECT COMMAND HEADER -->
+<div class="flex flex-col gap-4 pb-6">
+<!-- Breadcrumb & Workspace Meta -->
+<div class="flex flex-wrap items-center justify-between gap-3">
+<div class="flex items-center gap-2 font-label-mono-sm text-label-mono-sm text-on-surface-variant">
+<a class="hover:text-primary transition-colors" href="#">Projects</a>
+<span>/</span>
+<span class="text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+          Threat Intelligence Workspace
+        </span>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest font-label-mono-sm text-label-mono-sm text-secondary">ACTIVE PROJECT</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-label-mono-sm text-label-mono-sm text-primary">CLEARANCE: TOP_INTEL_FIPS</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest font-label-mono-sm text-label-mono-sm text-on-surface-variant">DETERMINISTIC V3.4</span>
+</div>
+</div>
+<!-- Title & Action Hub -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex flex-col max-w-3xl">
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight flex items-center gap-3">
+          Threat Intelligence
+          <span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container text-secondary-fixed">ENCLAVE #902-TI</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+          Continuous monitoring, CVE advisories, adversary TTP extraction, and cross-channel stakeholder intelligence transformation.
+        </p>
+</div>
+<div class="flex items-center gap-2.5 shrink-0">
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Project Settings">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+<button class="flex items-center gap-2 py-2 px-3.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-headline-sm text-headline-sm transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px] text-secondary">cloud_upload</span>
+<span>+ Upload Source</span>
+</button>
+<button class="flex items-center gap-2 py-2 px-4 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-headline-sm shadow-[0_0_12px_rgba(37,99,235,0.35)] transition-all">
+<span class="material-symbols-outlined text-[18px]">neurology</span>
+<span>+ Create Transformation</span>
+</button>
+</div>
+</div>
+<!-- Project Enclave Tabs -->
+<div class="flex items-center gap-1 mt-2 overflow-x-auto">
+<a class="px-3.5 py-2 font-headline-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors flex items-center gap-1.5" href="#">
+<span class="material-symbols-outlined text-[16px]">space_dashboard</span>
+        Overview
+      </a>
+<a class="px-3.5 py-2 font-headline-sm text-body-sm text-on-surface bg-surface-container-high rounded flex items-center gap-2 shadow-sm" href="#">
+<span class="material-symbols-outlined text-[16px] text-secondary">dataset</span>
+        Sources
+        <span class="px-1.5 py-0.2 rounded bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm">12</span>
+</a>
+<a class="px-3.5 py-2 font-headline-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[16px]">transform</span>
+        Transformations
+        <span class="px-1.5 py-0.2 rounded bg-surface-container-low text-on-surface-variant font-label-mono-sm text-label-mono-sm">18</span>
+</a>
+<a class="px-3.5 py-2 font-headline-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[16px]">output</span>
+        Outputs
+        <span class="px-1.5 py-0.2 rounded bg-surface-container-low text-on-surface-variant font-label-mono-sm text-label-mono-sm">44</span>
+</a>
+<a class="px-3.5 py-2 font-headline-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[16px]">manage_history</span>
+        Activity & Audit
+        <span class="px-1.5 py-0.2 rounded bg-surface-container-low text-on-surface-variant font-label-mono-sm text-label-mono-sm">68</span>
+</a>
+</div>
+</div>
+<!-- SOURCE WORKSPACE COCKPIT -->
+<div class="flex flex-col gap-5">
+<!-- Filtering & Direct Ingest Control Bar -->
+<div class="p-3 bg-surface-container-low rounded flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+<div class="flex flex-1 items-center gap-2">
+<div class="flex items-center flex-1 bg-surface-container-lowest px-3 py-1.5 rounded max-w-xl">
+<span class="material-symbols-outlined text-outline text-[18px]">search</span>
+<input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full ml-2" placeholder="Filter sources by filename, CVE, hash, or PII status..." type="text"/>
+<span class="font-label-mono-sm text-label-mono-sm text-outline-variant bg-surface-container px-1.5 py-0.5 rounded">/</span>
+</div>
+<div class="relative">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="text-on-surface-variant">Type:</span>
+<span>All Types</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">expand_more</span>
+</button>
+</div>
+<div class="relative">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="text-on-surface-variant">Security:</span>
+<span>All Status</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">expand_more</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-body-sm text-body-sm transition-colors">
+<span class="material-symbols-outlined text-[16px] text-primary">edit_note</span>
+<span>Enter Text Instead</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm transition-all shadow-sm">
+<span class="material-symbols-outlined text-[16px]">upload_file</span>
+<span>+ Upload Source</span>
+</button>
+</div>
+</div>
+<!-- MAIN TWO-COLUMN WORKBENCH: SOURCE LIST (60%) & INSPECTOR (40%) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+<!-- LEFT COLUMN: SOURCES INVENTORY & LIVE UPLOAD BANNER -->
+<div class="lg:col-span-7 flex flex-col gap-3">
+<!-- Live Ingestion / Dropzone Banner -->
+<div class="p-4 rounded bg-surface-container-low hover:bg-surface-container/60 transition-colors flex flex-col gap-3 relative overflow-hidden">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-surface-container-high flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[20px]">cloud_sync</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Drop an intelligence source here or browse</span>
+<span class="font-caption text-caption text-on-surface-variant">Supports PDF, DOCX, TXT, STIX/TAXII JSON · Max 50MB · Hardware Decrypted</span>
+</div>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-1 rounded bg-surface-container-lowest text-primary self-start sm:self-center">CHUNKER READY</span>
+</div>
+<!-- Active Ingestion Live Telemetry Tile -->
+<div class="p-2.5 rounded bg-surface-container-lowest flex flex-col gap-2">
+<div class="flex items-center justify-between gap-2">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-secondary text-[16px]">draft</span>
+<span class="font-headline-sm text-body-sm text-on-surface truncate">Q1_Infrastructure_Vulnerability_Audit.docx</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant shrink-0">1.8 MB</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary animate-pulse">INGESTING 74%</span>
+</div>
+</div>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary transition-all duration-300" style="width: 74%;"></div>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-surface-variant font-label-mono-sm text-label-mono-sm pt-0.5">
+<span class="flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-[13px] text-secondary">verified_user</span>
+                Malware Scan: Clean
+              </span>
+<span class="flex items-center gap-1 text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
+                PII Detection: Checking Enclave...
+              </span>
+<span>Chunking 84/110</span>
+</div>
+</div>
+</div>
+<!-- Source Item 1: Selected / Active -->
+<div class="p-4 rounded bg-surface-container-high ring-1 ring-primary/40 shadow-lg flex flex-col gap-3 relative transition-all">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3 min-w-0">
+<div class="w-10 h-10 rounded bg-surface-container-lowest flex items-center justify-center text-primary shrink-0 shadow-inner">
+<span class="material-symbols-outlined text-[24px]">picture_as_pdf</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Annual Threat Assessment 2025.pdf</h3>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 rounded bg-surface-container-lowest text-secondary shrink-0">ACTIVE SELECTION</span>
+</div>
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-caption text-caption text-on-surface-variant mt-0.5">
+<span class="font-label-mono-sm text-label-mono-sm text-primary">PDF · 2.4 MB · 48 Pages</span>
+<span>•</span>
+<span>Ingested: Oct 24, 2025 · 09:14 UTC</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1.5 shrink-0">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-mono-sm text-label-mono-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> READY
+              </span>
+</div>
+</div>
+<!-- Metadata Badges Strip -->
+<div class="flex flex-wrap items-center gap-2 font-label-mono-sm text-label-mono-sm">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+              Malware: Clean
+            </span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-error flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">flag</span>
+              PII Detected: 2 Types (Scrubbed)
+            </span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant truncate font-label-mono-sm">
+              SHA-256: a81f49...92c140
+            </span>
+</div>
+<!-- Downstream Linked Transformations -->
+<div class="flex items-center justify-between pt-2 text-on-surface-variant text-caption font-caption bg-surface-container-low/50 px-3 py-2 rounded">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[15px] text-primary">lan</span>
+<span class="truncate">Used in 4 transformations (<span class="text-on-surface font-label-mono-sm">TX-2025-0894B</span>, <span class="text-on-surface font-label-mono-sm">TX-2025-0881A</span>...)</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<button class="font-headline-sm text-caption text-secondary hover:text-primary transition-colors">Transform</button>
+<span>·</span>
+<button class="font-headline-sm text-caption text-outline hover:text-error transition-colors">Delete</button>
+</div>
+</div>
+</div>
+<!-- Source Item 2 -->
+<div class="p-4 rounded bg-surface-container-low hover:bg-surface-container transition-all flex flex-col gap-3">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3 min-w-0">
+<div class="w-10 h-10 rounded bg-surface-container flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined text-[24px]">picture_as_pdf</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">CISA_Advisory_AA24-241A_ICS_Targeting.pdf</h3>
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-caption text-caption text-on-surface-variant mt-0.5">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">PDF · 840 KB · 12 Pages</span>
+<span>•</span>
+<span>Ingested: Oct 22, 2025</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm shrink-0">READY</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 font-label-mono-sm text-label-mono-sm">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+              Clean
+            </span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">format_image_left</span>
+              No PII Detected
+            </span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant">2 transformations</span>
+</div>
+</div>
+<!-- Source Item 3 -->
+<div class="p-4 rounded bg-surface-container-low hover:bg-surface-container transition-all flex flex-col gap-3">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3 min-w-0">
+<div class="w-10 h-10 rounded bg-surface-container flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined text-[24px]">description</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Incident_Commander_Debrief_OT_Breach.txt</h3>
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-caption text-caption text-on-surface-variant mt-0.5">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">TXT · 45 KB · Raw Text</span>
+<span>•</span>
+<span>Ingested: Oct 20, 2025</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm shrink-0">READY</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 font-label-mono-sm text-label-mono-sm">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+              Clean
+            </span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-error flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">badge</span>
+              1 Category (Personnel ID Scrubbed)
+            </span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant">1 transformation</span>
+</div>
+</div>
+<!-- Source Item 4 -->
+<div class="p-4 rounded bg-surface-container-low hover:bg-surface-container transition-all flex flex-col gap-3">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3 min-w-0">
+<div class="w-10 h-10 rounded bg-surface-container flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined text-[24px]">article</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Critical_Minerals_Supply_Chain_Telemetry.docx</h3>
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-caption text-caption text-on-surface-variant mt-0.5">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">DOCX · 3.1 MB</span>
+<span>•</span>
+<span>Ingested: Oct 18, 2025</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm shrink-0">READY</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 font-label-mono-sm text-label-mono-sm">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+              Clean
+            </span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant">No PII</span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant">0 transformations</span>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: SOURCE DETAIL & SECURITY DEEP INSPECTOR (40%) -->
+<div class="lg:col-span-5 flex flex-col gap-4 sticky top-20">
+<div class="p-5 rounded bg-surface-container-low flex flex-col gap-4 shadow-xl">
+<!-- Inspector Header -->
+<div class="flex flex-col gap-1 pb-3">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px]">troubleshoot</span>
+                Deep Inspector Dock
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">NODE #SEC-701</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface leading-tight">
+              Annual Threat Assessment 2025.pdf
+            </h2>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-surface-container font-label-mono-sm text-label-mono-sm text-primary flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                Ready for Grounded RAG Synthesis
+              </span>
+</div>
+</div>
+<!-- Processing Pipeline Multi-Stage Stepper -->
+<div class="p-3 rounded bg-surface-container-lowest flex flex-col gap-2.5">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Ingestion Verification Pipeline</span>
+<div class="grid grid-cols-5 gap-1.5 pt-1">
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full rounded bg-secondary"></div>
+<span class="font-label-mono-sm text-[10px] text-on-surface leading-none">Upload ✓</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full rounded bg-secondary"></div>
+<span class="font-label-mono-sm text-[10px] text-on-surface leading-none">Valid ✓</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full rounded bg-secondary"></div>
+<span class="font-label-mono-sm text-[10px] text-on-surface leading-none">Malware ✓</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full rounded bg-tertiary"></div>
+<span class="font-label-mono-sm text-[10px] text-tertiary leading-none">PII ⚠</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full rounded bg-secondary"></div>
+<span class="font-label-mono-sm text-[10px] text-on-surface leading-none">Embed ✓</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-mono-sm text-label-mono-sm pt-1">
+<span>Vector Shards: <strong class="text-on-surface">1,420 chunks</strong></span>
+<span>Dimensions: <strong class="text-on-surface">1,536 (Cosine)</strong></span>
+</div>
+</div>
+<!-- Security & Governance Deep Breakdown -->
+<div class="flex flex-col gap-2.5">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Governance & Enclave Trust Checks</span>
+<!-- Malware Status -->
+<div class="p-2.5 rounded bg-surface-container flex items-start gap-2.5">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">verified_user</span>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Malware Signature Verification</span>
+<span class="font-caption text-caption text-on-surface-variant">Passed. Cryptographic SHA-256 verified against live signature and malware telemetry registries.</span>
+</div>
+</div>
+<!-- PII Masking Status -->
+<div class="p-2.5 rounded bg-surface-container flex items-start gap-2.5">
+<span class="material-symbols-outlined text-tertiary text-[18px] shrink-0 mt-0.5">gavel</span>
+<div class="flex flex-col">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-tertiary">PII Masking & Sanitization</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 rounded bg-surface-container-highest text-tertiary">MANDATORY</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant mt-0.5">
+                  Warning: 14 email addresses, 4 phone numbers detected. Strict deterministic redaction applied prior to model ingestion. Zero raw PII written to model memory.
+                </span>
+</div>
+</div>
+<!-- Prompt Injection Status -->
+<div class="p-2.5 rounded bg-surface-container flex items-start gap-2.5">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">security_update_good</span>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Adversarial & Injection Shield</span>
+<span class="font-caption text-caption text-on-surface-variant">Passed. Zero heuristic, non-printable, or structural jailbreak prompt tokens identified.</span>
+</div>
+</div>
+</div>
+<!-- Document Excerpt Preview with Provenance Tracing -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Indexed Content Excerpt (Chunk #042)</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">PAGE 14 · CITATION [C-14]</span>
+</div>
+<div class="p-3 rounded bg-surface-container-lowest font-label-mono-sm text-label-mono-sm text-on-surface-variant leading-relaxed select-text relative">
+<p>
+                "Adversary groups leveraged novel zero-day vectors targeting industrial control telemetry gateways. Incident reports delivered to <span class="bg-surface-container-highest text-secondary px-1 py-0.5 rounded font-mono">[REDACTED_EMAIL_01]</span> and liaison officer at <span class="bg-surface-container-highest text-secondary px-1 py-0.5 rounded font-mono">[REDACTED_PHONE_02]</span> confirm unauthenticated RPC command injection across edge nodes..."
+              </p>
+<div class="mt-2 flex items-center justify-between text-caption font-caption text-outline">
+<span>Confidence Score: 99.82%</span>
+<span class="text-primary hover:underline cursor-pointer">Inspect Raw Shard</span>
+</div>
+</div>
+</div>
+<!-- Direct Execution Button -->
+<button class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-md shadow-[0_0_16px_rgba(37,99,235,0.4)] transition-all mt-1">
+<span class="material-symbols-outlined text-[20px]">bolt</span>
+<span>Launch Transformation with this Source</span>
+</button>
+</div>
+</div>
+</div>
+<!-- BOTTOM DRAWER: AUDIT TRAIL & SYSTEM ACTIVITY -->
+<div class="p-4 rounded bg-surface-container-low flex flex-col gap-3 mt-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">history</span>
+<h4 class="font-headline-sm text-body-sm text-on-surface uppercase tracking-wider">Recent Project Activity & Audit Log</h4>
+</div>
+<a class="font-label-mono-sm text-label-mono-sm text-primary hover:text-primary-fixed transition-colors" href="#">Export FIPS Audit Archive (JSON-LD)</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+<!-- Audit Item 1 -->
+<div class="p-3 rounded bg-surface-container flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-on-surface-variant font-label-mono-sm text-label-mono-sm">
+<span class="text-secondary">14m ago</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface">SYNTHESIS</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">
+            Transformation <strong class="text-primary font-label-mono-sm">TX-2025-0894B</strong> completed. 5 communication packages generated for Executive & SecOps audiences.
+          </p>
+<span class="font-caption text-caption text-on-surface-variant">Deterministic Model Hash: #m9-fips-290</span>
+</div>
+<!-- Audit Item 2 -->
+<div class="p-3 rounded bg-surface-container flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-on-surface-variant font-label-mono-sm text-label-mono-sm">
+<span class="text-secondary">2h ago</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface">HSM VERIFY</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">
+            Source <strong class="text-on-surface font-label-mono-sm">Annual Threat Assessment 2025.pdf</strong> re-verified against FIPS-140-3 Hardware Enclave.
+          </p>
+<span class="font-caption text-caption text-on-surface-variant">Key Vault: HSM-NODE-EAST-02</span>
+</div>
+<!-- Audit Item 3 -->
+<div class="p-3 rounded bg-surface-container flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-on-surface-variant font-label-mono-sm text-label-mono-sm">
+<span class="text-secondary">1d ago</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface">MULTI-SOURCE</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">
+            User <strong class="text-on-surface">Elena Vance</strong> initiated multi-source cross-vector intelligence synthesis across 8 document shards.
+          </p>
+<span class="font-caption text-caption text-on-surface-variant">Signature Auth: PKI-EV-88410</span>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

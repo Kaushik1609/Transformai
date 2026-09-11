@@ -140,14 +140,13 @@ describe("HomeWorkspace", () => {
     expect(screen.getByText("Deliverables")).toBeInTheDocument();
     expect(screen.getByText("Output language")).toBeInTheDocument();
 
-    // The mini-composer quick action keeps the "Start transformation" label.
-    expect(
-      screen.getByRole("button", { name: "Start transformation" }),
-    ).toBeInTheDocument();
-    // The primary CTA uses the controlled "Transform" lexicon.
+    // The primary CTA uses the controlled "Transform" lexicon (single run button).
     expect(
       screen.getByRole("button", { name: "Transform" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start transformation" }),
+    ).not.toBeInTheDocument();
 
     // Grounding/provenance guidance is shown (no fabricated claims or numbers).
     expect(

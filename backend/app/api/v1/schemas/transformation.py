@@ -43,6 +43,10 @@ class TransformationJobCreate(BaseModel):
         max_length=10,
         description="List of output types: summary | linkedin | x | advisory | infographic | presentation | video",
     )
+    llm_provider: str | None = Field(
+        default=None,
+        description="Optional LLM provider override: fake | gemini | openai",
+    )
 
     @field_validator("prompt")
     @classmethod

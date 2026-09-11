@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+// Removed date-fns import; using built-in Date formatting
 import {
   Check,
   Loader2,
@@ -48,7 +49,7 @@ export function derivePipelineStages(
         index === 0
           ? status === "cancelled"
             ? "Job cancelled"
-            : "Waiting to start"
+            : `Waiting to start${job.started_at ? " at " + new Date(job.started_at).toLocaleString() : ""}`
           : undefined,
     }));
   }
@@ -360,7 +361,7 @@ export function PipelineStageTrack({
                           ? "text-destructive"
                           : stage.status === "skipped"
                             ? "text-muted-foreground"
-                            : "text-muted-foreground/60",
+                            : "text-muted-foreground",
                   )}
                 >
                   {stageStatusText(stage.status)}

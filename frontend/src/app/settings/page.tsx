@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useState, useId } from "react";
+import { useState, useEffect, useId } from "react";
 import { AppShell } from "@/components/layout";
 import { useTheme, type Theme } from "@/components/theme";
 import {
@@ -243,6 +243,25 @@ function PreferencesSection() {
 }
 
 function AISection() {
+  const [provider, setProvider] = useState<string>("server");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("transformiq.llm_provider");
+      if (stored) {
+        setProvider(stored);
+      }
+    }
+  }, []);
+
+  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setProvider(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("transformiq.llm_provider", val);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div>
@@ -261,13 +280,20 @@ function AISection() {
           >
             LLM provider
           </label>
-          <select id="settings-llm-provider" className="input-base" aria-label="LLM provider">
-            <option>OpenAI (server-configured)</option>
-            <option>Development (fake)</option>
+          <select
+            id="settings-llm-provider"
+            className="input-base"
+            aria-label="LLM provider"
+            value={provider}
+            onChange={handleProviderChange}
+          >
+            <option value="server">Server-configured (OpenAI / Gemini / Fallback)</option>
+            <option value="fake">Development (Fake - Testing Purpose)</option>
           </select>
           <p className="mt-1 text-xs text-muted-foreground">
-            Provider is configured server-side. API keys are never exposed to
-            the browser.
+            {provider === "fake"
+              ? "Running in Testing Purpose mode: full orchestration and artifact generation run offline without external LLM API keys."
+              : "Provider is configured server-side. API keys are never exposed to the browser."}
           </p>
         </div>
         <div>
@@ -382,7 +408,7 @@ function AppearanceSection() {
       <div>
         <h3 className="text-base font-semibold text-foreground">Appearance</h3>
         <p className="text-xs text-muted-foreground">
-          Choose how TransformIQ looks on this device.
+          Choose how KaryaSetu AI looks on this device.
         </p>
       </div>
       <div role="radiogroup" aria-label="Theme" className="flex gap-2">

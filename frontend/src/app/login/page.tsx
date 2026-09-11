@@ -81,7 +81,7 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="text-sm text-muted-foreground">
-            Sign in to continue to TransformIQ.
+            Sign in to continue to KaryaSetu AI.
           </p>
         </div>
 

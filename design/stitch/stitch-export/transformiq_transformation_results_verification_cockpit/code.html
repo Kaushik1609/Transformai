@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary":"#003640","on-secondary-container":"#00424e","surface-tint":"#b4c5ff","primary-fixed-dim":"#b4c5ff","on-background":"#dfe2ee","on-error":"#690005","inverse-surface":"#dfe2ee","on-surface-variant":"#c3c6d7","inverse-on-surface":"#2c3039","surface-bright":"#353942","error":"#ffb4ab","outline":"#8d90a0","error-container":"#93000a","surface-dim":"#0f131c","surface-container":"#1c2028","tertiary-fixed":"#e1e0ff","surface-container-high":"#262a33","on-tertiary-fixed":"#07006c","secondary-fixed":"#acedff","surface":"#0f131c","tertiary-fixed-dim":"#c0c1ff","background":"#0f131c","on-primary-container":"#eeefff","on-secondary-fixed-variant":"#004e5c","tertiary":"#c0c1ff","secondary-fixed-dim":"#4cd7f6","on-primary-fixed-variant":"#003ea8","outline-variant":"#434655","on-secondary-fixed":"#001f26","on-primary":"#002a78","surface-variant":"#31353e","on-tertiary":"#1000a9","on-error-container":"#ffdad6","primary":"#b4c5ff","secondary":"#4cd7f6","surface-container-lowest":"#0a0e16","surface-container-highest":"#31353e","on-tertiary-container":"#f1eeff","tertiary-container":"#585be6","primary-fixed":"#dbe1ff","surface-container-low":"#181c24","on-tertiary-fixed-variant":"#2f2ebe","on-primary-fixed":"#00174b","secondary-container":"#03b5d3","on-surface":"#dfe2ee","inverse-primary":"#0053db","primary-container":"#2563eb"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"inspector-width":"24rem","grid-margin-tablet":"1rem","rail-width-collapsed":"4rem","grid-margin-desktop":"1.5rem","grid-margin-mobile":"0.75rem","card-padding-dense":"0.75rem","rail-width-expanded":"16rem","panel-gap":"1rem","card-padding-regular":"1.25rem"},fontFamily:{"label-mono-sm":["JetBrains Mono"],"headline-md":["Geist"],"body-md":["Geist"],caption:["Geist"],"headline-xl":["Geist"],"headline-lg":["Geist"],"label-mono-md":["JetBrains Mono"],"body-sm":["Geist"],"body-lg":["Geist"],"headline-sm":["Geist"],"headline-xl-mobile":["Geist"]},fontSize:{"label-mono-sm":["11px",{lineHeight:"14px",letterSpacing:"0.04em",fontWeight:"500"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.015em",fontWeight:"500"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],caption:["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-xl":["36px",{lineHeight:"44px",letterSpacing:"-0.025em",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.02em",fontWeight:"600"}],"label-mono-md":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"500"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",letterSpacing:"-0.005em",fontWeight:"400"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-xl-mobile":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-rail-width-expanded bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-4 flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">T</div><span class="font-headline-sm text-headline-sm tracking-tight text-on-surface">TransformIQ</span></div><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">ENTERPRISE</span></div><div class="px-3 pt-2 pb-4"><button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-headline-sm rounded shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all"><span class="material-symbols-outlined text-[18px]">add_circle</span><span>+ Create Transformation</span></button></div><nav class="flex flex-col gap-1 px-3" data-active-classes="bg-surface-container-high text-on-surface font-headline-sm"><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-colors bg-surface-container-high text-on-surface font-headline-sm" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md text-body-md">Home</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="projects" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-body-md text-body-md">Projects</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="history" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-body-md text-body-md">History</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="security-activity" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span class="font-body-md text-body-md">Security Activity</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">Settings</span></a></nav></div><div class="p-3 flex flex-col gap-3"><div class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Pipeline Active · Grounded RAG</span></div><div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-label-mono-md text-primary">EV</div><div class="flex flex-col"><span class="font-headline-sm text-body-sm text-on-surface leading-tight">Elena Vance</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Director of Threat Comms</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-[18px]">unfold_more</span></div></div></aside><div class="pl-rail-width-expanded flex flex-col min-h-screen"><header class="fixed top-0 left-rail-width-expanded right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-6 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-secondary text-[18px]">corporate_fare</span><span class="font-body-sm text-body-sm text-on-surface">Global Threat Intelligence Workspace</span><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div><div class="flex items-center flex-1 gap-2 bg-surface-container-lowest px-3 py-1.5 rounded max-w-md"><span class="material-symbols-outlined text-outline text-[18px]">search</span><input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" placeholder="Search sources, transformations, artifacts... (Cmd + K)" type="text"/></div></div><div class="flex items-center gap-3.5"><div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high"><span class="material-symbols-outlined text-secondary text-[16px]">verified_user</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface">FIPS 140-3 Compliant</span></div><button class="relative p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button><div class="flex items-center gap-2 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Wb0FI5CBqMnx2ey5yRvFNJugjQNyoWPB0cVo8k2zqEAFWD3IMv1NqZEPiFkT-9iCicYO9EBT88ttxHDPLe7fqBURm46knL6RcDFAZpKrZRsr6g8T2y_6P_Qa7Om9jqlsnR7lmSRy3kWlwaOfW72oAfLIt2ofZGuZXPz-E7Rz7odsPKQkbYPZUzVFFpvmDlD5XlWgoAZRqOdcbnF3V00Ytp6DkYtFBqhi6KYbgwx_FIIEZkdOmZVzcg1Hg"/><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div></div></header><main class="w-full pt-16 px-6 py-6 bg-background flex-1"><div class="flex flex-col w-full gap-6">
+<!-- Top Hero & Execution Telemetry Bar -->
+<div class="flex flex-col bg-surface-container-low rounded-xl p-5 gap-4 shadow-xl">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-2.5 flex-wrap">
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-primary-container/20 text-primary uppercase">Mission Cockpit</span>
+<span class="text-outline-variant font-label-mono-sm">•</span>
+<span class="font-label-mono-md text-label-mono-md text-secondary tracking-wide">TX-2025-0894B</span>
+<span class="text-outline-variant font-label-mono-sm">•</span>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container-highest text-on-surface">
+<span class="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Transformation Complete</span>
+</div>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight mt-1">Transformation Results & Verification Cockpit</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">description</span>
+<span>Source: <strong class="text-on-surface font-headline-sm text-body-sm">Annual Threat Assessment 2025.pdf</strong> (Clearance: TOP_INTEL_FIPS)</span>
+<span class="text-outline-variant font-label-mono-sm">•</span>
+<span>Pipeline: <code class="font-label-mono-sm text-label-mono-sm text-secondary">Sec-RAG v3.4 [Deterministic Zero-Retention]</code></span>
+</p>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<button class="flex items-center gap-2 px-3 py-2 rounded bg-surface-container-high hover:bg-surface-container text-on-surface text-body-sm font-headline-sm transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span>Audit Export (JSON-LD)</span>
+</button>
+<button class="flex items-center gap-2 px-3.5 py-2 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary text-body-sm font-headline-sm transition-all shadow-[0_0_12px_rgba(37,99,235,0.35)]">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span>Package All 7 Formats (.bundle)</span>
+</button>
+</div>
+</div>
+<!-- Navigation Tabs Segmented Control -->
+<div class="flex items-center gap-2 overflow-x-auto pt-2">
+<button class="cockpit-tab flex items-center gap-2 px-3.5 py-1.5 rounded text-body-sm font-headline-sm bg-surface-container-high text-on-surface transition-all" onclick="switchCockpitTab('tab-overview', this)">
+<span class="material-symbols-outlined text-[18px] text-secondary">dashboard_customize</span>
+<span>Overview & Outputs</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 rounded bg-surface-container-lowest text-secondary">7</span>
+</button>
+<button class="cockpit-tab flex items-center gap-2 px-3.5 py-1.5 rounded text-body-sm font-headline-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" onclick="switchCockpitTab('tab-verification', this)">
+<span class="material-symbols-outlined text-[18px] text-primary">fact_check</span>
+<span>Evidence Verification</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 rounded bg-surface-container-lowest text-primary">42/44</span>
+</button>
+<button class="cockpit-tab flex items-center gap-2 px-3.5 py-1.5 rounded text-body-sm font-headline-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" onclick="switchCockpitTab('tab-pipeline', this)">
+<span class="material-symbols-outlined text-[18px] text-secondary">shield_lock</span>
+<span>Security Pipeline</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 rounded bg-surface-container-lowest text-secondary">9/9 Passed</span>
+</button>
+<button class="cockpit-tab flex items-center gap-2 px-3.5 py-1.5 rounded text-body-sm font-headline-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" onclick="switchCockpitTab('tab-consistency', this)">
+<span class="material-symbols-outlined text-[18px] text-secondary-fixed-dim">compare_arrows</span>
+<span>Cross-Output Consistency</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 rounded bg-surface-container-lowest text-secondary-fixed-dim">1 Notice</span>
+</button>
+<button class="cockpit-tab flex items-center gap-2 px-3.5 py-1.5 rounded text-body-sm font-headline-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" onclick="switchCockpitTab('tab-integrity', this)">
+<span class="material-symbols-outlined text-[18px] text-primary">fingerprint</span>
+<span>Cryptographic Integrity</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.2 rounded bg-surface-container-lowest text-primary">FIPS-140-3</span>
+</button>
+</div>
+</div>
+<!-- Prominent Trust & Provenance Bar (Full Operational Signatures) -->
+<div class="bg-surface-container-low rounded-xl p-4 flex flex-col gap-3 shadow-lg">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-surface-container-lowest px-4 py-3 rounded-lg">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]">gshield</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">TRUST STATUS: VALIDATED</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-highest text-secondary-fixed-dim uppercase tracking-wider">1 Advisory Notice</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Deterministic provenance graph verified · Strict RAG grounding locked · Zero retention runtime</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">HSM Session:</span>
+<code class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container px-2 py-1 rounded">fips:us-east:0x892a</code>
+</div>
+</div>
+<!-- Concrete Signals Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2.5">
+<!-- Signal 1 -->
+<div class="flex items-center gap-2.5 bg-surface-container p-2.5 rounded-lg">
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface truncate">Security Pipeline</span>
+<span class="font-caption text-caption text-on-surface-variant truncate">9/9 passed · PII scrubbed</span>
+</div>
+</div>
+<!-- Signal 2 -->
+<div class="flex items-center gap-2.5 bg-surface-container p-2.5 rounded-lg">
+<span class="material-symbols-outlined text-[18px] text-secondary">fingerprint</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface truncate">Cryptographic Digest</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary truncate">a81f9b23...92c1</span>
+</div>
+</div>
+<!-- Signal 3 -->
+<div class="flex items-center gap-2.5 bg-surface-container p-2.5 rounded-lg">
+<span class="material-symbols-outlined text-[18px] text-secondary">anchor</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface truncate">Evidence Anchoring</span>
+<span class="font-caption text-caption text-on-surface-variant truncate">42 of 44 claims grounded</span>
+</div>
+</div>
+<!-- Signal 4 (Notice) -->
+<div class="flex items-center gap-2.5 bg-surface-container p-2.5 rounded-lg cursor-pointer hover:bg-surface-container-high transition-colors" onclick="switchCockpitTab('tab-consistency')">
+<span class="material-symbols-outlined text-[18px] text-secondary-fixed-dim">info</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface truncate">Cross-Output Sync</span>
+<span class="font-caption text-caption text-secondary-fixed-dim truncate">1 date nuance flagged</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant ml-auto">expand_more</span>
+</div>
+<!-- Signal 5 -->
+<div class="flex items-center gap-2.5 bg-surface-container p-2.5 rounded-lg">
+<span class="material-symbols-outlined text-[18px] text-secondary">memory</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface truncate">Model Provenance</span>
+<span class="font-caption text-caption text-on-surface-variant truncate">Sec-RAG v3.4 · 0 External Logs</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Primary Tab Content Area -->
+<div class="cockpit-content-tab flex flex-col gap-6" id="tab-overview">
+<!-- Split Output Workspace & Detail Inspector -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+<!-- Left: Generated Outputs Grid (7 Formats) -->
+<div class="xl:col-span-5 flex flex-col gap-3">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">Target Formats Generated</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-high text-secondary">7 Artifacts</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Deterministic sync verified</span>
+</div>
+<div class="flex flex-col gap-2.5">
+<!-- Format 1: Executive Summary (Active) -->
+<div class="output-card p-3.5 rounded-xl bg-surface-container cursor-pointer transition-all shadow-md relative" onclick="selectOutputCard(this, 'Executive Summary')">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-primary-container/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">summarize</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-body-sm text-on-surface font-semibold">Executive Summary</h4>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">BLUF 2-PAGE</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">Strategic narrative for C-Suite with risk telemetry and budget impact.</p>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Verified</span>
+<span>1,420 words</span>
+<span>4 min read</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Copy Markdown">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Export PDF">
+<span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Format 2: Tactical Advisory -->
+<div class="output-card p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all shadow-sm" onclick="selectOutputCard(this, 'Tactical Advisory')">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-highest text-secondary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">security</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-body-sm text-on-surface font-semibold">Tactical Advisory</h4>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-primary uppercase">MITRE ATT&CK</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">TTP mapping (T1190, T1078), IOC tables, and perimeter firewall rules.</p>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Verified</span>
+<span>2,840 words</span>
+<span>12 min read</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Export Markdown">
+<span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Format 3: LinkedIn Post -->
+<div class="output-card p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all shadow-sm" onclick="selectOutputCard(this, 'LinkedIn Post')">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-highest text-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-body-sm text-on-surface font-semibold">LinkedIn Post</h4>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface uppercase">Thought Leadership</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">Executive commentary on supply chain resilience with engagement hooks.</p>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Verified</span>
+<span>340 words</span>
+<span>1.5 min read</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Format 4: Presentation Deck -->
+<div class="output-card p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all shadow-sm" onclick="selectOutputCard(this, 'Presentation Deck')">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-highest text-secondary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">slideshow</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-body-sm text-on-surface font-semibold">Presentation Deck</h4>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-primary uppercase">10 Slides + Notes</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">Full slide narrative, data visual concepts, and speaker talking points.</p>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Verified</span>
+<span>10 Slides</span>
+<span>PPTX Ready</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Export PPTX">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Format 5: X Thread (Caution flag) -->
+<div class="output-card p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all shadow-sm" onclick="selectOutputCard(this, 'X Thread')">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-highest text-secondary-fixed-dim flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">forum</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-body-sm text-on-surface font-semibold">X Thread</h4>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary-fixed-dim uppercase">6-Post Sequence</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">High-impact summary for threat research community.</p>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-secondary-fixed-dim">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">priority_high</span> Caution: 1 Date Nuance</span>
+<span class="text-outline">6 Tweets</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Copy Thread">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Format 6: Infographic Blueprint -->
+<div class="output-card p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all shadow-sm" onclick="selectOutputCard(this, 'Infographic Blueprint')">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-highest text-secondary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">schema</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-body-sm text-on-surface font-semibold">Infographic Blueprint</h4>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">Vector Flow</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">Structured layout hierarchy for design team: vector flow schematic.</p>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Verified</span>
+<span>SVG / XML Spec</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Export SVG">
+<span class="material-symbols-outlined text-[16px]">draw</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Format 7: Video Package -->
+<div class="output-card p-3.5 rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all shadow-sm" onclick="selectOutputCard(this, 'Video Package')">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-highest text-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">videocam</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h4 class="font-headline-sm text-body-sm text-on-surface font-semibold">Video Package</h4>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-outline uppercase">Script & Spec (Not MP4)</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">90-second broadcast teleprompter script, visual anchors, and audio cues.</p>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Verified</span>
+<span>90 sec runtime</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Export Script">
+<span class="material-symbols-outlined text-[16px]">description</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Active Output Detail Inspector (Executive Summary preview) -->
+<div class="xl:col-span-7 flex flex-col bg-surface-container-low rounded-xl p-5 shadow-xl gap-5">
+<!-- Inspector Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 gap-3 bg-surface-container p-4 rounded-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-headline-md text-headline-md text-on-surface" id="inspector-title">Executive Summary (BLUF Format)</span>
+</div>
+<div class="flex items-center gap-3 mt-1 font-label-mono-sm text-label-mono-sm text-on-surface-variant">
+<span>Length: 1,420 words</span>
+<span>•</span>
+<span>Read: 4 min</span>
+<span>•</span>
+<span class="text-secondary">Anchored Citations: 18</span>
+<span>•</span>
+<span class="text-primary font-mono">ID: BLUF-EXSUM-01</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1.5 rounded bg-surface-container-high hover:bg-surface-container text-on-surface text-body-sm font-headline-sm flex items-center gap-1.5 transition-colors" onclick="triggerCopyFeedback(this)">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span>Copy</span>
+</button>
+<button class="px-2.5 py-1.5 rounded bg-surface-container-high hover:bg-surface-container text-on-surface text-body-sm font-headline-sm flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+<span>PDF</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-high hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Full Screen View">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- BLUF Callout Box -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary font-semibold tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+              BOTTOM LINE UP FRONT (BLUF)
+            </span>
+<span class="font-caption text-caption text-on-surface-variant">Clearance: High Integrity Verified</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+            Adversary threat clusters have accelerated operational tempo targeting tier-1 industrial control telemetry across North American and EU maritime corridors. 
+            Automated credential-stuffing coupled with zero-day API ingestion vulnerabilities (<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-lowest px-1.5 py-0.5 rounded cursor-pointer hover:underline" onclick="highlightEvidence('ev-1')">Ref: CVE-2025-1049</span>) represents an immediate operational risk to supply continuity in Q2 2025. Immediate defensive postures require micro-segmentation of SCADA gateways.
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-lowest text-primary font-label-mono-sm text-label-mono-sm ml-1 cursor-pointer hover:bg-surface-container-highest" onclick="highlightEvidence('ev-1')">
+<span class="material-symbols-outlined text-[12px]">link</span> Source: p.4 §2
+            </span>
+</p>
+</div>
+<!-- Visual Analytics: Risk Matrix Breakdown -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface">Strategic Threat Vector Exposure (Q2 2025)</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Verified against MITRE Matrix</span>
+</div>
+<!-- Inline Data Visualization SVG Sparklines & Gauges -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<div class="bg-surface-container-low p-3 rounded-lg flex flex-col gap-2">
+<div class="flex justify-between items-center font-caption text-caption text-on-surface-variant">
+<span>SCADA Boundary Penetration</span>
+<span class="text-secondary font-label-mono-sm">HIGH</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold">78.4%</span>
+<span class="font-label-mono-sm text-label-mono-sm text-error">+14% YoY</span>
+</div>
+<!-- Mini SVG Bar -->
+<svg class="w-full h-2 rounded overflow-hidden" fill="none" viewbox="0 0 100 8">
+<rect class="fill-surface-container-highest" height="8" width="100"></rect>
+<rect class="fill-secondary" height="8" width="78.4"></rect>
+</svg>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg flex flex-col gap-2">
+<div class="flex justify-between items-center font-caption text-caption text-on-surface-variant">
+<span>Zero-Day API Hijacking</span>
+<span class="text-primary font-label-mono-sm">CRITICAL</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold">91.2%</span>
+<span class="font-label-mono-sm text-label-mono-sm text-error">+26% YoY</span>
+</div>
+<svg class="w-full h-2 rounded overflow-hidden" fill="none" viewbox="0 0 100 8">
+<rect class="fill-surface-container-highest" height="8" width="100"></rect>
+<rect class="fill-primary" height="8" width="91.2"></rect>
+</svg>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg flex flex-col gap-2">
+<div class="flex justify-between items-center font-caption text-caption text-on-surface-variant">
+<span>Mitigation Readiness Index</span>
+<span class="text-secondary font-label-mono-sm">STABLE</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold">64.0%</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">+3% QoQ</span>
+</div>
+<svg class="w-full h-2 rounded overflow-hidden" fill="none" viewbox="0 0 100 8">
+<rect class="fill-surface-container-highest" height="8" width="100"></rect>
+<rect class="fill-surface-tint" height="8" width="64"></rect>
+</svg>
+</div>
+</div>
+<!-- Structured Threat Matrix Table -->
+<div class="overflow-x-auto mt-2">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-label-mono-sm text-label-mono-sm uppercase">
+<th class="py-2.5 px-3 rounded-l">Threat Actor / Cluster</th>
+<th class="py-2.5 px-3">Attack Vector</th>
+<th class="py-2.5 px-3">Impact Surface</th>
+<th class="py-2.5 px-3">Mitigation Target</th>
+<th class="py-2.5 px-3 rounded-r text-right">Source Cit.</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high/50">
+<tr class="hover:bg-surface-container-high/40 transition-colors">
+<td class="py-2.5 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>APT-44 (Sandworm Alt)</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Firmware Wipe via OT</td>
+<td class="py-2.5 px-3">
+<span class="px-2 py-0.5 rounded bg-error-container/20 text-error font-label-mono-sm text-label-mono-sm">CRITICAL (Tier-1)</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Immediate (48h Mandate)</td>
+<td class="py-2.5 px-3 text-right">
+<span class="cursor-pointer text-secondary hover:underline font-label-mono-sm text-label-mono-sm" onclick="highlightEvidence('ev-2')">[p.11 §4]</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high/40 transition-colors">
+<td class="py-2.5 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span>Volt Typhoon Variant</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Living-off-the-Land (LotL)</td>
+<td class="py-2.5 px-3">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary-fixed-dim font-label-mono-sm text-label-mono-sm">HIGH (Port Ingress)</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">30-Day Window</td>
+<td class="py-2.5 px-3 text-right">
+<span class="cursor-pointer text-secondary hover:underline font-label-mono-sm text-label-mono-sm" onclick="highlightEvidence('ev-3')">[p.19 §1]</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high/40 transition-colors">
+<td class="py-2.5 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-tint"></span>
+<span>Lazarus Sub-Group C</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Supply Chain Dependency PoC</td>
+<td class="py-2.5 px-3">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-mono-sm text-label-mono-sm">MEDIUM (Logistics)</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Quarterly Audit</td>
+<td class="py-2.5 px-3 text-right">
+<span class="cursor-pointer text-secondary hover:underline font-label-mono-sm text-label-mono-sm" onclick="highlightEvidence('ev-4')">[p.24 §3]</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Section: Key Geopolitical Supply Chain Exposure Vectors -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-3">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Geopolitical & Logistics Risk Landscape</h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            Intermodal logistics routing through the Baltic and South China Sea shows a 42% spike in GPS spoofing attacks targeting cargo manifests. The intelligence source specifically indicates that maritime carriers without authenticated inertial navigation fallback protocols risk port-side clearance denial.
+          </p>
+<div class="p-3 rounded-lg bg-surface-container-low flex items-start gap-3">
+<span class="material-symbols-outlined text-[20px] text-secondary mt-0.5">verified</span>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Grounded Provenance Match: High Confidence</span>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">
+                Paragraph extracted from Source Document "Annual Threat Assessment 2025.pdf", Section 7: Maritime Ingress Vectors (Tokens 4,120 – 4,380). Cosine similarity score: 0.968.
+              </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Evidence Verification Tab Content -->
+<div class="cockpit-content-tab hidden flex flex-col gap-5" id="tab-verification">
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-4 shadow-xl">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 bg-surface-container p-4 rounded-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Grounded Evidence Verification Engine</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Every synthetic proposition is cross-referenced against vector embeddings from the ingested PDF source.</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container-high text-secondary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>42 Fully Supported</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container-high text-secondary-fixed-dim font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[16px]">help</span>
+<span>2 Semantic Nuance Flags</span>
+</div>
+</div>
+</div>
+<!-- Verification Claims List -->
+<div class="flex flex-col gap-3">
+<!-- Claim 1 -->
+<div class="p-4 rounded-xl bg-surface-container flex flex-col gap-2.5 transition-all" id="ev-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm uppercase">CLAIM #01 · VERIFIED</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Confidence: 99.4%</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">[p.4 §2] Source Verified</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+            "Automated credential-stuffing coupled with zero-day API ingestion vulnerabilities represents an immediate operational risk to supply continuity in Q2 2025."
+          </p>
+<div class="bg-surface-container-lowest p-3 rounded-lg flex flex-col gap-1">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Raw Source Excerpt:</span>
+<p class="font-caption text-caption text-secondary font-mono">
+              "...vulnerabilities discovered in telemetry ingestion endpoints (CVE-2025-1049) show targeted exploitation beginning late Q1 and peaking during the mid-2025 manufacturing push..."
+            </p>
+</div>
+</div>
+<!-- Claim 2 -->
+<div class="p-4 rounded-xl bg-surface-container flex flex-col gap-2.5 transition-all" id="ev-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm uppercase">CLAIM #02 · VERIFIED</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Confidence: 97.8%</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">[p.11 §4] Source Verified</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+            "Adversary group APT-44 deployed customized firmware wipe modules directed at secondary SCADA subsystems."
+          </p>
+<div class="bg-surface-container-lowest p-3 rounded-lg flex flex-col gap-1">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Raw Source Excerpt:</span>
+<p class="font-caption text-caption text-secondary font-mono">
+              "...forensic artifacts recovered from regional power substation nodes reveal specialized destructive payloads attributed to Sandworm/APT-44 affiliates targeting embedded PLCs..."
+            </p>
+</div>
+</div>
+<!-- Claim 3 (The Nuance Claim) -->
+<div class="p-4 rounded-xl bg-surface-container flex flex-col gap-2.5 transition-all" id="ev-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary-fixed-dim font-label-mono-sm text-label-mono-sm uppercase">CLAIM #09 · ADVISORY NOTICE</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Temporal Generalization</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary-fixed-dim">[p.19 §1] Cross-Format Variance</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+            "X Thread output translates 'Q2 2025' timeline into 'Mid-2025' for informal consumer comprehension."
+          </p>
+<div class="bg-surface-container-lowest p-3 rounded-lg flex items-center justify-between gap-3">
+<div>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Advisory Guidance:</span>
+<p class="font-caption text-caption text-on-surface-variant">Acceptable semantic simplification; does not compromise tactical fidelity.</p>
+</div>
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface text-caption font-headline-sm hover:bg-surface-container transition-colors">
+              Accept Nuance
+            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Security Pipeline Tab Content -->
+<div class="cockpit-content-tab hidden flex flex-col gap-5" id="tab-pipeline">
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-5 shadow-xl">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 bg-surface-container p-4 rounded-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Mission Security Pipeline Sequence (9/9 Stages)</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Deterministic verification pipeline executed in an isolated enclave with memory encryption.</p>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container-high text-secondary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[16px]">verified_user</span>
+<span>Zero Enclave Breaches</span>
+</div>
+</div>
+<!-- Pipeline Stages Timeline -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<!-- Stage 1 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 01</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Document Ingestion</span>
+<p class="font-caption text-caption text-on-surface-variant">Parsed 84 pages via OCR & vector tokenized with strict boundary tokens.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 412ms</span>
+</div>
+<!-- Stage 2 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 02</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Malware & Payload Scan</span>
+<p class="font-caption text-caption text-on-surface-variant">ClamAV & YARA rule sets (v2025.04.1) completed clean with 0 malicious macros.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 189ms</span>
+</div>
+<!-- Stage 3 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 03</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">PII & Identity Redaction</span>
+<p class="font-caption text-caption text-on-surface-variant">Presidio scrub: 0 credentials leaked, 3 analyst phone identifiers redacted.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 94ms</span>
+</div>
+<!-- Stage 4 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 04</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Prompt-Injection Defense</span>
+<p class="font-caption text-caption text-on-surface-variant">Adversarial token detection tested for escape brackets and indirect jailbreaks.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 62ms</span>
+</div>
+<!-- Stage 5 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 05</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Grounded RAG Constraints</span>
+<p class="font-caption text-caption text-on-surface-variant">Strict top-k retrieval bounds enforced; hallucination temperature locked at 0.02.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 1.1s</span>
+</div>
+<!-- Stage 6 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 06</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Controlled Synthesis</span>
+<p class="font-caption text-caption text-on-surface-variant">Parallel transformation into 7 structured schemas simultaneously.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 2.8s</span>
+</div>
+<!-- Stage 7 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 07</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Evidence Audit Engine</span>
+<p class="font-caption text-caption text-on-surface-variant">Bi-directional token mapping verifying that every numeric assertion matches source.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 740ms</span>
+</div>
+<!-- Stage 8 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 08</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Consistency Matrix Check</span>
+<p class="font-caption text-caption text-on-surface-variant">Cross-format claim reconciliation across all 7 formats simultaneously.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 430ms</span>
+</div>
+<!-- Stage 9 -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">STAGE 09</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+</div>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">SHA-256 Digest Imprint</span>
+<p class="font-caption text-caption text-on-surface-variant">Hardware Security Module (HSM) FIPS 140-3 seal stamped into immutable ledger.</p>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Duration: 28ms</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Cross-Output Consistency Tab Content -->
+<div class="cockpit-content-tab hidden flex flex-col gap-5" id="tab-consistency">
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-5 shadow-xl">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 bg-surface-container p-4 rounded-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Cross-Output Consistency Matrix</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Automated alignment scan verifies that dates, metrics, entity names, and risk ratings remain coherent across all 7 generated outputs.</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-mono-sm text-label-mono-sm px-2.5 py-1 rounded bg-surface-container-high text-secondary-fixed-dim">
+            1 Temporal Nuance Flagged
+          </span>
+</div>
+</div>
+<!-- Comparison Diff Matrix Box -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-secondary-fixed-dim">notification_important</span>
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">Flagged Inconsistency: Date Specification</span>
+</div>
+<button class="px-3 py-1.5 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm transition-all shadow-sm flex items-center gap-1.5" id="reconcile-btn" onclick="reconcileDateNuance()">
+<span class="material-symbols-outlined text-[16px]">sync_alt</span>
+<span>1-Click Auto-Reconcile to "Q2 2025"</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Format A: Tactical Advisory -->
+<div class="p-4 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase font-semibold">Artifact A: Tactical Advisory</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Paragraph 4</span>
+</div>
+<div class="p-3 bg-surface-container rounded font-body-sm text-body-sm text-on-surface">
+              "...threat actor exploitation peak is anticipated in <mark class="bg-secondary/20 text-secondary px-1 rounded font-semibold">Q2 2025</mark>, requiring prioritized firewall rule changes..."
+            </div>
+<span class="font-caption text-caption text-on-surface-variant">Status: Exact match to Source Document page 4.</span>
+</div>
+<!-- Format B: X Thread -->
+<div class="p-4 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary-fixed-dim uppercase font-semibold">Artifact B: X Thread</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Tweet 3 of 6</span>
+</div>
+<div class="p-3 bg-surface-container rounded font-body-sm text-body-sm text-on-surface" id="xthread-diff-text">
+              "3/ Attack groups are preparing major disruptions slated for <mark class="bg-secondary-fixed-dim/20 text-secondary-fixed-dim px-1 rounded font-semibold">Mid-2025</mark>. Here is what security teams must deploy today:"
+            </div>
+<span class="font-caption text-caption text-secondary-fixed-dim" id="xthread-diff-status">Notice: Generalized calendar phrasing applied for audience tone.</span>
+</div>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low text-caption text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">info</span>
+<span>Reconciling will rewrite Tweet 3 to explicitly state "Q2 2025" and recalculate the downstream SHA-256 seal.</span>
+</div>
+</div>
+<!-- Verified Consistency Table -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-3">
+<span class="font-headline-sm text-body-sm text-on-surface">All Other Consistency Parameters (100% Synchronized)</span>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+<div class="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface">Threat Actors</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check</span> 7/7 Matches
+            </span>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface">CVE Identifiers</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check</span> 7/7 Matches
+            </span>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface">Risk Severities</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check</span> 7/7 Matches
+            </span>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface">MITRE TTP Codes</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check</span> 7/7 Matches
+            </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Cryptographic Integrity Tab Content -->
+<div class="cockpit-content-tab hidden flex flex-col gap-5" id="tab-integrity">
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-5 shadow-xl">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 bg-surface-container p-4 rounded-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Hardware Cryptographic Integrity & Immutability</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Zero-knowledge proof seal recorded into enterprise audit vault.</p>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container-high text-primary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>FIPS 140-3 Level 4 Sealed</span>
+</div>
+</div>
+<!-- Hash & Seal Cards -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+<!-- Digest Card -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-3">
+<span class="font-headline-sm text-body-sm text-on-surface">Output Bundle Digest (SHA-256)</span>
+<div class="bg-surface-container-lowest p-3 rounded-lg flex items-center justify-between">
+<code class="font-label-mono-sm text-label-mono-sm text-secondary select-all break-all">
+              a81f29b4e76c0293d8b12f913e0082c194b6329a174092bbf893201824ef92c1
+            </code>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors ml-2 shrink-0" onclick="navigator.clipboard.writeText('a81f29b4e76c0293d8b12f913e0082c194b6329a174092bbf893201824ef92c1')" title="Copy Hash">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">This digest locks all 7 outputs together. Any modification of a single character renders this token invalid.</span>
+</div>
+<!-- Timestamp & HSM Seal -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-3">
+<span class="font-headline-sm text-body-sm text-on-surface">Hardware Security Module (HSM) Attestation</span>
+<div class="flex flex-col gap-1.5 font-label-mono-sm text-label-mono-sm">
+<div class="flex justify-between py-1 bg-surface-container-low px-2 rounded">
+<span class="text-on-surface-variant">Timestamp:</span>
+<span class="text-on-surface">2025-05-14T14:32:09.114Z (UTC)</span>
+</div>
+<div class="flex justify-between py-1 bg-surface-container-low px-2 rounded">
+<span class="text-on-surface-variant">Signing Key ID:</span>
+<span class="text-primary font-mono">HSM-SEC-KEY-7094-V2</span>
+</div>
+<div class="flex justify-between py-1 bg-surface-container-low px-2 rounded">
+<span class="text-on-surface-variant">Audit Vault Record:</span>
+<span class="text-secondary font-mono">TX-CHAIN-BLOCK-#44921</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Verification Command -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col gap-2">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase font-semibold">Independent CLI Verification</span>
+<div class="bg-surface-container-lowest p-3 rounded-lg text-on-surface-variant font-label-mono-sm text-label-mono-sm overflow-x-auto">
+<code>$ transformiq-cli verify-bundle --tx TX-2025-0894B --sha256 a81f29b4e76c0293d8b12f913e0082c1</code>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Vanilla JS Interactions for Tab Switching and Reconcile Demo -->
+<script>
+  function switchCockpitTab(tabId, tabButton) {
+    document.querySelectorAll('.cockpit-content-tab').forEach(el => {
+      el.classList.add('hidden');
+    });
+    const target = document.getElementById(tabId);
+    if (target) {
+      target.classList.remove('hidden');
+    }
+
+    // Update active tab styles
+    if (tabButton) {
+      document.querySelectorAll('.cockpit-tab').forEach(btn => {
+        btn.classList.remove('bg-surface-container-high', 'text-on-surface');
+        btn.classList.add('text-on-surface-variant');
+      });
+      tabButton.classList.add('bg-surface-container-high', 'text-on-surface');
+      tabButton.classList.remove('text-on-surface-variant');
+    }
+  }
+
+  function selectOutputCard(cardElement, outputTitle) {
+    document.querySelectorAll('.output-card').forEach(card => {
+      card.classList.remove('bg-surface-container', 'shadow-md');
+      card.classList.add('bg-surface-container-low');
+    });
+    cardElement.classList.add('bg-surface-container', 'shadow-md');
+    cardElement.classList.remove('bg-surface-container-low');
+
+    const inspectorTitle = document.getElementById('inspector-title');
+    if (inspectorTitle) {
+      inspectorTitle.innerText = outputTitle + ' Preview';
+    }
+  }
+
+  function highlightEvidence(evidenceId) {
+    switchCockpitTab('tab-verification', null);
+    setTimeout(() => {
+      const el = document.getElementById(evidenceId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('bg-surface-container-highest');
+        setTimeout(() => {
+          el.classList.remove('bg-surface-container-highest');
+        }, 1500);
+      }
+    }, 100);
+  }
+
+  function reconcileDateNuance() {
+    const diffText = document.getElementById('xthread-diff-text');
+    const diffStatus = document.getElementById('xthread-diff-status');
+    const btn = document.getElementById('reconcile-btn');
+
+    if (diffText && diffStatus && btn) {
+      diffText.innerHTML = '3/ Attack groups are preparing major disruptions slated for <mark class="bg-secondary/20 text-secondary px-1 rounded font-semibold">Q2 2025</mark>. Here is what security teams must deploy today:';
+      diffStatus.innerText = 'Status: Reconciled & Synchronized with Tactical Advisory and Source [p.4 §2]';
+      diffStatus.classList.remove('text-secondary-fixed-dim');
+      diffStatus.classList.add('text-secondary');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span><span>Reconciled to Q2 2025</span>';
+      btn.classList.remove('bg-primary-container');
+      btn.classList.add('bg-surface-container-highest', 'text-on-surface-variant', 'cursor-default');
+    }
+  }
+
+  function triggerCopyFeedback(button) {
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="material-symbols-outlined text-[16px] text-secondary">check</span><span>Copied</span>';
+    setTimeout(() => {
+      button.innerHTML = originalText;
+    }, 1400);
+  }
+</script></main></div></body></html>

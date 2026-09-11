@@ -32,7 +32,7 @@ export function AuthShell({
         <Link href="/" className="flex items-center gap-2.5">
           <LogoMark size={34} />
           <span className="text-lg font-semibold tracking-tight text-foreground">
-            TransformIQ
+            KaryaSetu AI
           </span>
         </Link>
 
@@ -45,7 +45,7 @@ export function AuthShell({
             </h1>
             <p className="max-w-md text-muted-foreground">
               Upload your source, describe what you need, choose your outputs,
-              and let TransformIQ orchestrate the rest.
+              and let KaryaSetu AI orchestrate the rest.
             </p>
           </div>
 

@@ -140,7 +140,7 @@ function ClaimRow({
         </span>
         <span className="block">{claim.reason}</span>
         {claim.evidence.length > 0 && (
-          <ul className="mt-0.5 space-y-0.5 text-muted-foreground/80">
+          <ul className="mt-0.5 space-y-0.5 text-muted-foreground">
             {claim.evidence.map((evidence) => (
               <li key={evidence.chunk_id}>
                 Evidence: {evidence.evidence}

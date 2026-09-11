@@ -1,9 +1,14 @@
 /**
- * TransformIQ — Application sidebar (navigation shell).
+ * TransformIQ — Enterprise Application Sidebar / Rail (Stitch Specification).
  *
- * Persistent on desktop, drawer on tablet/mobile, collapsible to icon-only on
- * desktop. Provides the primary application navigation used across all
- * authenticated pages.
+ * Fixed navigation rail on desktop (w-64 expanded, w-16 collapsed) and responsive
+ * overlay drawer on mobile. Implements:
+ *   - Logo mark ("T" emblem + "TransformIQ" + "ENTERPRISE" pill)
+ *   - High-contrast "+ Create Transformation" CTA button
+ *   - Controlled navigation: Home (/), Projects (/projects), History (/history),
+ *     Security Activity (/security), Settings (/settings)
+ *   - Live operational status indicator: "Pipeline Active · Grounded RAG"
+ *   - Profile card with real authenticated identity and accessible Account Menu
  */
 "use client";
 
@@ -12,20 +17,20 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useModalA11y } from "@/lib/useModalA11y";
-import { LogoMark } from "@/components/brand";
 import {
-  Home,
+  LayoutGrid,
   Folder,
   History,
+  ShieldCheck,
   Settings,
-  HelpCircle,
   ChevronsLeft,
   ChevronsRight,
   ChevronDown,
+  PlusCircle,
   Plus,
-  Menu,
   X,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import {
   getDevSession,
@@ -35,23 +40,27 @@ import {
 } from "@/lib/auth";
 import { authApi } from "@/lib/api";
 import { clearQuickProjectId } from "@/lib/quickWorkspace";
+import { LogoMark } from "@/components/brand";
 
 interface SidebarProps {
   /** Active section, used to highlight nav. Defaults to derive from pathname. */
   active?: string;
-  /** When provided as a mobile drawer trigger, renders a toggle button. */
-  mobile?: boolean;
+  /** Collapsed rail state (controlled by the app shell). */
+  collapsed?: boolean;
+  /** Collapse toggler. */
+  onCollapsedChange?: (collapsed: boolean) => void;
+  /** Mobile drawer visibility control. */
+  mobileOpen?: boolean;
+  /** Mobile drawer close handler. */
+  onMobileClose?: () => void;
 }
 
 const NAV_ITEMS = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/", label: "Home", icon: LayoutGrid },
   { href: "/projects", label: "Projects", icon: Folder },
   { href: "/history", label: "History", icon: History },
-];
-
-const BOTTOM_ITEMS = [
+  { href: "/security", label: "Security Activity", icon: ShieldCheck },
   { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/help", label: "Help", icon: HelpCircle },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -59,7 +68,10 @@ function isActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
-/** Resolve the identity block truthfully: real account > dev session. */
+/**
+ * Resolve the identity block truthfully: real account > explicit development
+ * identity (only when the bypass is active) > neutral "Signed in".
+ */
 function identity() {
   const user = getAuthUser();
   if (user) {
@@ -67,160 +79,198 @@ function identity() {
       name: user.name,
       email: user.email,
       initial: user.name.trim().charAt(0).toUpperCase() || "U",
-      subtitle: "Signed in",
+      subtitle: user.role ? `Role: ${user.role}` : "Enterprise Operator",
     };
   }
   const session = getDevSession();
-  if (session) {
+  const devBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true";
+  if (session && devBypass) {
     return {
       name: session.name,
       email: session.email,
       initial: session.name.trim().charAt(0).toUpperCase() || "D",
-      subtitle: "Development identity",
+      subtitle: "Development Identity",
     };
   }
   return {
-    name: "Development User",
-    email: "dev@transformiq.local",
-    initial: "D",
-    subtitle: "Development identity",
+    name: "Signed in",
+    email: "",
+    initial: "S",
+    subtitle: "Enterprise Operator",
   };
 }
 
-export function SidebarNav({ active }: { active?: string }) {
+export default function SidebarNav({
+  active,
+  collapsed: collapsedProp,
+  onCollapsedChange,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsedInternal, setCollapsedInternal] = useState(false);
+  const collapsed = collapsedProp ?? collapsedInternal;
+  const setCollapsed = (next: boolean) => {
+    setCollapsedInternal(next);
+    onCollapsedChange?.(next);
+  };
 
   const resolveActive = (href: string) =>
     active ? active === href : isActive(pathname, href);
 
+  const navLinkClass = (isCurrent: boolean, iconOnly: boolean) =>
+    cn(
+      "flex items-center gap-3 rounded px-3 py-2 text-sm transition-colors font-medium",
+      iconOnly && "justify-center px-2",
+      isCurrent
+        ? "bg-surface-container-high text-on-surface font-semibold shadow-sm"
+        : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
+    );
+
   return (
     <>
-      {/* Desktop / tablet persistent sidebar */}
+      {/* Desktop fixed rail */}
       <aside
         className={cn(
-          "hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg lg:flex",
-          collapsed ? "w-[72px]" : "w-[248px]",
+          "fixed inset-y-0 left-0 z-50 hidden flex-col justify-between bg-surface-container-low border-r border-border shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-[width] duration-200 lg:flex",
+          collapsed ? "w-16" : "w-64",
         )}
         aria-label="Primary navigation"
       >
-        <div
-          className={cn(
-            "flex items-center gap-2.5 px-4 py-4",
-            collapsed && "justify-center px-2",
-          )}
-        >
-          <Link href="/" aria-label="TransformIQ home" className="flex items-center gap-2.5">
-            <LogoMark size={30} />
-            {!collapsed && (
-              <span className="text-[15px] font-semibold tracking-tight text-foreground">
-                TransformIQ
-              </span>
-            )}
-          </Link>
-        </div>
-
-        <div className="px-3 pb-2">
-          <Link
-            href="/projects"
+        <div className="flex flex-col">
+          {/* Brand Header */}
+          <div
             className={cn(
-              "flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
-              collapsed && "justify-center px-2",
+              "flex h-16 shrink-0 items-center justify-between px-4 border-b border-border/50",
+              collapsed && "justify-center px-0",
             )}
-            title={collapsed ? "New Project" : undefined}
           >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            {!collapsed && <span>New Project</span>}
-          </Link>
+            <Link
+              href="/"
+              aria-label="KaryaSetu AI home"
+              className={cn("flex items-center gap-2.5", collapsed && "gap-0")}
+            >
+              <LogoMark size={28} />
+              {!collapsed && (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-headline-sm text-headline-sm tracking-tight text-on-surface font-semibold">
+                    KaryaSetu
+                  </span>
+                  <span className="font-label-mono-sm text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">
+                    AI
+                  </span>
+                </div>
+              )}
+            </Link>
+
+            {!collapsed && (
+              <div className="flex items-center gap-1.5">
+                <span className="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary-fixed-dim uppercase font-semibold">
+                  ENTERPRISE
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCollapsed(true)}
+                  className="rounded p-1 text-muted-foreground hover:bg-surface-container hover:text-foreground transition-colors"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronsLeft className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Primary Action CTA Button */}
+          <div className="px-3 pt-4 pb-2">
+            <Link
+              href="/create"
+              className={cn(
+                "flex items-center justify-center gap-2.5 rounded-lg bg-primary py-2.5 px-3 text-primary-foreground headline-sm shadow-[0_0_16px_rgba(37,99,235,0.4)] transition-all hover:bg-primary/90 active:scale-[0.98]",
+                collapsed && "px-0 py-2.5",
+              )}
+              title={collapsed ? "+ Create Transformation" : undefined}
+              aria-label={collapsed ? "+ Create Transformation" : undefined}
+            >
+              <Plus className="h-4 w-4 stroke-[3] shrink-0" aria-hidden="true" />
+              {!collapsed && <span>+ Create Transformation</span>}
+            </Link>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="flex flex-col gap-1 px-3 pt-2">
+            {!collapsed && (
+              <p className="label-mono-xs px-3 pb-1 pt-2 text-muted-foreground uppercase">
+                Workspace
+              </p>
+            )}
+            {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+              const isCurrent = resolveActive(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  title={collapsed ? label : undefined}
+                  aria-label={collapsed ? label : undefined}
+                  className={navLinkClass(isCurrent, collapsed)}
+                  aria-current={isCurrent ? "page" : undefined}
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {!collapsed && (
+                    <span className="font-body-md text-body-md">{label}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 pt-3">
-          {!collapsed && (
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-              Workspace
-            </p>
-          )}
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isCurrent = resolveActive(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={collapsed ? label : undefined}
-                aria-label={collapsed ? label : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
-                  collapsed && "justify-center px-2",
-                  isCurrent
-                    ? "bg-primary/10 font-medium text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-                aria-current={isCurrent ? "page" : undefined}
-              >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {!collapsed && <span>{label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="space-y-1 border-t border-sidebar-border px-3 py-3">
-          {!collapsed && (
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-              System
-            </p>
-          )}
-          {BOTTOM_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isCurrent = resolveActive(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={collapsed ? label : undefined}
-                aria-label={collapsed ? label : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
-                  collapsed && "justify-center px-2",
-                  isCurrent
-                    ? "bg-primary/10 font-medium text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-                aria-current={isCurrent ? "page" : undefined}
-              >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {!collapsed && <span>{label}</span>}
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Profile block */}
-        <ProfileMenu collapsed={collapsed} />
-
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          className="flex items-center justify-center gap-2 border-t border-sidebar-border py-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? (
-            <ChevronsRight className="h-4 w-4" aria-hidden="true" />
+        {/* Bottom Rail Section */}
+        <div className="p-3 flex flex-col gap-3 border-t border-border/50">
+          {/* Operational Status Ticker */}
+          {!collapsed ? (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest">
+              <span className="h-2 w-2 rounded-full bg-secondary animate-pulse shrink-0" />
+              <span className="font-label-mono-sm text-label-mono-sm text-on-surface-variant truncate">
+                Pipeline Active · Grounded RAG
+              </span>
+            </div>
           ) : (
-            <>
-              <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
-              Collapse
-            </>
+            <div
+              className="flex items-center justify-center py-1.5 rounded bg-surface-container-lowest"
+              title="Pipeline Active · Grounded RAG"
+            >
+              <span className="h-2 w-2 rounded-full bg-secondary animate-pulse" />
+            </div>
           )}
-        </button>
+
+          {/* Profile Card & Account Menu */}
+          <ProfileCard collapsed={collapsed} />
+
+          {/* Collapsed expand toggle */}
+          {collapsed && (
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              className="flex w-full items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-surface-container hover:text-foreground transition-colors"
+              aria-label="Expand sidebar"
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </aside>
 
-      {/* Mobile drawer */}
-      <MobileDrawer active={active} />
+      {/* Responsive Mobile Drawer */}
+      <MobileDrawer
+        open={mobileOpen}
+        onClose={onMobileClose}
+        active={active}
+      />
     </>
   );
 }
 
-function ProfileMenu({ collapsed }: { collapsed: boolean }) {
+function ProfileCard({ collapsed }: { collapsed: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -239,30 +289,21 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await authApi.logout();
     } catch {
-      // Best-effort server-side revocation; local cleanup still proceeds.
+      // Best-effort server-side revocation
     }
-    // Remove the real access token (and the stored identity) so protected
-    // routes cannot reopen without signing in again. Dev-session and quick
-    // workspace state are cleared afterwards for parity.
     clearAuthToken();
     clearDevSession();
     clearQuickProjectId();
     setOpen(false);
     router.replace("/login");
-  };
+  }, [router]);
 
   return (
-    <div
-      ref={menuRef}
-      className={cn(
-        "relative border-t border-sidebar-border",
-        collapsed && "flex justify-center",
-      )}
-    >
+    <div ref={menuRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -270,31 +311,33 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
         aria-expanded={open}
         aria-label="Account menu"
         className={cn(
-          "flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors hover:bg-muted/40",
-          collapsed && "justify-center px-2",
+          "flex w-full items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high transition-colors text-left",
+          collapsed && "justify-center p-2",
         )}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary-foreground">
-          {initial}
-        </span>
-        {!collapsed && (
-          <>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-foreground">
-                {email}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-label-mono-md text-primary shrink-0">
+            {initial}
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col min-w-0">
+              <span className="font-headline-sm text-body-sm text-on-surface leading-tight truncate">
+                {name}
               </span>
-              <span className="block truncate text-[11px] text-muted-foreground">
+              <span className="font-caption text-caption text-on-surface-variant leading-tight truncate">
                 {subtitle}
               </span>
-            </span>
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                open && "rotate-180",
-              )}
-              aria-hidden="true"
-            />
-          </>
+            </div>
+          )}
+        </div>
+        {!collapsed && (
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-on-surface-variant transition-transform shrink-0",
+              open && "rotate-180",
+            )}
+            aria-hidden="true"
+          />
         )}
       </button>
 
@@ -302,24 +345,34 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
         <div
           role="menu"
           aria-label="Account menu actions"
-          className="absolute bottom-full left-3 z-50 mb-1 w-60 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl"
+          className="absolute bottom-full left-0 z-50 mb-2 w-60 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
         >
           <div className="px-3 pb-2 pt-2.5">
-            <p className="truncate text-sm font-medium text-foreground">{name}</p>
-            <p className="truncate text-xs text-muted-foreground">{email}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground/80">
+            <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+            {email && (
+              <p className="truncate text-xs text-muted-foreground">{email}</p>
+            )}
+            <p className="mt-1 text-[11px] font-label-mono-sm text-secondary-fixed-dim">
               {subtitle}
             </p>
           </div>
           <div className="my-1 h-px bg-border" />
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-on-surface hover:bg-surface-container-high transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Account Settings</span>
+          </Link>
           <button
             type="button"
             role="menuitem"
-            onClick={handleLogout}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={() => void handleLogout()}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-destructive hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
-            Log out
+            <span>Log out</span>
           </button>
         </div>
       )}
@@ -327,168 +380,169 @@ function ProfileMenu({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-function MobileDrawer({ active }: { active?: string }) {
-  const [open, setOpen] = useState(false);
+function MobileDrawer({
+  open,
+  onClose,
+  active,
+}: {
+  open: boolean;
+  onClose?: () => void;
+  active?: string;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  useModalA11y(open, () => setOpen(false), drawerRef);
+  useModalA11y(open, onClose ?? (() => {}), drawerRef);
 
+  const prevPath = useRef(pathname);
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+    if (prevPath.current !== pathname) {
+      prevPath.current = pathname;
+      onClose?.();
+    }
+  }, [pathname, onClose]);
 
   const resolveActive = (href: string) =>
     active ? active === href : isActive(pathname, href);
 
   const viewer = identity();
-  const { email, initial } = viewer;
+  const { name, email, initial, subtitle } = viewer;
 
   const handleLogout = async () => {
     try {
       await authApi.logout();
     } catch {
-      // Best-effort server-side revocation; local cleanup still proceeds.
+      // Best-effort revocation
     }
     clearAuthToken();
     clearDevSession();
     clearQuickProjectId();
-    setOpen(false);
+    onClose?.();
     router.replace("/login");
   };
 
+  if (!open) return null;
+
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
-        aria-label="Open navigation"
-      >
-        <Menu className="h-5 w-5" aria-hidden="true" />
-      </button>
+    <div
+      ref={drawerRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Navigation drawer"
+      className="fixed inset-0 z-50 flex lg:hidden"
+    >
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-      {open && (
-        <div
-          ref={drawerRef}
-          tabIndex={-1}
-          className="fixed inset-0 z-50 lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation"
-        >
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-sidebar-border bg-sidebar-bg">
-            <div className="flex items-center justify-between px-4 py-4">
-              <Link href="/" className="flex items-center gap-2.5">
-                <LogoMark size={30} />
-                <span className="text-[15px] font-semibold text-foreground">
-                  TransformIQ
-                </span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
-                aria-label="Close navigation"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
+      {/* Slide-over panel */}
+      <div className="relative z-10 flex h-full w-72 flex-col justify-between bg-surface-container-low border-r border-border p-4 shadow-2xl animate-in slide-in-from-left duration-200">
+        <div className="flex flex-col">
+          {/* Header */}
+          <div className="flex h-12 items-center justify-between pb-3 border-b border-border">
+            <Link
+              href="/"
+              onClick={onClose}
+              className="flex items-center gap-2.5"
+            >
+              <LogoMark size={28} />
+              <span className="font-headline-sm text-headline-sm tracking-tight text-on-surface font-semibold">
+                KaryaSetu
+              </span>
+              <span className="font-label-mono-sm text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">
+                AI
+              </span>
+              <span className="font-label-mono-sm text-[9px] px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary-fixed-dim uppercase font-semibold ml-1">
+                ENTERPRISE
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded p-1 text-muted-foreground hover:bg-surface-container hover:text-foreground"
+              aria-label="Close navigation drawer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
-            <div className="px-3 pb-2">
-              <Link
-                href="/projects"
-                className="flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                New Project
-              </Link>
-            </div>
+          {/* Primary CTA */}
+          <div className="py-4">
+            <Link
+              href="/create"
+              onClick={onClose}
+              className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary py-2.5 px-3 text-primary-foreground headline-sm shadow-[0_0_16px_rgba(37,99,235,0.4)] transition-all hover:bg-primary/90 active:scale-[0.98]"
+            >
+              <Plus className="h-4 w-4 stroke-[3] shrink-0" aria-hidden="true" />
+              <span>+ Create Transformation</span>
+            </Link>
+          </div>
 
-            <nav className="flex-1 space-y-1 px-3 pt-3">
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                Workspace
-              </p>
-              {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-                const isCurrent = resolveActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm",
-                      isCurrent
-                        ? "bg-primary/10 font-medium text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                    )}
-                    aria-current={isCurrent ? "page" : undefined}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                    <span>{label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
+          {/* Navigation Links */}
+          <nav className="flex flex-col gap-1 py-2">
+            {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+              const isCurrent = resolveActive(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors",
+                    isCurrent
+                      ? "bg-surface-container-high text-on-surface font-semibold shadow-sm"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
+                  )}
+                  aria-current={isCurrent ? "page" : undefined}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
-            <div className="space-y-1 border-t border-sidebar-border px-3 py-3">
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                System
-              </p>
-              {BOTTOM_ITEMS.map(({ href, label, icon: Icon }) => {
-                const isCurrent = resolveActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm",
-                      isCurrent
-                        ? "bg-primary/10 font-medium text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                    )}
-                    aria-current={isCurrent ? "page" : undefined}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                    <span>{label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+        {/* Footer info & Logout */}
+        <div className="flex flex-col gap-3 pt-3 border-t border-border">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest">
+            <span className="h-2 w-2 rounded-full bg-secondary animate-pulse shrink-0" />
+            <span className="font-label-mono-sm text-label-mono-sm text-on-surface-variant truncate">
+              Pipeline Active · Grounded RAG
+            </span>
+          </div>
 
-            <div className="border-t border-sidebar-border px-3 py-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary-foreground">
-                  {initial}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {email}
-                  </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {viewer.subtitle}
-                  </p>
-                </div>
+          <div className="flex items-center justify-between p-2 rounded bg-surface-container">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-primary shrink-0">
+                {initial}
               </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="mt-2 flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                Log out
-              </button>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-foreground truncate">
+                  {name}
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {email || "—"}
+                </span>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+              title="Log out"
+              aria-label="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 }
-
-export default SidebarNav;

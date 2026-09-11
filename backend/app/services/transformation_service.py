@@ -32,6 +32,7 @@ async def create_job(
     configuration_id: uuid.UUID,
     output_types: list[str],
     prompt: str | None = None,
+    llm_provider: str | None = None,
 ) -> TransformationJob:
     """
     Create a new transformation job record.
@@ -42,12 +43,16 @@ async def create_job(
     supplied (prompt-only transformations). Validation that at least one input
     mode is present happens at the API layer.
     """
+    requested_data: dict = {"output_types": output_types}
+    if llm_provider:
+        requested_data["llm_provider"] = llm_provider
+
     job = TransformationJob(
         id=uuid.uuid4(),
         project_id=project_id,
         source_id=source_id,
         configuration_id=configuration_id,
-        requested_outputs={"output_types": output_types},
+        requested_outputs=requested_data,
         prompt=prompt,
         status="queued",
         progress=0,

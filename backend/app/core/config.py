@@ -89,6 +89,14 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    @field_validator("REDIS_URL")
+    @classmethod
+    def normalize_redis_url(cls, v: str) -> str:
+        """Cloud Redis providers like Upstash require TLS (rediss://)."""
+        if "upstash.io" in v and v.startswith("redis://"):
+            return "rediss://" + v[len("redis://") :]
+        return v
+
     # -------------------------------------------------------------------------
     # Authentication
     # -------------------------------------------------------------------------

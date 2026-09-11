@@ -19,7 +19,7 @@ import uuid
 from typing import Any, Literal
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,6 +66,7 @@ from app.transformation.render.docx import (
     render_advisory_docx,
     render_executive_summary_docx,
 )
+from app.transformation.service import execute_transformation_job_sync
 from app.transformation.render.pdf import (
     PDF_MIME_TYPE,
     render_advisory_pdf,
@@ -123,6 +124,7 @@ async def list_project_transformations(
 )
 async def create_transformation(
     body: TransformationJobCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
     _: None = Depends(rate_limit_bucket("transformation")),
@@ -162,9 +164,7 @@ async def create_transformation(
         prompt=body.prompt,
         llm_provider=body.llm_provider,
     )
-    # Enqueue the transformation job for asynchronous processing. Enqueueing is
-    # best-effort: if Redis is unavailable the job record still persists in the
-    # queued state so callers can observe/retry it (resilience, not corruption).
+    # Enqueue the transformation job for asynchronous processing.
     try:
         enqueue_transformation_job(job.id, queue=get_transformation_queue())
     except Exception as exc:  # pragma: no cover - Redis availability edge
@@ -173,6 +173,10 @@ async def create_transformation(
             job_id=str(job.id),
             error=str(exc),
         )
+    # Also dispatch to in-process background worker so jobs are executed immediately
+    # without depending on an external Redis worker daemon (e.g. single-service cloud deployments).
+    background_tasks.add_task(execute_transformation_job_sync, str(job.id))
+
     metrics.inc("transformations_requested_total")
     return TransformationJobDetailResponse(
         data=TransformationJobResponse.model_validate(job)
@@ -186,6 +190,7 @@ async def create_transformation(
 )
 async def get_transformation(
     job_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> TransformationJobDetailResponse:
@@ -197,6 +202,11 @@ async def get_transformation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found.",
         )
+    # If the job is still queued (e.g. awaiting an external worker),
+    # trigger immediate execution via background task so the client never hangs.
+    if job.status == "queued":
+        background_tasks.add_task(execute_transformation_job_sync, str(job.id))
+
     return TransformationJobDetailResponse(
         data=TransformationJobResponse.model_validate(job)
     )

@@ -4,16 +4,23 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+import structlog
 
 from app.api.deps import CurrentUser, get_current_user
 from app.content_intelligence.schemas import CanonicalContentResponse, ContentIntelligenceResponse
-from app.content_intelligence.service import create_pending_analysis_async, get_analysis
+from app.content_intelligence.service import (
+    create_pending_analysis_async,
+    execute_content_intelligence_sync,
+    get_analysis,
+)
 from app.db.session import get_db
 from app.ingestion.queue import enqueue_content_intelligence, get_content_intelligence_queue
 from app.services import source_service
 
+logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/sources", tags=["content-intelligence"])
 
 
@@ -59,6 +66,7 @@ async def _owned_source(source_id: uuid.UUID, db: AsyncSession, current_user: Cu
 )
 async def analyze_source(
     source_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ContentIntelligenceResponse:
@@ -69,10 +77,9 @@ async def analyze_source(
     try:
         enqueue_content_intelligence(source.id, queue=get_content_intelligence_queue())
     except Exception as exc:
-        content.status = "failed"
-        content.error_message = f"Unable to enqueue analysis: {exc}"
-        await db.flush()
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to queue analysis.") from exc
+        logger.warning("Could not enqueue content intelligence to Redis: %s", exc)
+    # Also dispatch in background task for single-container / cloud environments
+    background_tasks.add_task(execute_content_intelligence_sync, str(source.id))
     return _response(content)
 
 
@@ -83,6 +90,7 @@ async def analyze_source(
 )
 async def get_source_analysis(
     source_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ContentIntelligenceResponse:
@@ -90,4 +98,7 @@ async def get_source_analysis(
     content = await get_analysis(db, source_id)
     if content is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content intelligence has not been created.")
+    # If still pending, trigger background task to ensure it doesn't stay stuck
+    if content.status == "pending":
+        background_tasks.add_task(execute_content_intelligence_sync, str(source_id))
     return _response(content)

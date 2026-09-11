@@ -171,47 +171,12 @@ def process_content_intelligence(source_id: str) -> dict[str, str]:
 
 
 def process_transformation(job_id: str) -> dict:
-    """RQ handler for Phase 6/7 transformation jobs.
-
-    Receives only the authoritative transformation job ID and loads all required
-    state (job, canonical content, configuration, RAG) from the database.  The
-    LLM provider is wired from environment settings through a resilient
-    ProviderManager: retries, backoff, circuit breaking and an optional
-    fallback are applied centrally (Phase 11D).
-
-    If the job's requested_outputs specifies an explicit 'fake' llm_provider
-    (e.g. for jury demo / testing purposes), FakeLLMProvider is used without
-    making external API calls.
-    """
+    """RQ handler for Phase 6/7 transformation jobs."""
+    from app.transformation.service import execute_transformation_job_sync
     engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
     try:
-        import uuid
-        from sqlalchemy import select
-
-        from app.db.models.transformation_job import TransformationJob
-        from app.transformation.llm.factory import build_llm_provider, build_resilient_provider
-        from app.transformation.llm.metered import MeteredLLMProvider
-        from app.transformation.service import run_transformation_job
-
-        with Session(engine) as session:
-            job_record = session.execute(
-                select(TransformationJob).where(TransformationJob.id == uuid.UUID(job_id))
-            ).scalar_one_or_none()
-
-            provider_override = None
-            if job_record and job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
-                provider_override = job_record.requested_outputs.get("llm_provider")
-
-            if provider_override and str(provider_override).strip().lower() in ("fake", "development (fake - testing purpose)"):
-                base_provider = build_llm_provider("fake")
-            else:
-                base_provider = build_resilient_provider()
-
-            llm_provider = MeteredLLMProvider(base_provider)
-            result = run_transformation_job(
-                session, uuid.UUID(job_id), llm_provider=llm_provider
-            )
-        if not result.get("skipped"):
+        result = execute_transformation_job_sync(job_id, engine=engine)
+        if not result.get("skipped") and result.get("status") != "failed":
             metrics.inc("transformation_jobs_total", {"result": "completed"})
         _push_metrics()
         return result

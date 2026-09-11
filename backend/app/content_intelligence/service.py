@@ -135,3 +135,31 @@ async def create_pending_analysis_async(db: AsyncSession, source: Source) -> Can
     await db.flush()
     await db.refresh(canonical)
     return canonical
+
+
+def execute_content_intelligence_sync(source_id: str | uuid.UUID) -> None:
+    """Execute content intelligence synchronously using DATABASE_SYNC_URL.
+
+    Safe for in-process background tasks or direct worker dispatch.
+    """
+    import structlog
+    from sqlalchemy import create_engine
+    from app.core.config import settings
+    from app.content_intelligence.fake_provider import FakeContentAnalysisProvider
+
+    _logger = structlog.get_logger(__name__)
+    engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+    try:
+        with Session(engine) as session:
+            service = ContentIntelligenceService(provider=FakeContentAnalysisProvider())
+            service.analyze_source(session, uuid.UUID(str(source_id)))
+            _logger.info("execute_content_intelligence_sync completed", source_id=str(source_id))
+    except Exception as exc:
+        _logger.error(
+            "execute_content_intelligence_sync failed",
+            source_id=str(source_id),
+            error=str(exc),
+        )
+    finally:
+        engine.dispose()
+

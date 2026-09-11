@@ -232,3 +232,65 @@ def _record_job_integrity(
             metrics.inc(
                 "integrity_hashes_total", {"result": "error", "provider": "n/a"}
             )
+
+
+def execute_transformation_job_sync(
+    job_id: str | uuid.UUID,
+    engine: Any | None = None,
+) -> dict[str, Any]:
+    """Execute a transformation job synchronously using DATABASE_SYNC_URL.
+
+    Safe to invoke directly from in-process background tasks (FastAPI
+    BackgroundTasks) or RQ workers. Atomic claiming ensures that if multiple
+    workers or background tasks attempt to process the same job, exactly one
+    wins the lease and the other gracefully skips.
+    """
+    import structlog
+    from sqlalchemy import create_engine
+    from app.transformation.llm.factory import build_llm_provider, build_resilient_provider
+    from app.transformation.llm.metered import MeteredLLMProvider
+
+    _logger = structlog.get_logger(__name__)
+    job_uuid = uuid.UUID(str(job_id))
+    engine_created = False
+    if engine is None:
+        engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+        engine_created = True
+    try:
+        with Session(engine) as session:
+            job_record = session.get(TransformationJob, job_uuid)
+            if not job_record:
+                return {"job_id": str(job_id), "skipped": True, "reason": "not_found"}
+
+            provider_override = None
+            if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                provider_override = job_record.requested_outputs.get("llm_provider")
+
+            if provider_override and str(provider_override).strip().lower() in (
+                "fake",
+                "development (fake - testing purpose)",
+            ):
+                base_provider = build_llm_provider("fake")
+            else:
+                base_provider = build_resilient_provider()
+
+            llm_provider = MeteredLLMProvider(base_provider)
+            res = run_transformation_job(session, job_uuid, llm_provider=llm_provider)
+            _logger.info("execute_transformation_job_sync completed", job_id=str(job_id), result=res)
+            return res
+    except Exception as exc:
+        _logger.error("execute_transformation_job_sync failed", job_id=str(job_id), error=str(exc))
+        try:
+            with Session(engine) as session:
+                job_record = session.get(TransformationJob, job_uuid)
+                if job_record and job_record.status not in ("completed", "cancelled"):
+                    job_record.status = "failed"
+                    job_record.error_message = f"Execution error: {str(exc)}"[:1000]
+                    session.commit()
+        except Exception:
+            pass
+        return {"job_id": str(job_id), "status": "failed", "error": str(exc)}
+    finally:
+        if engine_created:
+            engine.dispose()
+

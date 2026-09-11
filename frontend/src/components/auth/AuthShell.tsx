@@ -26,40 +26,51 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
-      {/* Background ambient lighting */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-[450px] w-[550px] -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute -bottom-40 left-1/2 h-[450px] w-[550px] -translate-x-1/2 rounded-full bg-accent/10 blur-[120px]" />
-      </div>
+    <div className="flex min-h-screen bg-background">
+      {/* Left — brand panel */}
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden border-r border-border bg-surface-elevated p-10 lg:flex">
+        <Link href="/" className="flex items-center gap-2.5">
+          <LogoMark size={34} />
+          <span className="text-lg font-semibold tracking-tight text-foreground">
+            KaryaSetu AI
+          </span>
+        </Link>
 
-      <div className="relative z-10 w-full max-w-md space-y-6">
-        {/* Brand Header */}
-        <div className="text-center">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2.5 transition-transform hover:scale-105"
-          >
-            <LogoMark size={38} />
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              KaryaSetu AI
-            </span>
-          </Link>
-          <p className="mt-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            One source · Every format
-          </p>
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground">
+              One source.
+              <br />
+              Every format.
+            </h1>
+            <p className="max-w-md text-muted-foreground">
+              Upload your source, describe what you need, choose your outputs,
+              and let KaryaSetu AI orchestrate the rest.
+            </p>
+          </div>
+
+          <ul className="grid max-w-md grid-cols-2 gap-2">
+            {OUTPUTS.map((o) => (
+              <li
+                key={o}
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+              >
+                <Check className="h-4 w-4 text-primary" aria-hidden="true" />
+                {o}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Centered Auth Card */}
-        <div className="rounded-2xl border border-border/70 bg-card/60 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-          {children}
-        </div>
-
-        {/* Footer info */}
-        <p className="text-center text-xs text-muted-foreground">
-          SIH 26154 — Gen AI Platform for Automated Content Transformation
+        <p className="text-xs text-muted-foreground">
+          7 output formats · 1 prompt or source
         </p>
       </div>
+
+      {/* Right — form panel */}
+      <main className="flex w-full flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-sm">{children}</div>
+      </main>
     </div>
   );
 }

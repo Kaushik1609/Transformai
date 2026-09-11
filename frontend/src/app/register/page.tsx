@@ -72,11 +72,14 @@ export default function RegisterPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await authApi.register({
+      const res = await authApi.register({
         name: name.trim(),
         email: email.trim(),
         password,
       });
+      if (res?.data?.dev_otp) {
+        setOtp(res.data.dev_otp);
+      }
       setStep("otp");
     } catch (err) {
       setError(
@@ -228,6 +231,12 @@ export default function RegisterPage() {
             </>
           ) : (
             <>
+              {otp && (
+                <div className="rounded-lg border border-primary/20 bg-primary/10 p-3 text-xs text-primary">
+                  Verification code auto-detected:{" "}
+                  <span className="font-mono font-bold tracking-wider">{otp}</span>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label
                   htmlFor="otp"

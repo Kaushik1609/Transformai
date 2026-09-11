@@ -66,6 +66,7 @@ export interface OtpDeliveryDetails {
   channel: string;
   identifier: string;
   resend_after_seconds: number;
+  dev_otp?: string | null;
 }
 
 export interface RegisterResponse {

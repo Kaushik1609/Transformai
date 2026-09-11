@@ -49,7 +49,13 @@ class LocalStorage:
 
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root).resolve()
-        self.root.mkdir(parents=True, exist_ok=True)
+        try:
+            self.root.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            import tempfile
+
+            self.root = Path(tempfile.gettempdir()) / "transformiq_storage"
+            self.root.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def source_key(project_id: UUID, source_id: UUID, filename: str) -> str:

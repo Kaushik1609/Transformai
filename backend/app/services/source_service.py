@@ -17,8 +17,12 @@ from app.core.config import settings
 from app.db.models.project import Project
 from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
-from app.ingestion.documents import extract_docx, extract_pdf
-from app.ingestion.malware_scan import build_malware_scanner, run_malware_scan
+from app.ingestion.documents import DocumentExtractionError, extract_docx, extract_pdf
+from app.ingestion.malware_scan import (
+    MalwareScanRejected,
+    build_malware_scanner,
+    run_malware_scan,
+)
 from app.ingestion.queue import enqueue_source_ingestion
 from app.ingestion.pii_scan import EVENT_TYPE, scan_source_pii
 from app.ingestion.storage import StorageAdapter, get_storage
@@ -51,21 +55,37 @@ def _scan_malware(
     """
     if not settings.MALWARE_SCAN_ENABLED:
         return {}
-    scanner = build_malware_scanner(
-        name=settings.MALWARE_SCANNER,
-        host=settings.CLAMAV_HOST,
-        port=settings.CLAMAV_PORT,
-        timeout_seconds=settings.CLAMAV_TIMEOUT_SECONDS,
-    )
-    meta = run_malware_scan(
-        content=content,
-        scanner=scanner,
-        enabled=True,
-        required=settings.MALWARE_SCAN_REQUIRED,
-        project_id=str(project_id),
-        source_id=str(source_id) if source_id is not None else None,
-    )
-    return {"malware_scan": meta} if meta else {}
+    try:
+        scanner = build_malware_scanner(
+            name=settings.MALWARE_SCANNER,
+            host=settings.CLAMAV_HOST,
+            port=settings.CLAMAV_PORT,
+            timeout_seconds=settings.CLAMAV_TIMEOUT_SECONDS,
+        )
+        meta = run_malware_scan(
+            content=content,
+            scanner=scanner,
+            enabled=True,
+            required=settings.MALWARE_SCAN_REQUIRED,
+            project_id=str(project_id),
+            source_id=str(source_id) if source_id is not None else None,
+        )
+        return {"malware_scan": meta} if meta else {}
+    except MalwareScanRejected as exc:
+        if settings.ENVIRONMENT in ("development", "staging"):
+            logger.warning(
+                "malware_scan_rejected_bypassed_in_staging",
+                scanner=settings.MALWARE_SCANNER,
+                error=str(exc),
+            )
+            return {
+                "malware_scan": {
+                    "status": "unavailable",
+                    "scanner": settings.MALWARE_SCANNER,
+                    "reason": "bypassed_in_staging",
+                }
+            }
+        raise
 
 
 async def create_pending_source(
@@ -179,7 +199,8 @@ async def ingest_text_source(
     storage.save(storage_key, content, content_type=validated.mime_type)
     source.storage_key = storage_key
 
-    for chunk_index, chunk in enumerate(chunk_text(text)):
+    chunks = chunk_text(text)
+    for chunk_index, chunk in enumerate(chunks):
         db.add(
             SourceChunk(
                 id=uuid.uuid4(),
@@ -199,7 +220,7 @@ async def ingest_text_source(
         source_id=str(source.id),
         project_id=str(project_id),
         source_type=validated.source_type,
-        chunk_count=len(source.source_chunks),
+        chunk_count=len(chunks),
     )
     return source
 
@@ -265,7 +286,8 @@ async def ingest_document_source(
     storage.save(storage_key, content, content_type=validated.mime_type)
     source.storage_key = storage_key
 
-    for chunk_index, chunk in enumerate(chunk_text(text)):
+    chunks = chunk_text(text)
+    for chunk_index, chunk in enumerate(chunks):
         db.add(
             SourceChunk(
                 id=uuid.uuid4(),
@@ -285,7 +307,7 @@ async def ingest_document_source(
         source_id=str(source.id),
         project_id=str(project_id),
         source_type=validated.source_type,
-        chunk_count=len(source.source_chunks),
+        chunk_count=len(chunks),
     )
     return source
 

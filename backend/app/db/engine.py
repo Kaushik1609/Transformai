@@ -32,8 +32,15 @@ def get_sync_engine():
     if _sync_engine is None:
         from sqlalchemy import create_engine
         from app.core.config import settings
+
+        url = settings.DATABASE_SYNC_URL
+        if url.startswith("postgresql+asyncpg://"):
+            url = "postgresql://" + url[len("postgresql+asyncpg://") :]
+        elif url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+
         _sync_engine = create_engine(
-            settings.DATABASE_SYNC_URL,
+            url,
             echo=settings.ENVIRONMENT == "development",
             pool_pre_ping=True,
         )
@@ -50,8 +57,15 @@ def get_async_engine():
     if _async_engine is None:
         from sqlalchemy.ext.asyncio import create_async_engine
         from app.core.config import settings
+
+        url = settings.DATABASE_URL
+        if url.startswith("postgresql://"):
+            url = "postgresql+asyncpg://" + url[len("postgresql://") :]
+        elif url.startswith("postgres://"):
+            url = "postgresql+asyncpg://" + url[len("postgres://") :]
+
         _async_engine = create_async_engine(
-            settings.DATABASE_URL,
+            url,
             echo=settings.ENVIRONMENT == "development",
             pool_pre_ping=True,
             pool_size=5,

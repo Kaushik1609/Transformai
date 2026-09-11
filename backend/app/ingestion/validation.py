@@ -8,12 +8,26 @@ from pathlib import PurePath
 SUPPORTED_SOURCE_TYPES = frozenset({"text", "txt", "pdf", "docx"})
 
 MIME_TYPES_BY_SOURCE_TYPE = {
-    "text": frozenset({"text/plain"}),
-    "txt": frozenset({"text/plain"}),
-    "pdf": frozenset({"application/pdf"}),
+    "text": frozenset({"text/plain", "text/x-plain", "application/octet-stream"}),
+    "txt": frozenset({"text/plain", "text/x-plain", "application/octet-stream"}),
+    "pdf": frozenset(
+        {
+            "application/pdf",
+            "application/x-pdf",
+            "application/acrobat",
+            "applications/vnd.pdf",
+            "text/pdf",
+            "application/octet-stream",
+        }
+    ),
     "docx": frozenset(
         {
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword",
+            "application/docx",
+            "application/zip",
+            "application/x-zip-compressed",
+            "application/octet-stream",
         }
     ),
 }
@@ -110,9 +124,11 @@ def validate_source(
 
     _validate_magic_bytes(source_type=normalized_type, content=content)
 
-    normalized_mime = mime_type.strip().lower()
+    normalized_mime = (mime_type or "").split(";")[0].strip().lower()
     allowed_mimes = MIME_TYPES_BY_SOURCE_TYPE[normalized_type]
-    if normalized_mime not in allowed_mimes:
+    if not normalized_mime:
+        normalized_mime = next(iter(allowed_mimes))
+    elif normalized_mime not in allowed_mimes:
         raise SourceValidationError(
             f"MIME type {mime_type!r} is not valid for {normalized_type!r}."
         )

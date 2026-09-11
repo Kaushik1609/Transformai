@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.db.models.project import Project
 from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
+from app.ingestion.documents import DocumentExtractionError, extract_docx, extract_pdf
 from app.ingestion.malware_scan import (
     MalwareScanRejected,
     build_malware_scanner,
@@ -198,7 +199,8 @@ async def ingest_text_source(
     storage.save(storage_key, content, content_type=validated.mime_type)
     source.storage_key = storage_key
 
-    for chunk_index, chunk in enumerate(chunk_text(text)):
+    chunks = chunk_text(text)
+    for chunk_index, chunk in enumerate(chunks):
         db.add(
             SourceChunk(
                 id=uuid.uuid4(),
@@ -218,7 +220,7 @@ async def ingest_text_source(
         source_id=str(source.id),
         project_id=str(project_id),
         source_type=validated.source_type,
-        chunk_count=len(source.source_chunks),
+        chunk_count=len(chunks),
     )
     return source
 
@@ -284,7 +286,8 @@ async def ingest_document_source(
     storage.save(storage_key, content, content_type=validated.mime_type)
     source.storage_key = storage_key
 
-    for chunk_index, chunk in enumerate(chunk_text(text)):
+    chunks = chunk_text(text)
+    for chunk_index, chunk in enumerate(chunks):
         db.add(
             SourceChunk(
                 id=uuid.uuid4(),
@@ -304,7 +307,7 @@ async def ingest_document_source(
         source_id=str(source.id),
         project_id=str(project_id),
         source_type=validated.source_type,
-        chunk_count=len(source.source_chunks),
+        chunk_count=len(chunks),
     )
     return source
 

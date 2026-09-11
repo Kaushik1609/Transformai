@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   type OutputResponse,
@@ -34,6 +34,7 @@ import {
 } from "@/components/common";
 import { isQuickProjectName } from "@/lib/quickWorkspace";
 import { Search, ChevronRight, X } from "lucide-react";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 type Filter = "all" | "completed" | "failed";
 
@@ -52,6 +53,9 @@ export default function HistoryPage() {
   // Detail
   const [detail, setDetail] = useState<HistoryEntry | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const detailDialogRef = useRef<HTMLDivElement>(null);
+
+  useModalA11y(!!detail, () => setDetail(null), detailDialogRef);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -280,6 +284,8 @@ export default function HistoryPage() {
       {/* Detail drawer */}
       {detail && (
         <div
+          ref={detailDialogRef}
+          tabIndex={-1}
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
@@ -290,7 +296,7 @@ export default function HistoryPage() {
             onClick={() => setDetail(null)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface-elevated">
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface-elevated">
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
               <h2 className="text-base font-semibold text-foreground">
                 Transformation

@@ -1,0 +1,339 @@
+# =============================================================================
+# TransformIQ — Docker Compose (Production)
+# =============================================================================
+# Runs under its own compose project ("transformiq-prod") so it can coexist
+# with the local development stack (same published container names would
+# otherwise collide).
+name: transformiq-prod
+# Usage:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml build
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --scale worker=2
+#   docker compose --env-file .env.production -f docker-compose.prod.yml ps
+#   docker compose --env-file .env.production -f docker-compose.prod.yml down
+#   docker compose --env-file .env.production -f docker-compose.prod.yml down -v   # DANGER: drops data volumes
+#
+# Threat model notes:
+#   * PostgreSQL, Redis, MinIO and the migration runner live on the fully
+#     internal "data" network (Docker `internal: true`) with NO published
+#     ports — they are unreachable from the host or the Internet.
+#   * The "egress" network gives outbound-only NAT for the backend, worker
+#     (LLM/embedding/SMTP providers) and ClamAV (freshclam signature updates).
+#     It publishes nothing.
+#   * The "edge" network carries browser traffic only: backend:8000 and
+#     frontend:3000. Published ports are the ONLY way in.
+#   * Do NOT add `ports:` to postgres/redis/minio/clamav/worker/migrate.
+#     If ClamAV uses bitdefender-style private CDNs, run an allowlisted egress
+#     proxy instead of publishing clamd.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Shared application environment (backend / worker / migrate).
+# `environment:` overrides `env_file:` values; interpolation pulls defaults
+# from the --env-file (.env.production) or the shell environment so every
+# connection string resolves to an in-stack host by default.
+# ---------------------------------------------------------------------------
+x-app-common: &app-common
+  environment: &app-env
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
+    DATABASE_SYNC_URL: postgresql://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    CLAMAV_HOST: ${CLAMAV_HOST:-clamav}
+    CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+    CLAMAV_TIMEOUT_SECONDS: ${CLAMAV_TIMEOUT_SECONDS:-10}
+    SECURITY_AUDIT_ENABLED: ${SECURITY_AUDIT_ENABLED:-true}
+    SECURITY_AUDIT_SINK: ${SECURITY_AUDIT_SINK:-database}
+    LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+    EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+    STORAGE_BACKEND: ${STORAGE_BACKEND:-s3}
+    STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+    STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-transformiq}
+    STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-transformiq-secret}
+    STORAGE_BUCKET: ${STORAGE_BUCKET:-transformiq}
+    STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+    STORAGE_PATH_STYLE: "true"
+    STORAGE_LOCAL_PATH: /app/storage
+    MALWARE_SCAN_ENABLED: ${MALWARE_SCAN_ENABLED:-true}
+    MALWARE_SCAN_REQUIRED: ${MALWARE_SCAN_REQUIRED:-true}
+    MALWARE_SCANNER: ${MALWARE_SCANNER:-clamav}
+    WORKER_COUNT: ${WORKER_COUNT:-1}
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL with pgvector extension (internal only — no published port)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-transformiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-transformiq}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-transformiq} -d ${POSTGRES_DB:-transformiq}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    restart: unless-stopped
+    networks:
+      - data
+
+  # ---------------------------------------------------------------------------
+  # Redis (job queue, cache, shared stores — internal only, no published port)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
+    networks:
+      - data
+
+  # ---------------------------------------------------------------------------
+  # ClamAV (local malware scanning). On data for backend/worker reachability,
+  # on egress for freshclam signature downloads. No published port.
+  # ---------------------------------------------------------------------------
+  clamav:
+    image: clamav/clamav:stable
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "false"
+      CLAMD_CONF_TCPAddr: "0.0.0.0"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "echo PING | nc -w 3 127.0.0.1 3310"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
+    networks:
+      - data
+      - egress
+
+  # ---------------------------------------------------------------------------
+  # MinIO (self-hosted S3-compatible object store — internal only)
+  # The web console is intentionally NOT published. Access it via
+  # `docker compose ... exec minio mc ...` or expose it behind your own
+  # authenticated tunnel if required.
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-transformiq}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-transformiq-secret}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
+    networks:
+      - data
+
+  # ---------------------------------------------------------------------------
+  # MinIO bootstrap — creates the configured bucket once, then exits.
+  # ---------------------------------------------------------------------------
+  minio-init:
+    image: minio/mc:latest
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-transformiq}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-transformiq-secret}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-transformiq}
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set transformiq http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD;
+        mc mb --ignore-existing transformiq/$$STORAGE_BUCKET;
+        mc ls transformiq/$$STORAGE_BUCKET > /dev/null 2>&1 || { echo 'MinIO bucket check FAILED.'; exit 1; };
+        echo 'MinIO bucket ready.'
+      "
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - data
+
+  # ---------------------------------------------------------------------------
+  # Database migrations (alembic) — runs once, then exits. The backend refuses
+  # to start until this service completes successfully.
+  # ---------------------------------------------------------------------------
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    <<: *app-common
+    env_file:
+      - .env.production
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - data
+
+  # ---------------------------------------------------------------------------
+  # Backend (FastAPI) — production command (no --reload). Single exposed API port.
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    <<: *app-common
+    env_file:
+      - .env.production
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "${BACKEND_BIND_PORT:-8000}:8000"
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
+    networks:
+      - data
+      - egress
+      - edge
+
+  # ---------------------------------------------------------------------------
+  # Worker (RQ). No container_name — it is meant to be scaled:
+  #   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --scale worker=2
+  # The worker image bakes PYTHONPATH=/backend:/app so replicas run standalone.
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    <<: *app-common
+    env_file:
+      - .env.production
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
+    networks:
+      - data
+      - egress
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js standalone production build)
+  # NEXT_PUBLIC_API_URL is baked at build time — it must be the URL the user's
+  # browser can reach the backend at (e.g. https://api.example.com or
+  # https://host:8000). INTERNAL_API_URL is unused (all fetches are browser-side).
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_BIND_PORT:-3000}:3000"
+    environment:
+      # The Next.js standalone server binds process.env.HOSTNAME. Binding only
+      # loopback breaks the published host port (Docker forwards to the
+      # container IP, not 127.0.0.1). Keep HOSTNAME at its default (0.0.0.0 ->
+      # all interfaces) so the published port works, and have the in-container
+      # healthcheck target the container's own IP instead of the loopback.
+      PORT: "3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://$(hostname -i):3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    restart: unless-stopped
+    networks:
+      - edge
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  # Fully internal: stateful services are unreachable from the host/Internet.
+  data:
+    internal: true
+  # Outbound-only for provider calls (LLM/embedding/SMTP) and freshclam.
+  # Nothing is published on this network.
+  egress:
+    driver: bridge
+  # Browser-facing traffic (backend:8000, frontend:3000).
+  edge:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  clamav_data:
+    driver: local
+  minio_data:
+    driver: local
+  # Local-storage adapter fallback (used when STORAGE_BACKEND=local).
+  storage_data:
+    driver: local

@@ -32,7 +32,7 @@ def enqueue_source_ingestion(
     job = queue.enqueue(
         "worker.process_source",
         source_id=str(source_id),
-        job_timeout=300,
+        job_timeout=settings.WORKER_JOB_TIMEOUT,
         result_ttl=86400,
     )
     return str(job.id)
@@ -47,7 +47,7 @@ def enqueue_source_embedding(
     job = queue.enqueue(
         "worker.process_source_embedding",
         source_id=str(source_id),
-        job_timeout=300,
+        job_timeout=settings.WORKER_JOB_TIMEOUT,
         result_ttl=86400,
     )
     return str(job.id)

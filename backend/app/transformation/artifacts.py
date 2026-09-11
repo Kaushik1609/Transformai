@@ -10,14 +10,16 @@ text/structured outputs are persisted in the `outputs` table directly.
 
 from __future__ import annotations
 
+import hashlib
 import re
+import time
 from pathlib import Path
 from typing import NamedTuple
 from uuid import UUID
 
-from app.core.config import settings
+from app.core.metrics import metrics
 from app.db.models.output import Output
-from app.ingestion.storage import LocalStorage
+from app.ingestion.storage import StorageAdapter, get_storage as get_configured_storage
 from app.transformation.render.pptx import PPTX_MIME_TYPE
 
 _MIME_EXT: dict[str, str] = {
@@ -37,6 +39,15 @@ def ext_for_mime(mime_type: str) -> str:
     return _MIME_EXT.get(mime_type, ".bin")
 
 
+def sha256_hex(content: bytes) -> str:
+    """Return the lowercase SHA-256 hex digest of artifact bytes.
+
+    Used to record artifact integrity in ``output_metadata`` (no database
+    schema change).  Deterministic and offline.
+    """
+    return hashlib.sha256(content).hexdigest()
+
+
 def output_storage_key(
     project_id: UUID,
     job_id: UUID,
@@ -50,9 +61,9 @@ def output_storage_key(
     )
 
 
-def get_storage() -> LocalStorage:
-    """Build the configured storage adapter (local by default)."""
-    return LocalStorage(settings.STORAGE_LOCAL_PATH)
+def get_storage() -> StorageAdapter:
+    """Build the configured storage adapter (local default; S3-compatible in production)."""
+    return get_configured_storage()
 
 
 def save_output_artifact(
@@ -62,19 +73,32 @@ def save_output_artifact(
     output_id: UUID,
     mime_type: str,
     content: bytes,
-    storage: LocalStorage | None = None,
+    storage: StorageAdapter | None = None,
 ) -> str:
     """Persist an output artifact and return its storage key."""
     storage = storage or get_storage()
     key = output_storage_key(project_id, job_id, output_id, mime_type)
-    storage.save(key, content)
+    started = time.monotonic()
+    try:
+        storage.save(key, content, content_type=mime_type)
+    except Exception:
+        metrics.inc("artifacts_failed_total")
+        raise
+    metrics.inc("artifacts_saved_total")
+    metrics.inc("artifacts_saved_bytes_total", amount=len(content))
+    metrics.observe(
+        "artifact_save_duration_seconds", time.monotonic() - started
+    )
     return key
 
 
-def storage_root(storage: LocalStorage | None = None) -> Path:
-    """Return the storage root path (handy for tests)."""
+def storage_root(storage: StorageAdapter | None = None) -> Path:
+    """Return the local storage root path (only meaningful for ``LocalStorage``)."""
     storage = storage or get_storage()
-    return storage.root
+    root = getattr(storage, "root", None)
+    if root is None:
+        raise RuntimeError("storage_root() requires a local storage backend.")
+    return root
 
 
 class ArtifactFile(NamedTuple):

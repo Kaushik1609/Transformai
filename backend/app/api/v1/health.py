@@ -24,6 +24,42 @@ router = APIRouter(tags=["observability"])
 _START_TIME = time.time()
 
 
+def _clamav_reachable() -> bool:
+    """Return True if the ClamAV daemon accepts TCP connections.
+
+    A PING/PONG protocol exchange is not required for readiness: a listening
+    TCP socket on CLAMAV_HOST:CLAMAV_PORT is sufficient to declare the scan
+    daemon reachable from this container.
+    """
+    import socket
+
+    try:
+        with socket.create_connection(
+            (settings.CLAMAV_HOST, settings.CLAMAV_PORT), timeout=3
+        ):
+            return True
+    except Exception:
+        return False
+
+
+@router.get("/", summary="Root API health & status")
+async def root() -> JSONResponse:
+    """Return 200 with service info, health status, and links to interactive documentation."""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "ok",
+            "service": "transformiq-backend",
+            "version": "0.1.0",
+            "environment": settings.ENVIRONMENT,
+            "uptime_seconds": round(time.time() - _START_TIME, 1),
+            "docs_url": "/docs",
+            "health_url": "/health",
+            "ready_url": "/ready",
+        },
+    )
+
+
 @router.get("/health", summary="Liveness probe")
 async def health() -> JSONResponse:
     """
@@ -48,7 +84,9 @@ async def ready() -> JSONResponse:
     Returns 200 if all required dependencies are reachable.
     Returns 503 if any required dependency is unavailable.
 
-    Phase 1: Performs real connectivity checks against Redis and PostgreSQL.
+    Required dependencies: Redis, PostgreSQL, and (when malware scanning is
+    enabled with the ClamAV scanner and declared required) the ClamAV daemon.
+    A non-required scan backend is reported but never blocks readiness.
     """
     checks: dict[str, str] = {}
     all_ready = True
@@ -85,6 +123,21 @@ async def ready() -> JSONResponse:
         logger.warning("Database readiness check failed", error=str(exc))
         checks["database"] = "unavailable"
         all_ready = False
+
+    # ------------------------------------------------------------------
+    # ClamAV check (Phase 14)
+    # Reported only when malware scanning is enabled with the ClamAV
+    # scanner. When the scan is required, an unreachable daemon fails
+    # readiness (fail-closed); otherwise it is reported but does not block
+    # serving (degraded-but-runnable).
+    # ------------------------------------------------------------------
+    if settings.MALWARE_SCAN_ENABLED and settings.MALWARE_SCANNER == "clamav":
+        if _clamav_reachable():
+            checks["clamav"] = "ok"
+        else:
+            checks["clamav"] = "unavailable"
+            if settings.MALWARE_SCAN_REQUIRED:
+                all_ready = False
 
     status_code = 200 if all_ready else 503
     return JSONResponse(

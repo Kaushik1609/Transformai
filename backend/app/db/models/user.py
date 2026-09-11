@@ -6,7 +6,7 @@ Represents an authenticated operator or admin user.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -40,6 +40,27 @@ class User(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="operator")
+    mobile_number: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        default=None,
+        doc="Optional numeric mobile contact used as the SMS OTP channel",
+    )
+    password_hash: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        doc="PBKDF2-HMAC-SHA256 password hash (Phase 15). Nullable so legacy "
+        "seeded/imported users fail closed on password login until a hash is set.",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+        doc="Account activation state. New registrations are inactive until the "
+        "registration OTP is verified (Phase 15).",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

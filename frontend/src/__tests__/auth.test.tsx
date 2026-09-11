@@ -1,18 +1,29 @@
 /**
- * Auth / account-flow tests — dev-bypass gateway.
+ * Auth / account-flow tests — OTP/JWT flow + dev-bypass gateway.
  *
  * Covers login, register, login↔register navigation, the application-session
  * gate (unauthenticated → /login, authenticated → shell), and logout.
+ *
+ * The development-session paths here run ONLY with
+ * NEXT_PUBLIC_DEV_AUTH_BYPASS=true (the gated, explicit development path);
+ * the real OTP/JWT flow is covered in require-auth-token.test.tsx.
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LoginPage from "@/app/login/page";
 import RegisterPage from "@/app/register/page";
 import { AppShell } from "@/components/layout";
+import { RequireAuth } from "@/components/auth";
 import {
   getDevSession,
   setDevSession,
   clearDevSession,
+  isDevAuthBypassEnabled,
+  setAuthToken,
+  setAuthUser,
+  getAuthToken,
+  AUTH_STORE_KEY,
+  AUTH_USER_KEY,
 } from "@/lib/auth";
 
 const push = jest.fn();
@@ -27,8 +38,15 @@ jest.mock("next/navigation", () => ({
 beforeEach(() => {
   localStorage.clear();
   clearDevSession();
+  delete (process.env as Record<string, string | undefined>)
+    .NEXT_PUBLIC_DEV_AUTH_BYPASS;
   push.mockClear();
   replace.mockClear();
+});
+
+afterEach(() => {
+  delete (process.env as Record<string, string | undefined>)
+    .NEXT_PUBLIC_DEV_AUTH_BYPASS;
 });
 
 describe("LoginPage", () => {
@@ -48,7 +66,8 @@ describe("LoginPage", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("start a development session and proceeds to the app after valid submit", async () => {
+  it("starts a development session (dev bypass enabled) and proceeds to the app after valid submit", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText("Email"), "dev@transformiq.local");
     await userEvent.type(screen.getByLabelText("Password"), "password123");
@@ -61,6 +80,21 @@ describe("LoginPage", () => {
     render(<LoginPage />);
     const link = screen.getByRole("link", { name: "Create account" });
     expect(link).toHaveAttribute("href", "/register");
+  });
+});
+
+describe("auth module contract (regression: named export must stay callable)", () => {
+  it("exports isDevAuthBypassEnabled as a function returning a boolean", () => {
+    expect(typeof isDevAuthBypassEnabled).toBe("function");
+    expect(typeof isDevAuthBypassEnabled()).toBe("boolean");
+  });
+
+  it("is false when NEXT_PUBLIC_DEV_AUTH_BYPASS is unset and true when 'true'", () => {
+    delete (process.env as Record<string, string | undefined>)
+      .NEXT_PUBLIC_DEV_AUTH_BYPASS;
+    expect(isDevAuthBypassEnabled()).toBe(false);
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
+    expect(isDevAuthBypassEnabled()).toBe(true);
   });
 });
 
@@ -90,7 +124,8 @@ describe("RegisterPage", () => {
     expect(getDevSession()).toBeNull();
   });
 
-  it("starts a development session and proceeds to the app after valid submit", async () => {
+  it("starts a development session (dev bypass enabled) and proceeds to the app after valid submit", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     render(<RegisterPage />);
     await userEvent.type(screen.getByLabelText("Name"), "Jane Doe");
     await userEvent.type(screen.getByLabelText("Email"), "jane@transformiq.local");
@@ -117,7 +152,8 @@ describe("application session gate", () => {
     expect(screen.queryByText("app content")).not.toBeInTheDocument();
   });
 
-  it("renders the authenticated application for a development session", async () => {
+  it("renders the authenticated application for a development session (dev bypass enabled)", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     setDevSession("dev@transformiq.local");
     render(<AppShell>app content</AppShell>);
     await waitFor(() =>
@@ -129,7 +165,14 @@ describe("application session gate", () => {
   });
 
   it("logs out from the profile menu and returns to /login", async () => {
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     setDevSession("dev@transformiq.local", "Dev User");
+    localStorage.setItem("transformiq.quick_project_id", "quick-1");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true }),
+    }) as unknown as typeof fetch;
     render(<AppShell>app content</AppShell>);
     await waitFor(() =>
       expect(screen.getByText("app content")).toBeInTheDocument(),
@@ -140,5 +183,46 @@ describe("application session gate", () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
     expect(getDevSession()).toBeNull();
+    expect(localStorage.getItem("transformiq.quick_project_id")).toBeNull();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/auth/logout"),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("logs out a real password account: clears JWT + identity and locks protected routes", async () => {
+    setAuthToken("jwt-real", Date.now() + 60_000);
+    setAuthUser({
+      id: "user-real",
+      email: "analyst@transformiq.example",
+      name: "Real Analyst",
+      role: "operator",
+    });
+    localStorage.setItem("transformiq.quick_project_id", "quick-2");
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true }),
+    }) as unknown as typeof fetch;
+    render(<AppShell>app content</AppShell>);
+    await waitFor(() =>
+      expect(screen.getByText("app content")).toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Log out" }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
+    expect(getAuthToken()).toBeNull();
+    expect(localStorage.getItem(AUTH_STORE_KEY)).toBeNull();
+    expect(localStorage.getItem(AUTH_USER_KEY)).toBeNull();
+    expect(getDevSession()).toBeNull();
+    expect(localStorage.getItem("transformiq.quick_project_id")).toBeNull();
+
+    // The protected route cannot reopen without signing in again.
+    replace.mockClear();
+    render(<RequireAuth>protected content</RequireAuth>);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
+    expect(screen.queryByText("protected content")).not.toBeInTheDocument();
   });
 });

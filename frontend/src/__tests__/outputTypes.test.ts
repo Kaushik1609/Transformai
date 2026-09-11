@@ -32,7 +32,7 @@ describe("OUTPUT_TYPES", () => {
 
   it("exposes human-readable labels", () => {
     expect(outputTypeLabel("summary")).toBe("Executive Summary");
-    expect(outputTypeLabel("video")).toBe("Video");
+    expect(outputTypeLabel("video")).toBe("Video Package");
   });
 
   it("falls back to the raw value for unknown types", () => {

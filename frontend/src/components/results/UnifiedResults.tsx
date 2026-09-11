@@ -12,10 +12,17 @@ import {
   type OutputResponse,
   type TransformationJobResponse,
 } from "@/lib/api";
-import { isTerminalJobStatus } from "@/lib/outputTypes";
+import {
+  isTerminalJobStatus,
+  outputTypeShortLabel,
+  jobStatusVariant,
+  formatDateTime,
+} from "@/lib/outputTypes";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common";
 import { Check, AlertTriangle } from "lucide-react";
-import { ResultsPanel } from "./ResultsPanel";
+import { ArtifactInspector } from "./ArtifactInspector";
+import { TrustCockpit } from "@/components/verification/TrustCockpit";
 
 interface UnifiedResultsProps {
   job: TransformationJobResponse;
@@ -44,21 +51,51 @@ export function UnifiedResults({ job, outputs, loading = false }: UnifiedResults
     const failed = outputs.filter((o) => o.status === "failed").length;
     const activeId = selectedId ?? outputs[0].id;
     const activeOutput = outputs.find((o) => o.id === activeId) ?? outputs[0];
+    const requestedTypes = (
+      (job.requested_outputs as { output_types?: string[] } | null)?.output_types ?? []
+    ).map((t) => outputTypeShortLabel(t));
+    const requestedCount = requestedTypes.length;
 
-    return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h3 className="text-sm font-semibold text-foreground">
-            {completed} output{completed !== 1 ? "s" : ""} generated
-          </h3>
-          {failed > 0 && (
-            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
-              {failed} failed
+  return (
+    <div className="space-y-4">
+      {/* Transformation / project context — real job record fields only */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-border bg-surface-elevated px-4 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="label-mono-sm text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Transformation
+          </span>
+          <span className="truncate font-mono text-xs text-foreground">
+            {job.id}
+          </span>
+          <StatusBadge variant={jobStatusVariant(job.status)}>
+            {job.status}
+          </StatusBadge>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>Created {formatDateTime(job.created_at)}</span>
+          {requestedCount > 0 && (
+            <span>
+              {requestedCount} format{requestedCount !== 1 ? "s" : ""} requested
             </span>
           )}
         </div>
+      </div>
 
-        {/* Output tabs */}
+      <div className="flex flex-wrap items-center gap-3">
+        <h3 className="text-sm font-semibold text-foreground">
+          {completed} output{completed !== 1 ? "s" : ""} generated
+        </h3>
+        {failed > 0 && (
+          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+            {failed} failed
+          </span>
+        )}
+      </div>
+
+      {/* UI-6 — trust / verification cockpit (composes the existing panels) */}
+      <TrustCockpit job={job} outputs={outputs} />
+
+      {/* Output tabs */}
         <div role="tablist" aria-label="Generated outputs" className="flex flex-wrap gap-1.5">
           {outputs.map((output) => {
             const active = output.id === activeId;
@@ -77,14 +114,14 @@ export function UnifiedResults({ job, outputs, loading = false }: UnifiedResults
                 )}
               >
                 {tabIcon(output.status)}
-                {output.output_type.charAt(0).toUpperCase() + output.output_type.slice(1)}
+                {outputTypeShortLabel(output.output_type)}
               </button>
             );
           })}
         </div>
 
         <div role="tabpanel">
-          <ResultsPanel outputs={[activeOutput]} loading={false} />
+          <ArtifactInspector output={activeOutput} />
         </div>
       </div>
     );

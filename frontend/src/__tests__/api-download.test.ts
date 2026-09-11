@@ -28,7 +28,9 @@ describe("outputsApi.download", () => {
     expect(url).toBe(
       "http://localhost:8000/api/v1/outputs/o1/download?artifact=primary",
     );
-    expect(init).toBeUndefined(); // no auth headers sent in dev mode
+    expect(init).toBeDefined();
+    // No Authorization header is attached while no token is stored (dev mode).
+    expect(init.headers).toEqual({});
     expect(result.filename).toBe("presentation.pptx");
     expect(result.blob).toBeInstanceOf(Blob);
   });

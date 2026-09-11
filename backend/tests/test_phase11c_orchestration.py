@@ -782,3 +782,188 @@ def test_no_database_migration_required():
     assert "transformation_jobs" in tables
     assert "outputs" in tables
     assert "verification_results" in tables
+
+
+# ---------------------------------------------------------------------------
+# Phase 15 — flexible inputs: prompt-only, source+prompt, at-least-one rule
+# ---------------------------------------------------------------------------
+
+PROMPT = "Produce a crisp executive briefing about humane rodent control."
+
+
+def add_job_v2(engine, project_id, *, source_id=None, prompt=None, output_types=None,
+               config=None) -> uuid.UUID:
+    """job builder matching the Phase 15 contract (source_id and/or prompt)."""
+    with Session(engine, expire_on_commit=False) as db:
+        cfg = GenerationConfiguration(id=uuid.uuid4(), project_id=project_id, language="English")
+        if config:
+            for k, v in config.items():
+                setattr(cfg, k, v)
+        db.add(cfg)
+        db.flush()
+        job = TransformationJob(
+            id=uuid.uuid4(), project_id=project_id, source_id=source_id,
+            configuration_id=cfg.id, prompt=prompt,
+            requested_outputs={"output_types": output_types or ["summary"]}, status="queued",
+        )
+        db.add(job)
+        db.commit()
+        return job.id
+
+
+def test_prompt_only_job_runs_full_pipeline(tmp_path: Path):
+    storage = LocalStorage(tmp_path / "storage")
+    engine, project_id, source_id = make_db()  # source exists but is NOT referenced
+    job_id = add_job_v2(engine, project_id, source_id=None, prompt=PROMPT,
+                        output_types=["summary", "advisory"])
+
+    with Session(engine, expire_on_commit=False) as db:
+        result = run_transformation_job(db, job_id, llm_provider=FakeLLMProvider(), storage=storage)
+    assert result["outputs_completed"] == 2
+    assert result["outputs_failed"] == 0
+    job = fetch_job(engine, job_id)
+    assert job.status == "completed"
+    outputs = fetch_outputs_by_type(engine, job_id)
+    assert set(outputs.keys()) == {"summary", "advisory"}
+    assert outputs["summary"].status == "completed"
+
+
+def test_prompt_only_skips_rag_retrieval(tmp_path: Path):
+    # No source -> retrieval must never be invoked (no chunk-data leakage).
+    storage = LocalStorage(tmp_path / "storage")
+    engine, project_id, source_id = make_db()
+    job_id = add_job_v2(engine, project_id, source_id=None, prompt=PROMPT)
+    rag = CountingRAGService()
+    with Session(engine, expire_on_commit=False) as db:
+        result = run_transformation_job(db, job_id, rag_service=rag,
+                                        llm_provider=FakeLLMProvider(), storage=storage)
+    assert result["outputs_completed"] == 1
+    assert rag.calls == 0, "prompt-only jobs must not trigger retrieval"
+
+
+def test_prompt_only_job_has_null_source_id_in_db(tmp_path: Path):
+    storage = LocalStorage(tmp_path / "storage")
+    engine, project_id, source_id = make_db()
+    job_id = add_job_v2(engine, project_id, source_id=None, prompt=PROMPT)
+    with Session(engine, expire_on_commit=False) as db:
+        run_transformation_job(db, job_id, llm_provider=FakeLLMProvider(), storage=storage)
+    job = fetch_job(engine, job_id)
+    assert job.source_id is None
+    assert job.prompt == PROMPT
+
+
+def test_prompt_is_rendered_into_operator_block(tmp_path: Path):
+    storage = LocalStorage(tmp_path / "storage")
+    engine, project_id, source_id = make_db()
+    job_id = add_job_v2(engine, project_id, source_id=None, prompt=PROMPT)
+    provider = RecordingFakeProvider()
+    with Session(engine, expire_on_commit=False) as db:
+        result = run_transformation_job(db, job_id, llm_provider=provider, storage=storage)
+    assert result["outputs_completed"] == 1
+    block = provider.user_contents[0]
+    assert "<operator_instructions>" in block
+    assert "</operator_instructions>" in block
+    assert PROMPT in block
+    # Prompt-only: the untrusted source block still renders but with no source
+    # material (no source_id to ground against).
+    assert "<source_data>" in block
+    assert "TITLE: Untitled source" in block
+    assert "humane rodent control" in block
+
+
+def test_no_operator_block_without_prompt(tmp_path: Path):
+    storage = LocalStorage(tmp_path / "storage")
+    engine, project_id, source_id = make_db()
+    job_id = add_job(engine, project_id, source_id, ["summary"])
+
+    with Session(engine, expire_on_commit=False) as db:
+        run_transformation_job(db, job_id, llm_provider=FakeLLMProvider(), storage=storage)
+
+    job = fetch_job(engine, job_id)
+    brief = job.requested_outputs["brief"]
+    assert brief.get("operator_prompt") is None
+    text = render_brief_text(brief)
+    assert "<operator_instructions>" not in text
+
+
+def test_source_and_prompt_mode_grounds_both(tmp_path: Path):
+    storage = LocalStorage(tmp_path / "storage")
+    engine, project_id, source_id = make_db()
+    job_id = add_job_v2(engine, project_id, source_id=source_id, prompt=PROMPT,
+                        output_types=["summary"],
+                        config={"communication_objective": "decision support"})
+    rag = CountingRAGService()
+    provider = RecordingFakeProvider()
+    with Session(engine, expire_on_commit=False) as db:
+        result = run_transformation_job(db, job_id, rag_service=rag,
+                                        llm_provider=provider, storage=storage)
+    assert result["outputs_completed"] == 1
+    # Grounding: retrieval runs exactly once AND the operator instruction is present.
+    assert rag.calls == 1
+    block = provider.user_contents[0]
+    assert "<operator_instructions>" in block
+    assert PROMPT in block
+    assert "Test Source" in block  # untrusted source material still rendered
+    job = fetch_job(engine, job_id)
+    assert job.source_id == source_id
+    assert job.prompt == PROMPT
+
+
+def test_at_least_one_input_required():
+    from pydantic import ValidationError
+
+    from app.api.v1.schemas.transformation import TransformationJobCreate
+
+    ids = {
+        "project_id": uuid.uuid4(),
+        "configuration_id": uuid.uuid4(),
+        "output_types": ["summary"],
+    }
+
+    # Neither source nor prompt -> rejected.
+    with pytest.raises(ValidationError):
+        TransformationJobCreate(**ids)
+
+    # Each single input is accepted...
+    TransformationJobCreate(source_id=uuid.uuid4(), **ids)
+    TransformationJobCreate(prompt="Draft a memo about X.", **ids)
+
+    # ...and so is the combined form.
+    TransformationJobCreate(source_id=uuid.uuid4(), prompt="Draft a memo about X.", **ids)
+
+    # Prompt is bounded so a runaway directive cannot bloat the job envelope.
+    with pytest.raises(ValidationError):
+        TransformationJobCreate(prompt="x" * 500_001, **ids)
+
+
+def test_prompt_only_ownership_still_enforced(tmp_path: Path):
+    # Prompt-only jobs still bind to a project that must own a real user; a
+    # job that references a missing project is rejected up front by the worker
+    # guard (same Path 9A integrity boundary as source-mode jobs).
+    storage = LocalStorage(tmp_path / "storage")
+    engine, project_id, source_id = make_db()
+    from app.db.models.transformation_job import TransformationJob as JobModel
+
+    with Session(engine, expire_on_commit=False) as db:
+        cfg = GenerationConfiguration(
+            id=uuid.uuid4(), project_id=project_id, language="English"
+        )
+        db.add(cfg)
+        db.flush()
+        job = JobModel(
+            id=uuid.uuid4(), project_id=uuid.uuid4(),  # references a missing project
+            source_id=None, configuration_id=cfg.id, prompt=PROMPT,
+            requested_outputs={"output_types": ["summary"]}, status="queued",
+        )
+        db.add(job)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            pytest.skip("FK constraints prevent inserting a job with a missing project")
+
+    from app.transformation.service import TransformationError, run_transformation_job
+
+    with Session(engine, expire_on_commit=False) as db:
+        with pytest.raises(TransformationError):
+            run_transformation_job(db, job.id, llm_provider=FakeLLMProvider(), storage=storage)

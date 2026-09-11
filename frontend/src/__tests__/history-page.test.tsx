@@ -65,7 +65,13 @@ describe("HistoryPage", () => {
     mockFetch.mockReset();
     mockFetch.mockImplementation(handler());
     localStorage.clear();
+    process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS = "true";
     setDevSession("dev@transformiq.local");
+  });
+
+  afterEach(() => {
+    delete (process.env as Record<string, string | undefined>)
+      .NEXT_PUBLIC_DEV_AUTH_BYPASS;
   });
 
   it("shows an empty state when there are no jobs", async () => {

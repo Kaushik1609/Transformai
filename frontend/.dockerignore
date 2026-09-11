@@ -1,0 +1,39 @@
+# =============================================================================
+# TransformIQ Frontend — .dockerignore
+# =============================================================================
+# Keeps the frontend build context lean (node_modules/.next are rebuilt inside
+# the image; copied caches would break the standalone production bundle).
+
+# VCS
+.git
+.gitignore
+
+# Dependencies / build output (rebuilt in-image)
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment / secrets
+.env
+.env.*
+*.env
+
+# Test / lint caches
+coverage
+.jest-cache
+.eslintcache
+
+# Runtime log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE / OS noise
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db

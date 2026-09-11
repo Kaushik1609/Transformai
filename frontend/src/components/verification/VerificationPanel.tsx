@@ -171,7 +171,7 @@ function RecordView({ record }: { record: VerificationResultResponse }) {
                   </span>
                 )}
                 {typeof w.evidence === "string" && w.evidence.length > 0 && (
-                  <span className="block text-muted-foreground/80">
+                  <span className="block text-muted-foreground">
                     Evidence: {w.evidence}
                   </span>
                 )}

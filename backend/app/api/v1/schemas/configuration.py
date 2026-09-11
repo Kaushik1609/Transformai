@@ -48,7 +48,9 @@ class ConfigurationCreate(BaseModel):
     )
     custom_instructions: str | None = Field(
         default=None,
-        description="Free-form custom instructions for the AI",
+        max_length=2000,
+        description="Free-form custom instructions for the AI (bounded to prevent "
+        "unbounded prompt expansion and instruction-token abuse)",
     )
 
 
@@ -61,7 +63,7 @@ class ConfigurationUpdate(BaseModel):
     detail_level: str | None = Field(default=None, max_length=50)
     communication_objective: str | None = Field(default=None, max_length=255)
     content_style: str | None = Field(default=None, max_length=100)
-    custom_instructions: str | None = Field(default=None)
+    custom_instructions: str | None = Field(default=None, max_length=2000)
 
 
 # ---------------------------------------------------------------------------

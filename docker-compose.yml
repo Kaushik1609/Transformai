@@ -51,6 +51,41 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # ClamAV (local malware signature scanning — Phase 12D-A)
+  # ---------------------------------------------------------------------------
+  # Local-only malware scanning for source uploads. NO third-party upload or
+  # scanning services. Runs an official ClamAV daemon on the internal Docker
+  # network; the backend/worker talk to it over LOCALHOST of the stack only.
+  clamav:
+    image: clamav/clamav:stable
+    container_name: transformiq-clamav
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "false"
+      # Official clamav/clamav images bind clamd's TCPSocket to 127.0.0.1 by
+      # default. Bind to all interfaces so the backend/worker containers on
+      # the compose network can reach clamd :3310.
+      CLAMD_CONF_TCPAddr: "0.0.0.0"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      # clamd reports readiness as "PONG" (zero bytes length read).
+      test: ["CMD-SHELL", "echo PING | nc -w 3 127.0.0.1 3310"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
+    networks:
+      default:
+        # clamd listens on 3310 inside the compose network.
+        aliases:
+          - clamav
+
+  # ---------------------------------------------------------------------------
   # Backend (FastAPI)
   # ---------------------------------------------------------------------------
   backend:
@@ -64,6 +99,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
       DATABASE_SYNC_URL: postgresql://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
       REDIS_URL: redis://redis:6379/0
+      CLAMAV_HOST: ${CLAMAV_HOST:-clamav}
+      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+      CLAMAV_TIMEOUT_SECONDS: ${CLAMAV_TIMEOUT_SECONDS:-10}
     ports:
       - "8000:8000"
     volumes:
@@ -73,6 +111,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
@@ -96,6 +136,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
       DATABASE_SYNC_URL: postgresql://${POSTGRES_USER:-transformiq}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-transformiq}
       REDIS_URL: redis://redis:6379/0
+      CLAMAV_HOST: ${CLAMAV_HOST:-clamav}
+      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+      CLAMAV_TIMEOUT_SECONDS: ${CLAMAV_TIMEOUT_SECONDS:-10}
       PYTHONPATH: /backend:/app
     volumes:
       - ./worker:/app
@@ -105,6 +148,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
     restart: unless-stopped
 
@@ -146,4 +191,7 @@ volumes:
   redis_data:
     driver: local
   backend_storage:
+    driver: local
+  # Persistent ClamAV signature database (survives container restarts).
+  clamav_data:
     driver: local

@@ -437,10 +437,12 @@ def test_prompt_injection_source_text_is_encapsulated_as_untrusted_data():
     user_content = build_user_content(canonical, rag_context)
 
     # Verifies data boundaries
+    assert "<source_data>" in user_content
+    assert "</source_data>" in user_content
     assert "<source_evidence>" in user_content
     assert "</source_evidence>" in user_content
     assert malicious_chunk in user_content
-    assert "ADDITIONAL RETRIEVED SOURCE CONTEXT (UNTRUSTED EVIDENCE):" in user_content
+    assert "UNTRUSTED source data" in user_content
 
     # Verifies system prompt directives
     prompt = system_prompt("Executive Summary", "{title, text}", {"tone": "objective"})

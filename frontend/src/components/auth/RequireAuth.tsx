@@ -1,26 +1,46 @@
 /**
- * TransformIQ — Development-session gate.
+ * TransformIQ — Application authentication gate.
  *
- * Protects the application shell. Until a development session is present the
- * shell renders nothing and the user is redirected to /login. Rendering stays
- * empty for the first (server) pass so there is no hydration mismatch.
+ * Grants access when either:
+ *   1. The frontend build explicitly enables the development bypass
+ *      (NEXT_PUBLIC_DEV_AUTH_BYPASS=true) AND a development session exists.
+ *   2. A stored access token is present and has not expired.
+ *
+ * When a token exists but is expired it is removed so stale credentials never
+ * linger in storage. Otherwise the user is redirected to /login.
  */
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { getDevSession } from "@/lib/auth";
+import {
+  clearAuthToken,
+  getAuthToken,
+  getDevSession,
+  isDevAuthBypassEnabled,
+  isTokenValid,
+} from "@/lib/auth";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!getDevSession()) {
-      router.replace("/login");
+    const validToken = isTokenValid();
+
+    // An expired/invalid token must never sit in storage.
+    if (!validToken && getAuthToken() !== null) {
+      clearAuthToken();
+    }
+
+    const devBypass = isDevAuthBypassEnabled() && getDevSession() !== null;
+
+    if (validToken || devBypass) {
+      setReady(true);
       return;
     }
-    setReady(true);
+
+    router.replace("/login");
   }, [router]);
 
   return <>{ready ? children : null}</>;

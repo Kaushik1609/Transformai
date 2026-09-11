@@ -1,0 +1,52 @@
+# =============================================================================
+# TransformIQ Root — .dockerignore
+# =============================================================================
+# The root build context is used by the worker image
+# (docker-compose / worker/Dockerfile) which only needs worker/ and
+# backend/app. Everything else is excluded to keep the context small.
+
+# VCS / CI
+.git
+.gitignore
+.github
+
+# Secrets — never staged into an image build
+.env
+.env.*
+*.env
+
+# Documentation / analysis artifacts (not packaged into the worker image)
+docs
+*.md
+*.png
+*.svg
+
+# Test suites (backend/tests and repo-root tests)
+tests
+backend/tests
+
+# Frontend — not part of the worker image
+frontend
+
+# Local storage / queues dev data
+backend/storage
+worker/storage
+storage
+uploads
+
+# Python caches
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# IDE / OS noise
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db

@@ -15,6 +15,7 @@ from app.db.models.output import Output
 from app.db.models.verification_result import VerificationResult
 from app.db.models.canonical_content import CanonicalContent
 from app.db.models.content_analysis_trace import ContentAnalysisTrace
+from app.db.models.security_event import SecurityEventRecord
 
 __all__ = [
     "User",
@@ -27,4 +28,5 @@ __all__ = [
     "VerificationResult",
     "CanonicalContent",
     "ContentAnalysisTrace",
+    "SecurityEventRecord",
 ]

@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TransformIQ - Production Interaction, States & Mobile System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Geist', 'sans-serif'],
+            mono: ['Geist Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            },
+            surface: {
+              DEFAULT: '#0f131c',
+              dim: '#0b0e14',
+              bright: '#353942',
+              lowest: '#0a0e16',
+              low: '#141822',
+              card: '#181d29',
+              high: '#202634',
+              higher: '#293042',
+              border: '#262d3d',
+              borderMuted: '#1d2330',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar and focus rings */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0e14; }
+    ::-webkit-scrollbar-thumb { background: #262d3d; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
+    .focus-ring {
+      outline: none;
+      box-shadow: 0 0 0 2px #0f131c, 0 0 0 4px #3b82f6;
+    }
+    
+    /* Subtle pulse and loader */
+    @keyframes spin-slow {
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spin-slow 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-[#0a0e16] text-slate-100 font-sans antialiased min-h-screen selection:bg-blue-600 selection:text-white">
+
+  <!-- Top System Ribbon & State Switcher -->
+  <header class="border-b border-surface-border bg-surface-lowest sticky top-0 z-50 backdrop-blur-md bg-opacity-95 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-md bg-slate-900 border border-blue-500/40 flex items-center justify-center shadow-lg shadow-blue-900/20">
+        <svg class="w-5 h-5 text-blue-500" viewBox="0 0 40 40" fill="none">
+          <path d="M12 14L20 10L28 14L20 18L12 14Z" stroke="#3B82F6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 20L20 24L28 20" stroke="#06B6D4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 26L20 30L28 26" stroke="#94A3B8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="20" cy="18" r="2.5" fill="#3B82F6"/>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-tight text-white">TransformIQ</span>
+          <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-blue-950/80 border border-blue-800/60 text-blue-400 font-semibold">Specification & State Matrix</span>
+        </div>
+        <p class="text-xs text-slate-400">Production Component States, Edge Cases, Error Architectures & Responsive Mobile UI</p>
+      </div>
+    </div>
+
+    <!-- Quick Jump Tabs -->
+    <nav class="flex items-center gap-1.5 overflow-x-auto text-xs bg-surface-low p-1 rounded-lg border border-surface-border">
+      <a href="#buttons-forms" class="px-3 py-1.5 rounded-md hover:bg-surface-card text-slate-300 hover:text-white transition">Buttons & Forms</a>
+      <a href="#pipeline-states" class="px-3 py-1.5 rounded-md hover:bg-surface-card text-slate-300 hover:text-white transition">Pipeline & Uploads</a>
+      <a href="#trust-security" class="px-3 py-1.5 rounded-md hover:bg-surface-card text-slate-300 hover:text-white transition">Trust & Security</a>
+      <a href="#modals-toasts" class="px-3 py-1.5 rounded-md hover:bg-surface-card text-slate-300 hover:text-white transition">Dialogs & Toasts</a>
+      <a href="#empty-errors" class="px-3 py-1.5 rounded-md hover:bg-surface-card text-slate-300 hover:text-white transition">Empty & HTTP Errors</a>
+      <a href="#mobile-preview" class="px-3 py-1.5 rounded-md bg-blue-600 text-white font-medium shadow-sm transition flex items-center gap-1.5">
+        <i class="ph ph-device-mobile text-sm"></i>
+        <span>Mobile Viewport (390px)</span>
+      </a>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-16">
+
+    <!-- SECTION 1: BUTTON & FORM INTERACTION STATES -->
+    <section id="buttons-forms" class="space-y-6">
+      <div class="border-b border-surface-border pb-3 flex items-baseline justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+            <i class="ph ph-cursor-click text-blue-400"></i>
+            Button Matrix & Interactive Hierarchy
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Idle, Hover, Focus, Pressed, Disabled, and Loading states with zero layout shifting.</p>
+        </div>
+        <span class="text-[11px] font-mono text-slate-500">WCAG 2.1 AAA Compliant · Min 44px Touch target</span>
+      </div>
+
+      <!-- Button Table Matrix -->
+      <div class="bg-surface-card border border-surface-border rounded-xl p-6 overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-surface-border text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+              <th class="pb-3 pr-4 font-semibold">Variant</th>
+              <th class="pb-3 px-3 font-semibold">Default / Idle</th>
+              <th class="pb-3 px-3 font-semibold">Hover</th>
+              <th class="pb-3 px-3 font-semibold">Focus-Visible</th>
+              <th class="pb-3 px-3 font-semibold">Active / Pressed</th>
+              <th class="pb-3 px-3 font-semibold">Loading (Retained Width)</th>
+              <th class="pb-3 pl-3 font-semibold">Disabled</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-surface-border/50">
+            <!-- Primary Button -->
+            <tr>
+              <td class="py-4 pr-4 font-medium text-slate-200">
+                Primary (Cobalt)
+                <span class="block text-[10px] text-slate-500 font-mono">bg-blue-600</span>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-sm transition flex items-center gap-2">
+                  <i class="ph ph-plus-circle"></i>
+                  <span>Create Transformation</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium shadow-md shadow-blue-600/30 transition flex items-center gap-2 ring-1 ring-blue-400/40">
+                  <i class="ph ph-plus-circle"></i>
+                  <span>Create Transformation</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium focus-ring flex items-center gap-2">
+                  <i class="ph ph-plus-circle"></i>
+                  <span>Create Transformation</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-4 py-2 bg-blue-700 text-slate-200 rounded-lg font-medium scale-[0.98] transition flex items-center gap-2">
+                  <i class="ph ph-plus-circle"></i>
+                  <span>Create Transformation</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-4 py-2 bg-blue-600/80 text-white/80 rounded-lg font-medium cursor-wait flex items-center gap-2">
+                  <i class="ph ph-spinner-gap animate-spin text-sm"></i>
+                  <span>Create Transformation</span>
+                </button>
+              </td>
+              <td class="py-4 pl-3">
+                <button disabled class="px-4 py-2 bg-surface-high border border-surface-border text-slate-500 rounded-lg font-medium cursor-not-allowed flex items-center gap-2 opacity-60">
+                  <i class="ph ph-plus-circle"></i>
+                  <span>Create Transformation</span>
+                </button>
+              </td>
+            </tr>
+
+            <!-- Secondary Button -->
+            <tr>
+              <td class="py-4 pr-4 font-medium text-slate-200">
+                Secondary (Slate Dark)
+                <span class="block text-[10px] text-slate-500 font-mono">border-surface-border</span>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-surface-card border border-surface-border hover:bg-surface-high text-slate-200 rounded-lg font-medium transition flex items-center gap-2">
+                  <i class="ph ph-upload-simple"></i>
+                  <span>Upload Source</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-surface-high border border-slate-600 text-white rounded-lg font-medium transition flex items-center gap-2">
+                  <i class="ph ph-upload-simple"></i>
+                  <span>Upload Source</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-surface-card border border-surface-border text-slate-200 rounded-lg font-medium focus-ring flex items-center gap-2">
+                  <i class="ph ph-upload-simple"></i>
+                  <span>Upload Source</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-surface-lowest border border-slate-700 text-slate-300 rounded-lg font-medium scale-[0.98] transition flex items-center gap-2">
+                  <i class="ph ph-upload-simple"></i>
+                  <span>Upload Source</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-surface-card border border-surface-border text-slate-400 rounded-lg font-medium cursor-wait flex items-center gap-2">
+                  <i class="ph ph-spinner-gap animate-spin text-sm text-blue-400"></i>
+                  <span>Uploading...</span>
+                </button>
+              </td>
+              <td class="py-4 pl-3">
+                <button disabled class="px-3.5 py-2 bg-surface-card/40 border border-surface-border/40 text-slate-600 rounded-lg font-medium cursor-not-allowed flex items-center gap-2">
+                  <i class="ph ph-upload-simple"></i>
+                  <span>Upload Source</span>
+                </button>
+              </td>
+            </tr>
+
+            <!-- Destructive Button -->
+            <tr>
+              <td class="py-4 pr-4 font-medium text-red-400">
+                Destructive (Red)
+                <span class="block text-[10px] text-slate-500 font-mono">bg-red-500/10</span>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-lg font-medium transition flex items-center gap-2">
+                  <i class="ph ph-trash"></i>
+                  <span>Delete Project</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-red-600 text-white rounded-lg font-medium shadow-md shadow-red-900/30 transition flex items-center gap-2">
+                  <i class="ph ph-trash"></i>
+                  <span>Delete Project</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg font-medium ring-2 ring-red-500 ring-offset-2 ring-offset-[#0f131c] flex items-center gap-2">
+                  <i class="ph ph-trash"></i>
+                  <span>Delete Project</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-red-700 text-white/90 rounded-lg font-medium scale-[0.98] transition flex items-center gap-2">
+                  <i class="ph ph-trash"></i>
+                  <span>Delete Project</span>
+                </button>
+              </td>
+              <td class="py-4 px-3">
+                <button class="px-3.5 py-2 bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg font-medium cursor-wait flex items-center gap-2">
+                  <i class="ph ph-spinner-gap animate-spin text-sm text-red-400"></i>
+                  <span>Deleting...</span>
+                </button>
+              </td>
+              <td class="py-4 pl-3">
+                <button disabled class="px-3.5 py-2 bg-surface-card border border-surface-border text-slate-600 rounded-lg font-medium cursor-not-allowed opacity-50 flex items-center gap-2">
+                  <i class="ph ph-trash"></i>
+                  <span>Delete Project</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- FORM FIELD STATES & FEEDBACK CLOSURE -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+        <!-- Field State: Default & Focused -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-slate-300">Email Address (Default & Focus)</label>
+            <span class="text-[10px] font-mono text-slate-400">Standard Login</span>
+          </div>
+          <div class="relative">
+            <i class="ph ph-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="email" value="elena.vance@defense.gov" class="w-full bg-surface-low border border-surface-border text-slate-200 text-xs rounded-lg pl-9 pr-4 py-2.5 focus:border-blue-500 focus-ring transition placeholder-slate-500" placeholder="Enter government email...">
+          </div>
+          <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <i class="ph ph-shield-check text-blue-400"></i>
+            FIPS-140-3 Hardware Token Auth Supported
+          </p>
+        </div>
+
+        <!-- Field State: Invalid / Error with Inline Proximity Message -->
+        <div class="bg-surface-card border border-red-900/40 rounded-xl p-5 space-y-3 bg-red-950/10">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-red-400">Mandate / Prompt Directive</label>
+            <span class="text-[10px] font-mono text-red-400">Validation Error</span>
+          </div>
+          <div class="relative">
+            <textarea rows="2" class="w-full bg-surface-low border border-red-500/80 text-red-200 text-xs rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:outline-none transition resize-none font-mono">DROP TABLE artifacts; -- EXEC sp_threat_index</textarea>
+            <i class="ph ph-warning-circle absolute right-3 top-3 text-red-400 text-base"></i>
+          </div>
+          <div class="flex items-start gap-1.5 text-[11px] text-red-400 font-medium">
+            <i class="ph ph-x-circle mt-0.5 shrink-0"></i>
+            <span>Adversarial prompt injection pattern detected. Deterministic Sec-RAG rejected this input payload.</span>
+          </div>
+        </div>
+
+        <!-- Field State: OTP Verification (Loading, Expired, Success) -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-slate-300">Registration OTP (Account Verification)</label>
+            <span class="text-[10px] font-mono text-amber-400 flex items-center gap-1">
+              <i class="ph ph-clock"></i> 02:44 left
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" maxlength="1" value="7" class="w-10 h-11 text-center bg-surface-low border border-blue-500 text-white font-mono font-bold text-base rounded-lg focus-ring">
+            <input type="text" maxlength="1" value="3" class="w-10 h-11 text-center bg-surface-low border border-blue-500 text-white font-mono font-bold text-base rounded-lg focus-ring">
+            <input type="text" maxlength="1" value="9" class="w-10 h-11 text-center bg-surface-low border border-blue-500 text-white font-mono font-bold text-base rounded-lg focus-ring">
+            <span class="text-slate-600 font-bold">-</span>
+            <input type="text" maxlength="1" value="2" class="w-10 h-11 text-center bg-surface-low border border-surface-border text-slate-400 font-mono font-bold text-base rounded-lg focus-ring">
+            <input type="text" maxlength="1" value="" class="w-10 h-11 text-center bg-surface-low border border-surface-border text-slate-400 font-mono font-bold text-base rounded-lg focus-ring">
+            <input type="text" maxlength="1" value="" class="w-10 h-11 text-center bg-surface-low border border-surface-border text-slate-400 font-mono font-bold text-base rounded-lg focus-ring">
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Didn't receive code?</span>
+            <button class="text-blue-400 hover:text-blue-300 font-medium hover:underline">Resend OTP</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: TRANSFORMATION CORE STATES & UPLOAD PIPELINE -->
+    <section id="pipeline-states" class="space-y-6">
+      <div class="border-b border-surface-border pb-3 flex items-baseline justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+            <i class="ph ph-flow-arrow text-blue-400"></i>
+            Transformation & Upload Lifecycle Matrix
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Defines the 8 states of document ingestion and the 6 operational transformation states.</p>
+        </div>
+        <span class="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded">Deterministic State Engine</span>
+      </div>
+
+      <!-- Ingestion / Drag-and-Drop States Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- State 1: Idle Dropzone -->
+        <div class="bg-surface-card border border-dashed border-surface-border hover:border-slate-500 rounded-xl p-5 text-center transition flex flex-col items-center justify-center min-h-[220px]">
+          <div class="w-10 h-10 rounded-full bg-surface-low border border-surface-border flex items-center justify-center text-slate-400 mb-3">
+            <i class="ph ph-cloud-arrow-up text-xl"></i>
+          </div>
+          <h4 class="text-xs font-semibold text-slate-200">Drop source file here</h4>
+          <p class="text-[11px] text-slate-400 mt-1">PDF, DOCX, TXT or STIX/TAXII</p>
+          <span class="mt-3 text-[10px] text-slate-500 font-mono bg-surface-low px-2 py-0.5 rounded border border-surface-border">Max 50MB · Hardware Decrypted</span>
+        </div>
+
+        <!-- State 2: Dragging Active -->
+        <div class="bg-blue-950/20 border-2 border-dashed border-blue-500 rounded-xl p-5 text-center transition flex flex-col items-center justify-center min-h-[220px] shadow-lg shadow-blue-950/40">
+          <div class="w-10 h-10 rounded-full bg-blue-600/30 text-blue-400 flex items-center justify-center mb-3 animate-bounce">
+            <i class="ph ph-file-arrow-down text-xl"></i>
+          </div>
+          <h4 class="text-xs font-semibold text-blue-300">Release to Ingest Source</h4>
+          <p class="text-[11px] text-blue-200/70 mt-1">Direct token streaming into Sec-RAG enclave</p>
+          <span class="mt-3 text-[10px] text-blue-400 font-mono bg-blue-900/40 px-2 py-0.5 rounded border border-blue-700/50">Active Drag Target</span>
+        </div>
+
+        <!-- State 3: Uploading & Live Chunking -->
+        <div class="bg-surface-card border border-blue-500/40 rounded-xl p-5 flex flex-col justify-between min-h-[220px]">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-mono text-blue-400 uppercase font-semibold flex items-center gap-1.5">
+                <i class="ph ph-spinner-gap animate-spin"></i> Ingestion 74%
+              </span>
+              <span class="text-[10px] font-mono text-slate-400">1.8 / 2.4 MB</span>
+            </div>
+            <h4 class="text-xs font-medium text-white truncate mt-2">Q1_OT_Cyber_Audit.docx</h4>
+            <div class="w-full bg-surface-low h-1.5 rounded-full overflow-hidden mt-3">
+              <div class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 74%"></div>
+            </div>
+          </div>
+          <div class="bg-surface-low p-2.5 rounded-lg border border-surface-border text-[10px] space-y-1 font-mono text-slate-400">
+            <div class="flex justify-between"><span>Malware Signature:</span> <span class="text-emerald-400">Passed (Clean)</span></div>
+            <div class="flex justify-between"><span>PII Masking:</span> <span class="text-amber-400">Scrubbing...</span></div>
+            <div class="flex justify-between"><span>Vector Shards:</span> <span>84 / 110 Chunks</span></div>
+          </div>
+        </div>
+
+        <!-- State 4: Security-Sensitive Failure / Malware Blocked -->
+        <div class="bg-red-950/20 border border-red-500/50 rounded-xl p-5 flex flex-col justify-between min-h-[220px]">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-mono text-red-400 uppercase font-semibold flex items-center gap-1">
+                <i class="ph ph-shield-warning"></i> Ingestion Blocked
+              </span>
+              <span class="text-[10px] font-mono text-red-300">Quarantined</span>
+            </div>
+            <h4 class="text-xs font-medium text-red-200 truncate mt-2">Executive_Briefing_Macro.docm</h4>
+            <p class="text-[11px] text-red-300/80 mt-1">Malicious VBA macro signature detected. Hardware quarantine enacted under FIPS 140-3 policy.</p>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <button class="w-full py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded text-[11px] font-medium transition">View Incident Log</button>
+            <button class="px-2 py-1.5 bg-surface-card hover:bg-surface-high text-slate-400 hover:text-white rounded border border-surface-border text-xs"><i class="ph ph-x"></i></button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Operational Transformation Pipeline Status Bar -->
+      <div class="bg-surface-card border border-surface-border rounded-xl p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-xs font-semibold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+              Execution Workflow: TX-2025-0894B
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Input Mode: <strong class="text-slate-200">Source + Prompt Active</strong> · Generating 7 Communication Formats</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="px-3 py-1.5 bg-surface-low border border-surface-border hover:bg-surface-high text-slate-300 text-xs rounded-lg transition flex items-center gap-1.5">
+              <i class="ph ph-stop-circle text-red-400"></i>
+              <span>Cancel Run</span>
+            </button>
+            <span class="px-2.5 py-1 bg-blue-950 border border-blue-800 text-blue-400 text-xs font-mono font-medium rounded-lg">Stage 4 / 6 In-Progress</span>
+          </div>
+        </div>
+
+        <!-- 6-Stage Visual Stepper with Verified Signals -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
+          
+          <!-- Stage 1: Done -->
+          <div class="bg-surface-low p-3 rounded-lg border border-emerald-900/40 relative">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-mono text-slate-400">01. INGESTION</span>
+              <i class="ph ph-check-circle-fill text-emerald-400 text-sm"></i>
+            </div>
+            <div class="text-xs font-medium text-slate-200">Source Validated</div>
+            <div class="text-[10px] text-slate-500 font-mono mt-1">48 Pages · 2.4 MB</div>
+          </div>
+
+          <!-- Stage 2: Done with Warning -->
+          <div class="bg-surface-low p-3 rounded-lg border border-amber-900/40 relative">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-mono text-slate-400">02. SECURITY</span>
+              <i class="ph ph-warning-fill text-amber-400 text-sm"></i>
+            </div>
+            <div class="text-xs font-medium text-amber-300">PII Scrubbed</div>
+            <div class="text-[10px] text-amber-400/80 font-mono mt-1">18 Entities Masked</div>
+          </div>
+
+          <!-- Stage 3: Done -->
+          <div class="bg-surface-low p-3 rounded-lg border border-emerald-900/40 relative">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-mono text-slate-400">03. CONTEXT & RAG</span>
+              <i class="ph ph-check-circle-fill text-emerald-400 text-sm"></i>
+            </div>
+            <div class="text-xs font-medium text-slate-200">Vector Grounded</div>
+            <div class="text-[10px] text-slate-500 font-mono mt-1">1,420 Chunks Indexed</div>
+          </div>
+
+          <!-- Stage 4: Running -->
+          <div class="bg-blue-950/20 p-3 rounded-lg border border-blue-500 relative ring-1 ring-blue-500/50">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-mono text-blue-400 font-semibold">04. SYNTHESIS</span>
+              <i class="ph ph-spinner-gap animate-spin text-blue-400 text-sm"></i>
+            </div>
+            <div class="text-xs font-medium text-white">Generating 7 Formats</div>
+            <div class="text-[10px] text-blue-300/80 font-mono mt-1">Temp 0.15 Deterministic</div>
+          </div>
+
+          <!-- Stage 5: Pending -->
+          <div class="bg-surface-low/50 p-3 rounded-lg border border-surface-border text-slate-500">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-mono">05. EVIDENCE AUDIT</span>
+              <i class="ph ph-circle text-slate-600 text-sm"></i>
+            </div>
+            <div class="text-xs font-medium text-slate-400">Claim Grounding</div>
+            <div class="text-[10px] text-slate-600 font-mono mt-1">Zero Speculation Gate</div>
+          </div>
+
+          <!-- Stage 6: Pending -->
+          <div class="bg-surface-low/50 p-3 rounded-lg border border-surface-border text-slate-500">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-mono">06. INTEGRITY SEAL</span>
+              <i class="ph ph-circle text-slate-600 text-sm"></i>
+            </div>
+            <div class="text-xs font-medium text-slate-400">SHA-256 Digest</div>
+            <div class="text-[10px] text-slate-600 font-mono mt-1">FIPS Hardware Seal</div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: TRUST, SECURITY & VERIFICATION REASON-BASED STATES -->
+    <section id="trust-security" class="space-y-6">
+      <div class="border-b border-surface-border pb-3 flex items-baseline justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+            <i class="ph ph-shield-check text-blue-400"></i>
+            Audit Signals: Trust, Verification & Integrity States
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Strict multi-state governance without arbitrary percentages or hallucinated confirmations.</p>
+        </div>
+        <span class="text-[11px] font-mono text-slate-400">Non-Color-Only Indicators</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Trust Status: TRUSTED -->
+        <div class="bg-surface-card border border-emerald-900/40 rounded-xl p-5 space-y-4 relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Trust State 01</span>
+            <span class="px-2.5 py-1 rounded bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-bold font-mono flex items-center gap-1.5">
+              <i class="ph ph-check-shield-fill"></i> TRUSTED
+            </span>
+          </div>
+          <p class="text-xs text-slate-300">All evidence signals corroborated against immutable source vectors with zero unverified assertions.</p>
+          <div class="space-y-2 border-t border-surface-border pt-3 text-xs">
+            <div class="flex items-center justify-between text-slate-300">
+              <span class="flex items-center gap-1.5"><i class="ph ph-check text-emerald-400"></i> Source Citations:</span>
+              <strong class="font-mono text-slate-200">44 / 44 Claims</strong>
+            </div>
+            <div class="flex items-center justify-between text-slate-300">
+              <span class="flex items-center gap-1.5"><i class="ph ph-check text-emerald-400"></i> SHA-256 Digest:</span>
+              <span class="font-mono text-[11px] text-slate-400">a81f...92c1</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-300">
+              <span class="flex items-center gap-1.5"><i class="ph ph-check text-emerald-400"></i> Cross-Format Parity:</span>
+              <span class="text-emerald-400 font-medium">100% Aligned</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trust Status: CAUTION -->
+        <div class="bg-surface-card border border-amber-900/40 rounded-xl p-5 space-y-4 relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Trust State 02</span>
+            <span class="px-2.5 py-1 rounded bg-amber-950 border border-amber-800 text-amber-400 text-xs font-bold font-mono flex items-center gap-1.5">
+              <i class="ph ph-warning-diamond-fill"></i> CAUTION (1 Nuance)
+            </span>
+          </div>
+          <p class="text-xs text-slate-300">Artifact grounded, but a temporal date divergence was flagged between the X Thread and Canonical BLUF.</p>
+          <div class="space-y-2 border-t border-surface-border pt-3 text-xs">
+            <div class="flex items-center justify-between text-slate-300">
+              <span class="flex items-center gap-1.5"><i class="ph ph-check text-emerald-400"></i> Security Checks:</span>
+              <span class="text-emerald-400">Passed (Clean)</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-300">
+              <span class="flex items-center gap-1.5"><i class="ph ph-warning text-amber-400"></i> Consistency Gate:</span>
+              <span class="text-amber-400 font-medium font-mono text-[11px]">1 Nuance Flag</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-300">
+              <span class="flex items-center gap-1.5"><i class="ph ph-check text-emerald-400"></i> Cryptographic Hash:</span>
+              <span class="font-mono text-[11px] text-slate-400">b49c...10fe</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trust Status: UNVERIFIED -->
+        <div class="bg-surface-card border border-slate-700 rounded-xl p-5 space-y-4 relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Trust State 03</span>
+            <span class="px-2.5 py-1 rounded bg-slate-800 border border-slate-600 text-slate-300 text-xs font-bold font-mono flex items-center gap-1.5">
+              <i class="ph ph-question"></i> UNVERIFIED
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Prompt-only transformation without ingested source grounding. Citations are unavailable by design.</p>
+          <div class="space-y-2 border-t border-surface-border pt-3 text-xs">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="flex items-center gap-1.5"><i class="ph ph-minus-circle text-slate-500"></i> Grounding Evidence:</span>
+              <span class="text-slate-500 italic">Not Applicable</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="flex items-center gap-1.5"><i class="ph ph-check text-emerald-400"></i> Security Guardrails:</span>
+              <span class="text-emerald-400">Active</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="flex items-center gap-1.5"><i class="ph ph-info text-blue-400"></i> Provenance Note:</span>
+              <span class="text-blue-400 font-mono text-[11px]">Prompt Directive</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 4: MODALS, DIALOGS, SEARCH & TOAST NOTIFICATION STACK -->
+    <section id="modals-toasts" class="space-y-6">
+      <div class="border-b border-surface-border pb-3 flex items-baseline justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+            <i class="ph ph-bell text-blue-400"></i>
+            Dialogs, Search States & System Feedback Toasts
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">High-assurance destructive confirmation dialogs, contextual search states, and non-intrusive toasts.</p>
+        </div>
+        <span class="text-[11px] font-mono text-slate-500">Accessible ARIA Role Support</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Destructive Action Modal -->
+        <div class="bg-surface-card border border-red-900/40 rounded-xl p-6 space-y-4 shadow-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+              <i class="ph ph-warning text-xl"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-white">Delete Intelligence Project?</h4>
+              <p class="text-xs text-slate-400">Project: <strong class="text-slate-200">Threat Intelligence Enclave #902</strong></p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            This action will permanently purge all <strong class="text-white">12 ingested sources</strong>, <strong class="text-white">18 transformation logs</strong>, and associated vector shards from the zero-retention enclave. This cannot be undone.
+          </p>
+          <div class="flex items-center justify-end gap-3 pt-2">
+            <button class="px-4 py-2 bg-surface-low hover:bg-surface-high border border-surface-border text-slate-300 text-xs font-medium rounded-lg transition">Cancel</button>
+            <button class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5">
+              <i class="ph ph-trash"></i>
+              <span>Confirm Permanent Deletion</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Global Search States (Typing, Results & Empty) -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-white flex items-center gap-2">
+              <i class="ph ph-magnifying-glass text-blue-400"></i> Omnisearch States
+            </span>
+            <span class="text-[10px] font-mono text-slate-400 bg-surface-low px-2 py-0.5 rounded border border-surface-border">Cmd + K</span>
+          </div>
+          
+          <div class="relative">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" value="Volt Typhoon SCADA" class="w-full bg-surface-low border border-blue-500 text-xs text-white rounded-lg pl-9 pr-8 py-2 focus:outline-none font-mono">
+            <i class="ph ph-x-circle absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"></i>
+          </div>
+
+          <!-- Simulated Dropdown Results -->
+          <div class="space-y-1 bg-surface-lowest p-2 rounded-lg border border-surface-border text-xs">
+            <div class="p-2 rounded hover:bg-surface-card cursor-pointer flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i class="ph ph-file-text text-blue-400"></i>
+                <span class="text-slate-200">Annual Threat Assessment 2025</span>
+              </div>
+              <span class="text-[10px] font-mono text-slate-500">Source (p.14)</span>
+            </div>
+            <div class="p-2 rounded hover:bg-surface-card cursor-pointer flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i class="ph ph-lightning text-amber-400"></i>
+                <span class="text-slate-200">TX-2025-0894B: SCADA Vector</span>
+              </div>
+              <span class="text-[10px] font-mono text-emerald-400">Grounded Run</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toast Feedback Stack -->
+        <div class="space-y-3">
+          <!-- Toast Success -->
+          <div class="bg-surface-card border border-emerald-900/60 rounded-xl p-3.5 shadow-lg flex items-start gap-3 border-l-4 border-l-emerald-500">
+            <i class="ph ph-check-circle-fill text-emerald-400 text-base mt-0.5"></i>
+            <div class="flex-1">
+              <h5 class="text-xs font-semibold text-white">Output Copied to Clipboard</h5>
+              <p class="text-[11px] text-slate-400 mt-0.5">Executive Summary (BLUF format) copied with markdown citations preserved.</p>
+            </div>
+            <button class="text-slate-500 hover:text-white text-xs"><i class="ph ph-x"></i></button>
+          </div>
+
+          <!-- Toast Warning -->
+          <div class="bg-surface-card border border-amber-900/60 rounded-xl p-3.5 shadow-lg flex items-start gap-3 border-l-4 border-l-amber-500">
+            <i class="ph ph-warning-fill text-amber-400 text-base mt-0.5"></i>
+            <div class="flex-1">
+              <h5 class="text-xs font-semibold text-white">Cross-Output Nuance Detected</h5>
+              <p class="text-[11px] text-slate-400 mt-0.5">X Thread specifies "May 14" vs Executive Summary "Q2 Window". Verified variance acceptable.</p>
+            </div>
+            <button class="text-slate-500 hover:text-white text-xs"><i class="ph ph-x"></i></button>
+          </div>
+
+          <!-- Toast Error -->
+          <div class="bg-surface-card border border-red-900/60 rounded-xl p-3.5 shadow-lg flex items-start gap-3 border-l-4 border-l-red-500">
+            <i class="ph ph-x-circle-fill text-red-400 text-base mt-0.5"></i>
+            <div class="flex-1">
+              <h5 class="text-xs font-semibold text-white">Ingestion Failed (422 Unprocessable)</h5>
+              <p class="text-[11px] text-slate-400 mt-0.5">Password-protected PDF supplied. Hardware token cannot decrypt without private key.</p>
+            </div>
+            <button class="text-slate-500 hover:text-white text-xs"><i class="ph ph-x"></i></button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 5: POLISHED EMPTY STATES & HTTP ERROR RECOVERY -->
+    <section id="empty-errors" class="space-y-6">
+      <div class="border-b border-surface-border pb-3 flex items-baseline justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+            <i class="ph ph-folder-dashed text-blue-400"></i>
+            Clean Slate Empty States & Enterprise HTTP Error Pages
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">No raw stack traces. Concise, human-readable recovery workflows.</p>
+        </div>
+        <span class="text-[11px] font-mono text-slate-500">Production Fault-Tolerance</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <!-- Empty State: No Sources Yet -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-6 text-center flex flex-col items-center justify-center min-h-[260px]">
+          <div class="w-12 h-12 rounded-full bg-surface-low border border-surface-border flex items-center justify-center text-slate-400 mb-3">
+            <i class="ph ph-file-dashed text-2xl text-blue-400"></i>
+          </div>
+          <h4 class="text-xs font-semibold text-white">No Sources in Enclave</h4>
+          <p class="text-[11px] text-slate-400 mt-1 max-w-[200px]">Upload a threat briefing or research document to anchor transformations.</p>
+          <button class="mt-4 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+            <i class="ph ph-plus"></i> Upload First Source
+          </button>
+        </div>
+
+        <!-- Empty State: No Search Results -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-6 text-center flex flex-col items-center justify-center min-h-[260px]">
+          <div class="w-12 h-12 rounded-full bg-surface-low border border-surface-border flex items-center justify-center text-slate-400 mb-3">
+            <i class="ph ph-magnifying-glass text-2xl text-slate-400"></i>
+          </div>
+          <h4 class="text-xs font-semibold text-white">No Matching Records</h4>
+          <p class="text-[11px] text-slate-400 mt-1 max-w-[200px]">No transformations match "CVE-2029-XXXX" in this clearance tier.</p>
+          <button class="mt-4 px-3 py-1.5 bg-surface-low border border-surface-border hover:bg-surface-high text-slate-300 rounded-lg text-xs font-medium transition">
+            Clear Filters
+          </button>
+        </div>
+
+        <!-- HTTP 403 Forbidden / Clearance Insufficient -->
+        <div class="bg-surface-card border border-amber-900/40 rounded-xl p-6 text-center flex flex-col items-center justify-center min-h-[260px]">
+          <div class="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3">
+            <i class="ph ph-lock-key text-2xl"></i>
+          </div>
+          <span class="text-[10px] font-mono text-amber-400 font-bold uppercase">HTTP 403 · Forbidden</span>
+          <h4 class="text-xs font-semibold text-white mt-1">Clearance Tier Inadequate</h4>
+          <p class="text-[11px] text-slate-400 mt-1 max-w-[200px]">Enclave #902 requires TOP_INTEL_FIPS clearance. Your current token is TLP:AMBER.</p>
+          <button class="mt-4 px-3 py-1.5 bg-surface-low border border-surface-border hover:bg-surface-high text-slate-300 rounded-lg text-xs font-medium transition">
+            Request Delegation
+          </button>
+        </div>
+
+        <!-- HTTP 429 Rate Limited / Enclave Cooldown -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-6 text-center flex flex-col items-center justify-center min-h-[260px]">
+          <div class="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-3">
+            <i class="ph ph-speedometer text-2xl"></i>
+          </div>
+          <span class="text-[10px] font-mono text-blue-400 font-bold uppercase">HTTP 429 · Throttle</span>
+          <h4 class="text-xs font-semibold text-white mt-1">HSM Concurrency Reached</h4>
+          <p class="text-[11px] text-slate-400 mt-1 max-w-[200px]">Deterministic Sec-RAG token pipeline currently throttled. Resuming in 28s.</p>
+          <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+            <i class="ph ph-clock animate-spin text-blue-400"></i> Retry in 00:28
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 6: RESPONSIVE MOBILE VIEWPORT ADAPTATION (390PX EMULATION) -->
+    <section id="mobile-preview" class="space-y-6">
+      <div class="border-b border-surface-border pb-3 flex items-baseline justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+            <i class="ph ph-device-mobile text-blue-400"></i>
+            Mobile Responsive Adaptation (iPhone / Android 390px)
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Compact header, collapsible bottom sheet, stacked format cards, and accordion governance docks.</p>
+        </div>
+        <span class="text-[11px] font-mono text-blue-400 bg-blue-950 px-2 py-0.5 rounded border border-blue-800">Touch Target Verified</span>
+      </div>
+
+      <div class="flex flex-wrap lg:flex-nowrap justify-center gap-8 items-start">
+        
+        <!-- Mobile Frame 1: Create Transformation Workflow -->
+        <div class="w-[390px] min-h-[780px] bg-[#0f131c] border-4 border-surface-border rounded-[40px] shadow-2xl overflow-hidden flex flex-col shrink-0 relative">
+          <!-- Mobile Status Bar -->
+          <div class="px-6 pt-3 pb-2 flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <span>09:41</span>
+            <div class="flex items-center gap-1.5 text-xs">
+              <i class="ph ph-cell-signal-full"></i>
+              <i class="ph ph-wifi-high"></i>
+              <i class="ph ph-battery-charging text-emerald-400"></i>
+            </div>
+          </div>
+
+          <!-- Mobile App Header -->
+          <div class="px-4 py-3 border-b border-surface-border bg-surface-lowest flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white text-xs font-bold">T</div>
+              <span class="font-bold text-xs text-white">TransformIQ</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="w-8 h-8 rounded-lg bg-surface-low border border-surface-border flex items-center justify-center text-slate-300">
+                <i class="ph ph-magnifying-glass"></i>
+              </button>
+              <button class="w-8 h-8 rounded-lg bg-surface-low border border-surface-border flex items-center justify-center text-slate-300">
+                <i class="ph ph-list"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Mobile Scrollable Content Area -->
+          <div class="p-4 space-y-4 flex-1 overflow-y-auto pb-20">
+            <!-- Mobile Mode Indicator -->
+            <div class="bg-blue-950/40 border border-blue-800/60 p-3 rounded-xl">
+              <span class="text-[10px] font-mono text-blue-400 font-bold uppercase">Mode C Active</span>
+              <h3 class="text-xs font-semibold text-white mt-0.5">Source + Prompt Provided</h3>
+              <p class="text-[11px] text-slate-300 mt-1">Provide a source, a prompt, or both to transform.</p>
+            </div>
+
+            <!-- Mobile Source Card -->
+            <div class="bg-surface-card border border-surface-border rounded-xl p-3.5 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white flex items-center gap-1.5">
+                  <i class="ph ph-file-pdf text-red-400"></i> Ingested Source
+                </span>
+                <span class="text-[10px] font-mono text-emerald-400">Ready</span>
+              </div>
+              <p class="text-xs text-slate-300 truncate font-medium">Annual Threat Assessment 2025.pdf</p>
+              <div class="text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>48 Pages Indexed</span>
+                <span>2.4 MB · SHA-256</span>
+              </div>
+            </div>
+
+            <!-- Mobile Prompt Directive -->
+            <div class="bg-surface-card border border-surface-border rounded-xl p-3.5 space-y-2">
+              <label class="text-xs font-semibold text-white flex items-center gap-1.5">
+                <i class="ph ph-compass text-blue-400"></i> Mandate Directive
+              </label>
+              <textarea rows="2" class="w-full bg-surface-low border border-surface-border text-xs rounded-lg p-2.5 text-slate-200 resize-none font-mono" placeholder="Extract key geopolitical supply chain exposure vectors for Q2..."></textarea>
+            </div>
+
+            <!-- Mobile Configuration (Single Column) -->
+            <div class="bg-surface-card border border-surface-border rounded-xl p-3.5 space-y-3">
+              <span class="text-xs font-semibold text-white">Configuration Options</span>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-1">Language</label>
+                  <select class="w-full bg-surface-low border border-surface-border text-slate-200 text-xs rounded-lg p-2 font-medium">
+                    <option>English</option>
+                    <option>Hindi (हिन्दी)</option>
+                    <option>Marathi (मराठी)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-1">Audience</label>
+                  <select class="w-full bg-surface-low border border-surface-border text-slate-200 text-xs rounded-lg p-2 font-medium">
+                    <option>Executive</option>
+                    <option>Analyst</option>
+                    <option>Public</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile Output Selection Cards -->
+            <div class="space-y-2">
+              <span class="text-xs font-semibold text-white">Select Formats (5 Chosen)</span>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-blue-950/40 border border-blue-500 p-2.5 rounded-lg flex items-center gap-2">
+                  <i class="ph ph-check-square-fill text-blue-400 text-base"></i>
+                  <span class="font-medium text-white text-[11px]">Exec Summary</span>
+                </div>
+                <div class="bg-blue-950/40 border border-blue-500 p-2.5 rounded-lg flex items-center gap-2">
+                  <i class="ph ph-check-square-fill text-blue-400 text-base"></i>
+                  <span class="font-medium text-white text-[11px]">Tactical Advisory</span>
+                </div>
+                <div class="bg-blue-950/40 border border-blue-500 p-2.5 rounded-lg flex items-center gap-2">
+                  <i class="ph ph-check-square-fill text-blue-400 text-base"></i>
+                  <span class="font-medium text-white text-[11px]">LinkedIn Post</span>
+                </div>
+                <div class="bg-blue-950/40 border border-blue-500 p-2.5 rounded-lg flex items-center gap-2">
+                  <i class="ph ph-check-square-fill text-blue-400 text-base"></i>
+                  <span class="font-medium text-white text-[11px]">X Thread</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile Fixed Bottom Action Bar -->
+          <div class="absolute bottom-0 inset-x-0 p-4 bg-surface-lowest border-t border-surface-border">
+            <button class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2">
+              <i class="ph ph-play-circle text-base"></i>
+              <span>Transform (Execute 5 Artifacts)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Frame 2: Output Workspace & Verification Accordion -->
+        <div class="w-[390px] min-h-[780px] bg-[#0f131c] border-4 border-surface-border rounded-[40px] shadow-2xl overflow-hidden flex flex-col shrink-0 relative">
+          <!-- Mobile Status Bar -->
+          <div class="px-6 pt-3 pb-2 flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <span>09:42</span>
+            <div class="flex items-center gap-1.5 text-xs">
+              <i class="ph ph-cell-signal-full"></i>
+              <i class="ph ph-wifi-high"></i>
+              <i class="ph ph-battery-charging text-emerald-400"></i>
+            </div>
+          </div>
+
+          <!-- Mobile Header with Trust Pill -->
+          <div class="px-4 py-3 border-b border-surface-border bg-surface-lowest flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-white truncate max-w-[170px]">Annual Threat Brief</span>
+              <span class="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400 font-mono text-[9px] font-bold">TRUSTED</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button class="px-2 py-1 bg-surface-low border border-surface-border text-slate-300 text-xs rounded flex items-center gap-1">
+                <i class="ph ph-export"></i> Share
+              </button>
+            </div>
+          </div>
+
+          <!-- Mobile Content Area -->
+          <div class="p-4 space-y-4 flex-1 overflow-y-auto pb-16 text-xs">
+            
+            <!-- Output Format Switcher (Horizontal Scroll) -->
+            <div class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              <button class="px-3 py-1.5 rounded-full bg-blue-600 text-white font-medium whitespace-nowrap text-[11px]">1. Exec Summary</button>
+              <button class="px-3 py-1.5 rounded-full bg-surface-card border border-surface-border text-slate-400 whitespace-nowrap text-[11px]">2. Tactical Advisory</button>
+              <button class="px-3 py-1.5 rounded-full bg-surface-card border border-surface-border text-slate-400 whitespace-nowrap text-[11px]">3. LinkedIn</button>
+              <button class="px-3 py-1.5 rounded-full bg-surface-card border border-surface-border text-slate-400 whitespace-nowrap text-[11px]">4. X Thread</button>
+            </div>
+
+            <!-- Document Card (Executive Summary BLUF) -->
+            <div class="bg-surface-card border border-surface-border rounded-xl p-4 space-y-3">
+              <div class="border-b border-surface-border pb-2 flex justify-between items-center">
+                <span class="text-[10px] font-mono text-slate-400 uppercase">Canonical Briefing</span>
+                <span class="text-[10px] font-mono text-blue-400">1,420 words</span>
+              </div>
+              <h3 class="font-bold text-sm text-white leading-snug">Executive Summary: Critical Maritime & SCADA Vectors</h3>
+              <div class="bg-surface-low p-3 rounded-lg border-l-2 border-blue-500 text-[11px] text-slate-300 leading-relaxed">
+                <strong class="text-white block mb-1">BLUF (Bottom Line Up Front):</strong>
+                Adversary threat clusters (Volt Typhoon and Sandworm) have accelerated operational tempo targeting tier-1 SCADA industrial telemetry across North American corridors.
+                <span class="text-blue-400 underline font-mono text-[10px] block mt-1">[Ref: Source p.4 §2]</span>
+              </div>
+            </div>
+
+            <!-- Collapsible Verification Accordions (Mobile Pattern) -->
+            <div class="space-y-2">
+              <div class="bg-surface-card border border-surface-border rounded-xl p-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-shield-check text-emerald-400 text-base"></i>
+                  <div>
+                    <h5 class="text-xs font-semibold text-white">Security & Grounding</h5>
+                    <p class="text-[10px] text-slate-400">42/44 Claims Grounded · Clean Scan</p>
+                  </div>
+                </div>
+                <i class="ph ph-caret-down text-slate-400"></i>
+              </div>
+
+              <div class="bg-surface-card border border-surface-border rounded-xl p-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-fingerprint text-blue-400 text-base"></i>
+                  <div>
+                    <h5 class="text-xs font-semibold text-white">Cryptographic Digest</h5>
+                    <p class="text-[10px] font-mono text-slate-400">SHA-256: a81f...92c1</p>
+                  </div>
+                </div>
+                <i class="ph ph-caret-down text-slate-400"></i>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Tab Bar (Standard Mobile Shell) -->
+          <div class="absolute bottom-0 inset-x-0 h-12 bg-surface-lowest border-t border-surface-border flex items-center justify-around text-slate-400 text-xs">
+            <button class="flex flex-col items-center text-blue-400"><i class="ph ph-house text-base"></i><span class="text-[9px]">Home</span></button>
+            <button class="flex flex-col items-center"><i class="ph ph-folders text-base"></i><span class="text-[9px]">Projects</span></button>
+            <button class="flex flex-col items-center"><i class="ph ph-clock-counter-clockwise text-base"></i><span class="text-[9px]">History</span></button>
+            <button class="flex flex-col items-center"><i class="ph ph-gear text-base"></i><span class="text-[9px]">Settings</span></button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-surface-border py-8 px-6 text-center text-xs text-slate-500 font-mono">
+    TransformIQ Automated Transformation Platform · Production Interaction & State Specification · FIPS 140-3 Hardware Compliant
+  </footer>
+
+</body>
+</html>

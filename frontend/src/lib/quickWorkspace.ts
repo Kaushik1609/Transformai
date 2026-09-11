@@ -37,6 +37,18 @@ function setCachedQuickProjectId(id: string): void {
 }
 
 /**
+ * Forget the cached quick project. Called on logout so a different analyst
+ * does not inherit the previous user's quick workspace.
+ */
+export function clearQuickProjectId(): void {
+  try {
+    window.localStorage.removeItem(QUICK_PROJECT_KEY);
+  } catch {
+    // storage unavailable — non-fatal
+  }
+}
+
+/**
  * Ensure the quick project exists, creating it if needed. Returns the project.
  */
 export async function ensureQuickProject(): Promise<ProjectResponse> {

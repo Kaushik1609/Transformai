@@ -54,11 +54,20 @@ class TransformationJob(Base):
         nullable=False,
         index=True,
     )
-    source_id: Mapped[uuid.UUID] = mapped_column(
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("sources.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
+        doc="Source UUID. Nullable (Phase 15) to support prompt-only "
+        "transformations with no source document.",
+    )
+    prompt: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        doc="Operator prompt (Phase 15). Optional; at least one of source_id / "
+        "prompt is required for a transformation job.",
     )
     configuration_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

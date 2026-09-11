@@ -14,6 +14,7 @@ from rq import Queue
 import redis
 
 from app.core.config import settings
+from app.core.metrics import metrics
 
 
 def get_transformation_queue() -> Queue:
@@ -35,6 +36,7 @@ def enqueue_transformation_job(
         result_ttl=86400,
         on_failure="worker.transformation_failure_handler",
     )
+    metrics.inc("transformation_jobs_enqueued_total", {"queue": "transformation"})
     return str(job.id)
 
 

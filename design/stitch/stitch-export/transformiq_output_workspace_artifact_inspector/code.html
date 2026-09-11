@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary":"#003640","on-secondary-container":"#00424e","surface-tint":"#b4c5ff","primary-fixed-dim":"#b4c5ff","on-background":"#dfe2ee","on-error":"#690005","inverse-surface":"#dfe2ee","on-surface-variant":"#c3c6d7","inverse-on-surface":"#2c3039","surface-bright":"#353942","error":"#ffb4ab","outline":"#8d90a0","error-container":"#93000a","surface-dim":"#0f131c","surface-container":"#1c2028","tertiary-fixed":"#e1e0ff","surface-container-high":"#262a33","on-tertiary-fixed":"#07006c","secondary-fixed":"#acedff","surface":"#0f131c","tertiary-fixed-dim":"#c0c1ff","background":"#0f131c","on-primary-container":"#eeefff","on-secondary-fixed-variant":"#004e5c","tertiary":"#c0c1ff","secondary-fixed-dim":"#4cd7f6","on-primary-fixed-variant":"#003ea8","outline-variant":"#434655","on-secondary-fixed":"#001f26","on-primary":"#002a78","surface-variant":"#31353e","on-tertiary":"#1000a9","on-error-container":"#ffdad6","primary":"#b4c5ff","secondary":"#4cd7f6","surface-container-lowest":"#0a0e16","surface-container-highest":"#31353e","on-tertiary-container":"#f1eeff","tertiary-container":"#585be6","primary-fixed":"#dbe1ff","surface-container-low":"#181c24","on-tertiary-fixed-variant":"#2f2ebe","on-primary-fixed":"#00174b","secondary-container":"#03b5d3","on-surface":"#dfe2ee","inverse-primary":"#0053db","primary-container":"#2563eb"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"inspector-width":"24rem","grid-margin-tablet":"1rem","rail-width-collapsed":"4rem","grid-margin-desktop":"1.5rem","grid-margin-mobile":"0.75rem","card-padding-dense":"0.75rem","rail-width-expanded":"16rem","panel-gap":"1rem","card-padding-regular":"1.25rem"},fontFamily:{"label-mono-sm":["JetBrains Mono"],"headline-md":["Geist"],"body-md":["Geist"],caption:["Geist"],"headline-xl":["Geist"],"headline-lg":["Geist"],"label-mono-md":["JetBrains Mono"],"body-sm":["Geist"],"body-lg":["Geist"],"headline-sm":["Geist"],"headline-xl-mobile":["Geist"]},fontSize:{"label-mono-sm":["11px",{lineHeight:"14px",letterSpacing:"0.04em",fontWeight:"500"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.015em",fontWeight:"500"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],caption:["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-xl":["36px",{lineHeight:"44px",letterSpacing:"-0.025em",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.02em",fontWeight:"600"}],"label-mono-md":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"500"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",letterSpacing:"-0.005em",fontWeight:"400"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-xl-mobile":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-rail-width-expanded bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-4 flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">T</div><span class="font-headline-sm text-headline-sm tracking-tight text-on-surface">TransformIQ</span></div><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">ENTERPRISE</span></div><div class="px-3 pt-2 pb-4"><button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-headline-sm rounded shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all"><span class="material-symbols-outlined text-[18px]">add_circle</span><span>+ Create Transformation</span></button></div><nav class="flex flex-col gap-1 px-3" data-active-classes="bg-surface-container-high text-on-surface font-headline-sm"><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-colors bg-surface-container-high text-on-surface font-headline-sm" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md text-body-md">Home</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="projects" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-body-md text-body-md">Projects</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="history" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-body-md text-body-md">History</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="security-activity" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span class="font-body-md text-body-md">Security Activity</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">Settings</span></a></nav></div><div class="p-3 flex flex-col gap-3"><div class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Pipeline Active · Grounded RAG</span></div><div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-label-mono-md text-primary">EV</div><div class="flex flex-col"><span class="font-headline-sm text-body-sm text-on-surface leading-tight">Elena Vance</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Director of Threat Comms</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-[18px]">unfold_more</span></div></div></aside><div class="pl-rail-width-expanded flex flex-col min-h-screen"><header class="fixed top-0 left-rail-width-expanded right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-6 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-secondary text-[18px]">corporate_fare</span><span class="font-body-sm text-body-sm text-on-surface">Global Threat Intelligence Workspace</span><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div><div class="flex items-center flex-1 gap-2 bg-surface-container-lowest px-3 py-1.5 rounded max-w-md"><span class="material-symbols-outlined text-outline text-[18px]">search</span><input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" placeholder="Search sources, transformations, artifacts... (Cmd + K)" type="text"/></div></div><div class="flex items-center gap-3.5"><div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high"><span class="material-symbols-outlined text-secondary text-[16px]">verified_user</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface">FIPS 140-3 Compliant</span></div><button class="relative p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button><div class="flex items-center gap-2 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Wb0FI5CBqMnx2ey5yRvFNJugjQNyoWPB0cVo8k2zqEAFWD3IMv1NqZEPiFkT-9iCicYO9EBT88ttxHDPLe7fqBURm46knL6RcDFAZpKrZRsr6g8T2y_6P_Qa7Om9jqlsnR7lmSRy3kWlwaOfW72oAfLIt2ofZGuZXPz-E7Rz7odsPKQkbYPZUzVFFpvmDlD5XlWgoAZRqOdcbnF3V00Ytp6DkYtFBqhi6KYbgwx_FIIEZkdOmZVzcg1Hg"/><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div></div></header><main class="w-full pt-16 px-6 py-6 bg-background flex-1"><div class="flex flex-col w-full">
+<!-- Interactive Modals / Overlays Container -->
+<div class="fixed inset-0 z-50 bg-surface-container-lowest/80 backdrop-blur-md hidden items-center justify-center p-6" id="compare-modal">
+<div class="bg-surface-container-low w-full max-w-6xl max-h-[90vh] rounded-xl flex flex-col shadow-2xl overflow-hidden">
+<!-- Modal Header -->
+<div class="px-6 py-4 bg-surface-container flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-[20px]">compare_arrows</span>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Synchronous Artefact Differential Comparison</div>
+<div class="font-caption text-caption text-on-surface-variant">Comparing canonical baseline against secondary derivative transforms</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-highest text-secondary">ALIGNMENT: 98.4%</span>
+<button class="p-1.5 rounded hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors" onclick="document.getElementById('compare-modal').classList.add('hidden')">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- Comparison Panes -->
+<div class="grid grid-cols-2 flex-1 overflow-y-auto p-6 gap-6 bg-surface-container-lowest">
+<!-- Pane 1: Executive Summary -->
+<div class="bg-surface-container rounded-lg p-5 flex flex-col gap-3">
+<div class="flex items-center justify-between pb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">description</span>
+<span class="font-headline-sm text-body-sm text-on-surface">Artefact 01 · Executive Summary</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-high px-2 py-0.5 rounded">CANONICAL TRUTH</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface leading-relaxed p-4 rounded bg-surface-container-low">
+            Adversary threat clusters (notably <mark class="bg-primary/20 text-primary px-1 rounded">Volt Typhoon</mark> and <mark class="bg-primary/20 text-primary px-1 rounded">APT-44</mark>) have accelerated operational tempo targeting tier-1 industrial control telemetry across North American and EU maritime corridors.
+          </div>
+<div class="flex items-center gap-2 mt-auto text-on-surface-variant font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-primary text-[16px]">verified</span>
+<span>Anchored to Document Section §2.4 (Page 4)</span>
+</div>
+</div>
+<!-- Pane 2: X Thread Post #2 -->
+<div class="bg-surface-container rounded-lg p-5 flex flex-col gap-3">
+<div class="flex items-center justify-between pb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">tag</span>
+<span class="font-headline-sm text-body-sm text-on-surface">Artefact 05 · X Dispatch Sequence (Post 2/6)</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-primary px-2 py-0.5 rounded bg-surface-container-high">DERIVATIVE CONDENSED</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface leading-relaxed p-4 rounded bg-surface-container-low">
+            Threat actors <mark class="bg-primary/20 text-primary px-1 rounded">Volt Typhoon</mark> & <mark class="bg-primary/20 text-primary px-1 rounded">APT-44</mark> have intensified telemetry attacks across key transatlantic maritime routes during the mid-term window.
+          </div>
+<div class="flex items-center gap-2 mt-auto text-on-surface-variant font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+<span>Semantic variance within acceptable threshold (0.02)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- TOP WORKSPACE CONTEXT & ACTIONS HEADER -->
+<div class="bg-surface-container-low rounded-xl p-5 mb-6 shadow-sm">
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+<!-- Breadcrumb & Workspace Identifier -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center gap-2 font-label-mono-sm text-label-mono-sm text-on-surface-variant">
+<span class="hover:text-primary cursor-pointer transition-colors">Projects</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="hover:text-primary cursor-pointer transition-colors">Threat Intelligence Workspace</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="hover:text-primary cursor-pointer transition-colors">Transformations</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-secondary bg-surface-container-highest px-1.5 py-0.5 rounded font-label-mono-sm text-label-mono-sm">TX-2025-0894B</span>
+</div>
+<div class="flex items-center gap-3">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Annual Threat Assessment 2025 — Dispatch Workspace</h1>
+<span class="font-label-mono-sm text-label-mono-sm px-2.5 py-1 rounded bg-surface-container-highest text-secondary flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            LIVE WORKSPACE
+          </span>
+</div>
+</div>
+<!-- Global Actions -->
+<div class="flex flex-wrap items-center gap-2.5">
+<button class="flex items-center gap-2 px-3.5 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-headline-sm shadow-sm transition-all" onclick="document.getElementById('compare-modal').classList.remove('hidden'); document.getElementById('compare-modal').classList.add('flex')">
+<span class="material-symbols-outlined text-[18px] text-secondary">compare_arrows</span>
+<span>Compare Outputs</span>
+</button>
+<button class="flex items-center gap-2 px-3.5 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-headline-sm shadow-sm transition-all">
+<span class="material-symbols-outlined text-[18px] text-tertiary">history_edu</span>
+<span>Audit Log & Provenance</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary text-body-sm font-headline-sm shadow-md transition-all">
+<span class="material-symbols-outlined text-[18px]">inventory_2</span>
+<span>Package All 7 Formats (.zip)</span>
+</button>
+</div>
+</div>
+<!-- Metadata Verification Badges Strip -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 bg-surface-container-lowest/50 p-3 rounded-lg">
+<div class="flex items-center gap-2.5 px-2">
+<span class="material-symbols-outlined text-primary text-[18px]">description</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Input Source Document</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate font-medium">Annual Threat Assessment 2025.pdf</span>
+</div>
+</div>
+<div class="flex items-center gap-2.5 px-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">layers</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Vector Scale</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium">48 pages · 1,420 chunks indexed</span>
+</div>
+</div>
+<div class="flex items-center gap-2.5 px-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">policy</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Security Clearance</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary font-semibold">TOP_INTEL_FIPS // NOFORN</span>
+</div>
+</div>
+<div class="flex items-center gap-2.5 px-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Trust Verification</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary flex items-center gap-1 font-semibold">
+            TRUSTED (1 Advisory Notice)
+          </span>
+</div>
+</div>
+</div>
+</div>
+<!-- THREE-COLUMN WORKSPACE ENGINE -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+<!-- ==================== LEFT COLUMN: OUTPUT NAVIGATION LEDGER (~280px / 3 cols) ==================== -->
+<div class="xl:col-span-3 flex flex-col gap-4">
+<div class="bg-surface-container-low rounded-xl p-4 shadow-sm">
+<div class="flex items-center justify-between pb-3 mb-3">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">GENERATED ARTEFACTS</span>
+<span class="font-label-mono-sm text-label-mono-sm bg-surface-container-high text-primary px-1.5 py-0.5 rounded">7</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
+            Sync Valid
+          </span>
+</div>
+<!-- Artefact List -->
+<div class="flex flex-col gap-2" id="artefact-ledger">
+<!-- Item 1: Executive Summary (ACTIVE) -->
+<div class="group relative flex flex-col p-3 rounded-lg bg-surface-container-high shadow-sm cursor-pointer transition-all">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">summarize</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface font-semibold">1. Executive Summary</span>
+<span class="font-caption text-caption text-on-surface-variant">BLUF · 2 Pages · 1,420 words</span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-opacity" title="Quick copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-2.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container px-2 py-0.5 rounded flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Ready · Grounded
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">v1.2</span>
+</div>
+</div>
+<!-- Item 2: Advisory (Tactical / MITRE) -->
+<div class="group relative flex flex-col p-3 rounded-lg bg-surface-container hover:bg-surface-container-high shadow-sm cursor-pointer transition-all">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-highest flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">shield</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">2. Tactical Advisory</span>
+<span class="font-caption text-caption text-on-surface-variant">TLP:AMBER · MITRE ATT&CK · 2,840w</span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container-highest text-on-surface-variant transition-opacity" title="Quick copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-2.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-highest px-2 py-0.5 rounded flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Ready · Grounded
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">STIX 2.1</span>
+</div>
+</div>
+<!-- Item 3: LinkedIn Post -->
+<div class="group relative flex flex-col p-3 rounded-lg bg-surface-container hover:bg-surface-container-high shadow-sm cursor-pointer transition-all">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-highest flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">3. LinkedIn Dispatch</span>
+<span class="font-caption text-caption text-on-surface-variant">Executive Voice · 340 words</span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container-highest text-on-surface-variant transition-opacity" title="Quick copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-2.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant bg-surface-container-highest px-2 py-0.5 rounded">
+                Ready · Approved
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">PUBLIC</span>
+</div>
+</div>
+<!-- Item 4: Presentation Package -->
+<div class="group relative flex flex-col p-3 rounded-lg bg-surface-container hover:bg-surface-container-high shadow-sm cursor-pointer transition-all">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-highest flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">slideshow</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">4. Board Briefing Deck</span>
+<span class="font-caption text-caption text-on-surface-variant">10 Slides + Presenter Scripts</span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container-highest text-on-surface-variant transition-opacity" title="Quick copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-2.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-highest px-2 py-0.5 rounded">
+                Ready · Structure
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">.PPTX XML</span>
+</div>
+</div>
+<!-- Item 5: X Thread -->
+<div class="group relative flex flex-col p-3 rounded-lg bg-surface-container hover:bg-surface-container-high shadow-sm cursor-pointer transition-all">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-highest flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[18px]">tag</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">5. X (Twitter) Sequence</span>
+<span class="font-caption text-caption text-on-surface-variant">6-Post Thread · 280-char limits</span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container-highest text-on-surface-variant transition-opacity" title="Quick copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-2.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary bg-tertiary-container/30 px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">info</span> 1 Nuance Notice
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">THREAD</span>
+</div>
+</div>
+<!-- Item 6: Infographic Blueprint -->
+<div class="group relative flex flex-col p-3 rounded-lg bg-surface-container hover:bg-surface-container-high shadow-sm cursor-pointer transition-all">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-highest flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">schema</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">6. Infographic Blueprint</span>
+<span class="font-caption text-caption text-on-surface-variant">SVG Vector Schematic Spec</span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container-highest text-on-surface-variant transition-opacity" title="Quick copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-2.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant bg-surface-container-highest px-2 py-0.5 rounded">
+                Ready · Spec Only
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">LAYOUT-JSON</span>
+</div>
+</div>
+<!-- Item 7: Video Package -->
+<div class="group relative flex flex-col p-3 rounded-lg bg-surface-container hover:bg-surface-container-high shadow-sm cursor-pointer transition-all">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-highest flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">movie</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">7. Video Script & Cues</span>
+<span class="font-caption text-caption text-on-surface-variant">4 Scenes · Teleprompter & B-Roll</span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container-highest text-on-surface-variant transition-opacity" title="Quick copy">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-2.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-highest px-2 py-0.5 rounded">
+                Script & Cues (No MP4)
+              </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">PROD-SPEC</span>
+</div>
+</div>
+</div>
+<!-- Ledger Footer Controls -->
+<div class="flex flex-col gap-2 mt-4 pt-3 bg-surface-container-lowest/50 p-2.5 rounded-lg">
+<label class="flex items-center justify-between cursor-pointer">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Show Inactive / Drafts</span>
+<input class="accent-primary rounded cursor-pointer" type="checkbox"/>
+</label>
+<button class="w-full mt-2 py-2 px-3 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-headline-sm flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span>Batch Export Selection</span>
+</button>
+</div>
+</div>
+<!-- Pipeline Telemetry Gauge Card -->
+<div class="bg-surface-container-low rounded-xl p-4 shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">Transformation Fidelity</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">99.2%</span>
+</div>
+<!-- Progress Bar SVG -->
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full w-[99.2%]"></div>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant font-caption text-caption">
+<span>Target Drift: 0.00%</span>
+<span>Zero Hallucination Gate: PASSED</span>
+</div>
+</div>
+</div>
+<!-- ==================== CENTER COLUMN: MAIN OUTPUT CANVAS (Flex-1 / 6 cols) ==================== -->
+<div class="xl:col-span-6 flex flex-col gap-4">
+<!-- Top Output Action & Switcher Bar -->
+<div class="bg-surface-container-low rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-primary-container text-on-primary">
+<span class="material-symbols-outlined text-[20px]">feed</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              Executive Briefing Document
+              <span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-high text-primary">v1.2 Canonical</span>
+</div>
+<div class="font-caption text-caption text-on-surface-variant">Generated via Single Source AST Extraction · FIPS Certified Node</div>
+</div>
+</div>
+<!-- Document Bar Utilities -->
+<div class="flex items-center gap-1.5 self-end sm:self-auto">
+<!-- Toggle Citation Layer -->
+<div class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container text-on-surface text-body-sm font-label-mono-sm text-label-mono-sm mr-2">
+<span class="text-secondary material-symbols-outlined text-[16px]">visibility</span>
+<span>Citations</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" title="Edit content">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" title="Copy text">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" title="Export PDF">
+<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+</button>
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" title="Export Markdown">
+<span class="material-symbols-outlined text-[18px]">markdown</span>
+</button>
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" title="Full screen view">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Preview Mode Switcher Strip (Multi-Format Inline Tabs) -->
+<div class="flex items-center gap-1.5 p-1 bg-surface-container-low rounded-lg overflow-x-auto">
+<button class="px-3 py-1.5 rounded text-body-sm font-headline-sm bg-primary-container text-on-primary flex items-center gap-1.5 whitespace-nowrap">
+<span class="material-symbols-outlined text-[16px]">article</span> Document View
+        </button>
+<button class="px-3 py-1.5 rounded text-body-sm font-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center gap-1.5 whitespace-nowrap">
+<span class="material-symbols-outlined text-[16px]">slideshow</span> Presentation Deck Preview
+        </button>
+<button class="px-3 py-1.5 rounded text-body-sm font-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center gap-1.5 whitespace-nowrap">
+<span class="material-symbols-outlined text-[16px]">share</span> LinkedIn & Social Previews
+        </button>
+</div>
+<!-- Rich Document Canvas Viewport (Strict High-Density Intelligence Presentation) -->
+<div class="bg-surface-container-low rounded-xl p-8 shadow-sm flex flex-col gap-6">
+<!-- Document Formal Classification Header -->
+<div class="flex flex-col items-center justify-center pb-4 text-center">
+<div class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest px-3 py-0.5 rounded bg-surface-container-high mb-1.5">
+            CLASSIFICATION: TOP INTEL // FIPS-140-3 COMPLIANT RELEASE
+          </div>
+<div class="font-caption text-caption text-on-surface-variant tracking-wider uppercase">
+            DISTRIBUTION AUTHORIZED FOR: C-SUITE, BOARD OF DIRECTORS, & CHIEF RISK COMMITTEE
+          </div>
+</div>
+<!-- Section 1: BLUF (Bottom Line Up Front) -->
+<div class="p-5 rounded-lg bg-surface-container shadow-sm flex flex-col gap-2.5">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase font-bold tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">priority_high</span>
+              BOTTOM LINE UP FRONT (BLUF)
+            </span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">PRIORITY: ALPHA-1</span>
+</div>
+<p class="font-body-lg text-body-lg text-on-surface leading-relaxed">
+            Adversary threat clusters (notably Volt Typhoon and APT-44) have accelerated operational tempo targeting tier-1 industrial control telemetry across North American and EU maritime corridors. 
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm cursor-pointer hover:bg-secondary/20 transition-colors" title="Anchored to source page 4, chunk #042">
+              [Ref: Source p.4 §2]
+            </span>
+            Zero-day API ingestion vulnerabilities in legacy SCADA middleware represent an immediate risk to supply continuity in Q2 2025. Immediate defensive postures require micro-segmentation of SCADA gateways.
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm cursor-pointer hover:bg-secondary/20 transition-colors" title="Anchored to source page 18, chunk #188">
+              [Ref: Source p.18 §4]
+            </span>
+</p>
+</div>
+<!-- Section 2: Key Findings & Evidence Synthesis -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Key Findings & Evidence Synthesis</h2>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">3 Critical Observations</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<!-- Finding 1 -->
+<div class="bg-surface-container p-4 rounded-lg flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-error bg-error-container/30 px-1.5 py-0.5 rounded font-bold">CRITICAL</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">SIG-01</span>
+</div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold leading-snug">
+                  SCADA Boundary Penetration
+                </div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+                  78.4% surge in GPS spoofing attempts targeting cargo telemetry manifests across 14 ports.
+                </p>
+</div>
+<div class="mt-3 pt-2 font-label-mono-sm text-label-mono-sm text-secondary flex items-center justify-between">
+<span>Confidence: 99.4%</span>
+<span class="cursor-pointer hover:underline">[p.7]</span>
+</div>
+</div>
+<!-- Finding 2 -->
+<div class="bg-surface-container p-4 rounded-lg flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary bg-tertiary-container/30 px-1.5 py-0.5 rounded font-bold">EXPLOIT ACTIVE</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">SIG-02</span>
+</div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold leading-snug">
+                  Credential-Stuffing Gateway
+                </div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+                  CVE-2025-1049 allows unauthenticated remote RPC calls bypassing multi-factor policies.
+                </p>
+</div>
+<div class="mt-3 pt-2 font-label-mono-sm text-label-mono-sm text-secondary flex items-center justify-between">
+<span>Confidence: 98.1%</span>
+<span class="cursor-pointer hover:underline">[p.14]</span>
+</div>
+</div>
+<!-- Finding 3 -->
+<div class="bg-surface-container p-4 rounded-lg flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-primary bg-primary-container/20 px-1.5 py-0.5 rounded font-bold">VULNERABILITY</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">SIG-03</span>
+</div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold leading-snug">
+                  Supply Chain Blast Radius
+                </div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+                  42 tier-2 maritime logistics vendors operate without cryptographic firmware signing.
+                </p>
+</div>
+<div class="mt-3 pt-2 font-label-mono-sm text-label-mono-sm text-secondary flex items-center justify-between">
+<span>Confidence: 96.7%</span>
+<span class="cursor-pointer hover:underline">[p.29]</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Strategic Threat Matrix (Table) -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Strategic Threat Matrix</h2>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Cross-Correlated Model Synthesis</span>
+</div>
+<div class="overflow-x-auto rounded-lg bg-surface-container shadow-sm">
+<table class="w-full text-left font-body-sm text-body-sm text-on-surface">
+<thead class="bg-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm uppercase">
+<tr>
+<th class="px-4 py-2.5 font-semibold">Threat Actor</th>
+<th class="px-4 py-2.5 font-semibold">Attack Vector</th>
+<th class="px-4 py-2.5 font-semibold">Target Surface</th>
+<th class="px-4 py-2.5 font-semibold">Recommended Mitigation</th>
+<th class="px-4 py-2.5 font-semibold text-right">Citation</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<tr class="hover:bg-surface-container-highest/40 transition-colors">
+<td class="px-4 py-3 font-medium text-primary flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span> Volt Typhoon
+                  </td>
+<td class="px-4 py-3 text-on-surface">Living-off-the-Land (LotL) / WMI</td>
+<td class="px-4 py-3 text-on-surface-variant font-label-mono-sm text-label-mono-sm">SCADA RTU / OT Switches</td>
+<td class="px-4 py-3 text-on-surface">Immediate RPC protocol isolation</td>
+<td class="px-4 py-3 text-right">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary cursor-pointer hover:underline">[p.4 §2]</span>
+</td>
+</tr>
+<tr class="bg-surface-container-lowest/30 hover:bg-surface-container-highest/40 transition-colors">
+<td class="px-4 py-3 font-medium text-primary flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span> APT-44 (Sandworm)
+                  </td>
+<td class="px-4 py-3 text-on-surface">C2 Firmware Modification</td>
+<td class="px-4 py-3 text-on-surface-variant font-label-mono-sm text-label-mono-sm">AIS & Vessel Transponders</td>
+<td class="px-4 py-3 text-on-surface">Enforce FIPS-140 HSM signatures</td>
+<td class="px-4 py-3 text-right">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary cursor-pointer hover:underline">[p.11 §5]</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/40 transition-colors">
+<td class="px-4 py-3 font-medium text-primary flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> FIN7 Derivative
+                  </td>
+<td class="px-4 py-3 text-on-surface">OAuth Device Token Hijack</td>
+<td class="px-4 py-3 text-on-surface-variant font-label-mono-sm text-label-mono-sm">Port ERP Gateways</td>
+<td class="px-4 py-3 text-on-surface">Revoke dormant service principles</td>
+<td class="px-4 py-3 text-right">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary cursor-pointer hover:underline">[p.24 §3]</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Section 4: Recommended C-Suite Actions (Time-Phased) -->
+<div class="flex flex-col gap-3">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Recommended C-Suite Actions (Time-Phased)</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<div class="p-4 rounded-lg bg-surface-container flex flex-col gap-1.5 shadow-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-error font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bolt</span> IMMEDIATE (24-48H)
+              </span>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">FIPS HSM Key Rotation</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+                Mandate cryptographic re-keying across all edge telemetry devices with automated revocation fallback.
+              </p>
+</div>
+<div class="p-4 rounded-lg bg-surface-container flex flex-col gap-1.5 shadow-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> SHORT-TERM (14 DAYS)
+              </span>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Zero-Trust SCADA Proxy</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+                Deploy API gateway inspection rules to terminate unauthenticated RPC calls targeting port logistics.
+              </p>
+</div>
+<div class="p-4 rounded-lg bg-surface-container flex flex-col gap-1.5 shadow-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sync</span> ONGOING STRATEGY
+              </span>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Automated STIX/TAXII Feed</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+                Integrate real-time maritime AIS anomaly indicators directly into SOC SIEM correlation engines.
+              </p>
+</div>
+</div>
+</div>
+<!-- Inline Artefact Multi-View Preview Accordion -->
+<div class="pt-4 bg-surface-container p-4 rounded-lg flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">auto_stories</span>
+<span class="font-headline-sm text-body-sm text-on-surface">Simultaneous Transform Previews (Generated from Same Run)</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Linked Data Model</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+<!-- Slide Deck Card Preview -->
+<div class="p-3 bg-surface-container-low rounded-lg flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">SLIDE 01: BOARD BRIEF</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-highest px-1.5 py-0.2 rounded">PPTX READY</span>
+</div>
+<div class="p-3 rounded bg-surface-container-lowest text-on-surface flex flex-col gap-1">
+<div class="font-headline-sm text-body-sm text-primary">Slide Title: Critical Maritime Vectors 2025</div>
+<div class="font-caption text-caption text-on-surface-variant">• 78.4% surge in telemetry tampering</div>
+<div class="font-caption text-caption text-on-surface-variant">• Target: SCADA & Gateway transponders</div>
+</div>
+</div>
+<!-- Social Card Preview -->
+<div class="p-3 bg-surface-container-low rounded-lg flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">LINKEDIN DISPATCH POST</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-highest px-1.5 py-0.2 rounded">FORMATTED</span>
+</div>
+<div class="p-3 rounded bg-surface-container-lowest text-on-surface flex flex-col gap-1">
+<div class="font-caption text-caption text-on-surface">"Defending critical supply routes requires more than perimeter security..."</div>
+<div class="font-label-mono-sm text-label-mono-sm text-primary">#CyberDefense #CriticalInfrastructure #SupplyChain</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ==================== RIGHT COLUMN: VERIFICATION & SOURCE CONTEXT DOCK (~320px / 3 cols) ==================== -->
+<div class="xl:col-span-3 flex flex-col gap-4">
+<!-- Dock Header Card -->
+<div class="bg-surface-container-low rounded-xl p-4 shadow-sm flex flex-col gap-4">
+<div class="flex items-center justify-between pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">fact_check</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">VERIFICATION & DOCK</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-high px-2 py-0.5 rounded">FIPS-VALID</span>
+</div>
+<!-- Trust Status Card -->
+<div class="p-4 rounded-lg bg-surface-container flex flex-col gap-3 shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase font-bold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-secondary">verified_user</span>
+              GROUNDING INTEGRITY
+            </span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-highest px-2 py-0.5 rounded">95.4%</span>
+</div>
+<div class="flex flex-col gap-2 font-label-mono-sm text-label-mono-sm">
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-lowest text-on-surface">
+<span class="text-on-surface-variant">Evidence Anchoring:</span>
+<span class="text-secondary font-medium">42 / 44 Claims Traced</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-lowest text-on-surface">
+<span class="text-on-surface-variant">Cryptographic Hash:</span>
+<span class="text-primary font-mono" title="SHA-256: a81f44d901bc0932e92c1">SHA-256: a81f...92c1</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-lowest text-on-surface">
+<span class="text-on-surface-variant">Engine Sandbox:</span>
+<span class="text-on-surface">Sec-RAG v3.4 (Zero Retention)</span>
+</div>
+</div>
+</div>
+<!-- Cross-Output Consistency Panel -->
+<div class="p-4 rounded-lg bg-surface-container flex flex-col gap-2.5 shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary uppercase font-bold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">notifications_active</span>
+              Cross-Output Consistency
+            </span>
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary bg-tertiary-container/20 px-2 py-0.5 rounded">1 Nuance</span>
+</div>
+<!-- Flagged Issue Accordion Item -->
+<div class="p-3 rounded bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface font-medium">Temporal Date Alignment</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Low Risk</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+              In X Thread (Post 3), date references specify "May 14" whereas Canonical Executive Summary cites "Q2 Mid-Term window".
+            </p>
+<div class="flex items-center justify-between pt-1 font-label-mono-sm text-label-mono-sm">
+<span class="text-secondary">Resolution: Parity verified</span>
+<button class="text-primary hover:underline">Accept Variance</button>
+</div>
+</div>
+</div>
+<!-- Collapsible Source Context Inspector (Exact Chunk Matching) -->
+<div class="p-4 rounded-lg bg-surface-container flex flex-col gap-3 shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface uppercase font-bold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">data_object</span>
+              Matched Source Context
+            </span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary bg-surface-container-highest px-1.5 py-0.5 rounded">Chunk #042</span>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-on-surface-variant">
+<span>Source: Annual Threat Assessment 2025</span>
+<span>Page 14 · §2</span>
+</div>
+<!-- Excerpt Box -->
+<div class="p-3 rounded bg-surface-container-lowest font-body-sm text-body-sm text-on-surface leading-relaxed">
+<span class="text-on-surface-variant">"...adversary groups leveraged zero-day vectors targeting </span>
+<span class="bg-secondary/15 text-secondary px-1 rounded font-semibold">industrial control telemetry gateways</span>
+<span class="text-on-surface-variant"> across primary port infrastructure; liaison officer at [REDACTED_EMAIL_01] confirmed </span>
+<span class="bg-primary/20 text-primary px-1 rounded font-semibold">unauthenticated RPC injection</span>
+<span class="text-on-surface-variant"> bypassing standard network segmentation..."</span>
+</div>
+<div class="flex items-center justify-between pt-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">insights</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Cosine Match: 0.968</span>
+</div>
+<button class="font-label-mono-sm text-label-mono-sm text-primary hover:underline">Inspect Raw Vector Shard</button>
+</div>
+</div>
+</div>
+<!-- Export & Webhook Integration Manifest -->
+<div class="p-4 rounded-lg bg-surface-container flex flex-col gap-2.5 shadow-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase font-bold">
+            Automated Webhooks & Feeds
+          </span>
+<div class="flex flex-col gap-2">
+<button class="w-full py-2 px-3 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-body-sm font-headline-sm flex items-center justify-between transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-tertiary">send</span>
+<span>Push Advisory to Slack #sec-ops</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">chevron_right</span>
+</button>
+<button class="w-full py-2 px-3 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-body-sm font-headline-sm flex items-center justify-between transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">mail</span>
+<span>Dispatch Executive PDF Bundle</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">chevron_right</span>
+</button>
+<button class="w-full py-2 px-3 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-body-sm font-headline-sm flex items-center justify-between transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-secondary">database</span>
+<span>Ingest to SIEM / SOAR (STIX 2.1)</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Client Behavior Scripts -->
+<script>
+    // Quick ledger active-state toggling micro-interaction
+    document.addEventListener('DOMContentLoaded', () => {
+      const ledgerItems = document.querySelectorAll('#artefact-ledger > div');
+      ledgerItems.forEach((item, index) => {
+        item.addEventListener('click', () => {
+          ledgerItems.forEach(el => {
+            el.classList.remove('bg-surface-container-high');
+            el.classList.add('bg-surface-container');
+          });
+          item.classList.remove('bg-surface-container');
+          item.classList.add('bg-surface-container-high');
+        });
+      });
+    });
+  </script>
+</div></main></div></body></html>

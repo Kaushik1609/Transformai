@@ -3,6 +3,8 @@ TransformIQ Backend
 FastAPI application entry point.
 """
 from contextlib import asynccontextmanager
+import asyncio
+import time
 
 import structlog
 from fastapi import FastAPI, Request
@@ -13,7 +15,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.core.metrics import metrics
 from app.api.v1.health import router as health_router
+from app.api.v1.metrics import router as metrics_router
 from app.api.v1 import router as api_v1_router
 
 configure_logging()
@@ -26,14 +30,37 @@ logger = structlog.get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application startup and shutdown lifecycle."""
+    """Application startup and shutdown lifecycle.
+
+    Phase 13G: when enabled, a background reaper task fails transformation jobs
+    stuck in ``running`` past the configured grace period (workers that died
+    mid-job). It is cancelled on shutdown so a graceful stop never leaks tasks.
+    """
+    from app.core.config import settings as _settings
+
+    reaper_task = None
+    if _settings.STALE_JOB_REAPER_ENABLED:
+        from app.transformation.reaper import run_stale_job_reaper_loop
+
+        reaper_task = asyncio.create_task(
+            run_stale_job_reaper_loop(_settings.STALE_JOB_REAPER_INTERVAL_SECONDS)
+        )
+
     logger.info(
         "TransformIQ backend starting",
         environment=settings.ENVIRONMENT,
         version="0.1.0",
     )
-    yield
-    logger.info("TransformIQ backend shutting down")
+    try:
+        yield
+    finally:
+        if reaper_task is not None:
+            reaper_task.cancel()
+            try:
+                await reaper_task
+            except asyncio.CancelledError:
+                pass
+        logger.info("TransformIQ backend shutting down")
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +87,46 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# HTTP metrics (Phase 11L-C)
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def http_metrics_middleware(request: Request, call_next):
+    """Record per-route HTTP request count and latency.
+
+    The route is normalized to the literal route pattern (``request.scope``
+    ``route.path``) — never the concrete path — so error pages, unknown routes
+    and the metrics scrape itself stay low-cardinality.  ``unrouted`` is used
+    when routing did not resolve a route (e.g. early lifecycle requests).
+    """
+    started = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception:
+        status_code = 500
+        raise
+    finally:
+        route = request.scope.get("route")
+        route_path = getattr(route, "path", None)
+        if not route_path:
+            route_path = "unrouted"
+        method = (request.method or "UNKNOWN").upper()
+        duration = time.perf_counter() - started
+        metrics.inc(
+            "http_requests_total",
+            {"method": method, "route": route_path, "status": str(status_code)},
+        )
+        metrics.observe(
+            "http_request_duration_seconds",
+            duration,
+            {"method": method, "route": route_path},
+        )
+    return response
 
 # ---------------------------------------------------------------------------
 # Global exception handlers
@@ -126,6 +193,9 @@ async def unhandled_exception_handler(
 # Health/ready endpoints are intentionally at the root (not /api/v1) so
 # orchestration tools and load balancers can reach them without auth.
 app.include_router(health_router)
+
+# Prometheus scrape target — root level, unauthenticated, like /health.
+app.include_router(metrics_router)
 
 # Versioned API router — all domain endpoints will be registered here.
 app.include_router(api_v1_router, prefix="/api/v1")

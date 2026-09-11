@@ -13,6 +13,11 @@ from app.core.config import settings
 from app.db.models.source import Source
 from app.db.models.source_chunk import SourceChunk
 from app.embeddings.service import EmbeddingService
+from app.retrieval.sql import (
+    is_postgresql,
+    scoped_hybrid_candidate_query,
+    scoped_vector_ranking_query,
+)
 
 
 @dataclass(frozen=True)
@@ -57,6 +62,28 @@ class RetrievalService:
         if project_id is None:
             return query
         return query.join(SourceChunk.source).where(SourceChunk.source.has(project_id=project_id))
+
+    def _ensure_scope(
+        self,
+        *,
+        project_id: UUID | None,
+        source_id: UUID | None,
+        require_scope: bool,
+    ) -> None:
+        """Fail closed when strict scoping is requested but no scope is supplied.
+
+        An unscoped retrieval would search every embedded chunk in the database —
+        a cross-project data exposure. Production callers (the transformation
+        graph) always pass project_id and source_id; this guard makes accidental
+        unscoped/global queries impossible for callers that opt in.
+        """
+        if not require_scope:
+            return
+        if project_id is None and source_id is None:
+            raise ValueError(
+                "Retrieval scope required: pass project_id and/or source_id; "
+                "refusing an unscoped (global) retrieval."
+            )
 
     def _coerce_embedding_vector(self, value) -> list[float]:
         if value is None:
@@ -103,9 +130,45 @@ class RetrievalService:
         project_id: UUID | None = None,
         source_id: UUID | None = None,
         min_similarity: float | None = None,
+        require_scope: bool = False,
     ) -> list[ChunkMatch]:
+        self._ensure_scope(
+            project_id=project_id, source_id=source_id, require_scope=require_scope
+        )
         validated_vector = self._validate_query_vector(query_vector)
         validated_top_k = self._validate_top_k(top_k)
+
+        if is_postgresql(db):
+            # Phase 11J-C: exact pgvector pushdown. Scope/threshold/top_k are
+            # enforced in SQL; distance and score semantics match the Python
+            # reference implementation below (1 - cosine, clamped at zero).
+            rows = db.execute(
+                scoped_vector_ranking_query(
+                    query_vector=validated_vector,
+                    dimensions=self.dimensions,
+                    top_k=validated_top_k,
+                    project_id=project_id,
+                    source_id=source_id,
+                    min_similarity=min_similarity,
+                )
+            ).mappings()
+            matches: list[ChunkMatch] = []
+            for row in rows:
+                distance = float(row["distance"])
+                score = 1.0 - distance if distance <= 1.0 else 0.0
+                if min_similarity is not None and score < min_similarity:
+                    continue
+                matches.append(
+                    ChunkMatch(
+                        source_id=row["source_id"],
+                        chunk_id=row["id"],
+                        chunk_index=row["chunk_index"],
+                        content=row["content"],
+                        distance=distance,
+                        score=score,
+                    )
+                )
+            return matches
 
         candidate_query = select(SourceChunk).where(SourceChunk.embedding.is_not(None))
 
@@ -156,6 +219,7 @@ class RetrievalService:
         project_id: UUID | None = None,
         source_id: UUID | None = None,
         min_similarity: float | None = None,
+        require_scope: bool = False,
     ) -> list[ChunkMatch]:
         cleaned = self._validate_query_text(text)
         validated_top_k = self._validate_top_k(top_k)
@@ -167,6 +231,7 @@ class RetrievalService:
             project_id=project_id,
             source_id=source_id,
             min_similarity=min_similarity,
+            require_scope=require_scope,
         )
 
     # ---------------------------------------------------------------------
@@ -216,6 +281,7 @@ class RetrievalService:
         project_id: UUID | None = None,
         source_id: UUID | None = None,
         min_similarity: float | None = None,
+        require_scope: bool = False,
     ) -> list[ChunkMatch]:
         """Rank chunks by a deterministic fuse of dense + lexical similarity.
 
@@ -226,49 +292,116 @@ class RetrievalService:
         content is folded, provenance is preserved, and output is capped at
         ``top_k``.
         """
+        self._ensure_scope(
+            project_id=project_id, source_id=source_id, require_scope=require_scope
+        )
         cleaned = self._validate_query_text(text)
         validated_top_k = self._validate_top_k(top_k)
         query_vector = self.embedding_service.embed_texts([cleaned])[0]
         query_tokens = self._tokenize(cleaned)
 
-        rows = db.execute(
-            self._scoped_candidate_query(project_id=project_id, source_id=source_id)
-        ).scalars().all()
+        if is_postgresql(db):
+            # Phase 11J-C: dense distance is computed by PostgreSQL over the
+            # full SQL-scoped candidate set; the lexical fusion, weighting,
+            # deduplication, ordering and thresholds below are byte-for-byte
+            # the reference behavior.
+            rows = db.execute(
+                scoped_hybrid_candidate_query(
+                    query_vector=query_vector,
+                    dimensions=self.dimensions,
+                    project_id=project_id,
+                    source_id=source_id,
+                )
+            ).mappings()
+            candidates: list[tuple[UUID, UUID, int, str, float]] = [
+                (
+                    row["id"],
+                    row["source_id"],
+                    row["chunk_index"],
+                    row["content"],
+                    float(row["distance"]),
+                )
+                for row in rows
+            ]
+        else:
+            rows = db.execute(
+                self._scoped_candidate_query(project_id=project_id, source_id=source_id)
+            ).scalars()
+            candidates = []
+            for row in rows:
+                try:
+                    row_vector = self._coerce_embedding_vector(row.embedding)
+                except ValueError:
+                    continue
+                candidates.append(
+                    (
+                        row.id,
+                        row.source_id,
+                        row.chunk_index,
+                        row.content,
+                        float(self._cosine_distance(query_vector, row_vector)),
+                    )
+                )
 
-        scored: list[tuple[float, SourceChunk]] = []
-        for row in rows:
-            try:
-                row_vector = self._coerce_embedding_vector(row.embedding)
-            except ValueError:
-                continue
-            distance = self._cosine_distance(query_vector, row_vector)
+        return self._fuse_hybrid(
+            candidates,
+            query_tokens=query_tokens,
+            min_similarity=min_similarity,
+            top_k=validated_top_k,
+        )
+
+    @classmethod
+    def _fuse_hybrid(
+        cls,
+        candidates: Sequence[tuple[UUID, UUID, int, str, float]],
+        *,
+        query_tokens: set[str],
+        min_similarity: float | None,
+        top_k: int,
+    ) -> list[ChunkMatch]:
+        """Dense + lexical fusion over the SQL-scoped candidate set.
+
+        Candidate tuples are ``(chunk_id, source_id, chunk_index, content,
+        dense_distance)`` where ``dense_distance`` comes from PostgreSQL on the
+        vector path or from the Python ``_cosine_distance`` reference on the
+        fallback path. Ranking is identical to the reference hybrid
+        implementation: dense threshold first, then weighted fusion:
+        ``final = DENSE_WEIGHT * dense_score + LEXICAL_WEIGHT * lexical_score``,
+        duplicate content folded (strongest occurrence kept), ordered by fused
+        score desc with ``chunk_index`` asc as the deterministic tie-break, and
+        capped at ``top_k``.
+        """
+        scored: list[tuple[float, int, UUID, UUID, str, float]] = []
+        for chunk_id, source_id, chunk_index, content, distance in candidates:
             dense_score = 1.0 - float(distance) if float(distance) <= 1.0 else 0.0
             if min_similarity is not None and dense_score < min_similarity:
                 continue
-            lexical_score = self._lexical_overlap(query_tokens, self._tokenize(row.content))
-            final_score = (self.DENSE_WEIGHT * dense_score) + (self.LEXICAL_WEIGHT * lexical_score)
-            scored.append((final_score, row, dense_score))
+            lexical_score = cls._lexical_overlap(query_tokens, cls._tokenize(content))
+            final_score = (cls.DENSE_WEIGHT * dense_score) + (
+                cls.LEXICAL_WEIGHT * lexical_score
+            )
+            scored.append((final_score, chunk_index, chunk_id, source_id, content, dense_score))
 
         # Deterministic: fused score desc, then earliest chunk first.
-        scored.sort(key=lambda item: (item[0], -item[1].chunk_index), reverse=True)
+        scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
 
         matches: list[ChunkMatch] = []
         seen_hashes: set[str] = set()
-        for final_score, row, dense_score in scored:
-            digest = hashlib.sha256(row.content.encode("utf-8")).hexdigest()
+        for final_score, chunk_index, chunk_id, source_id, content, dense_score in scored:
+            digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
             if digest in seen_hashes:
                 continue
             seen_hashes.add(digest)
             matches.append(
                 ChunkMatch(
-                    source_id=row.source_id,
-                    chunk_id=row.id,
-                    chunk_index=row.chunk_index,
-                    content=row.content,
+                    source_id=source_id,
+                    chunk_id=chunk_id,
+                    chunk_index=chunk_index,
+                    content=content,
                     distance=1.0 - dense_score,
                     score=final_score,
                 )
             )
-            if len(matches) >= validated_top_k:
+            if len(matches) >= top_k:
                 break
         return matches

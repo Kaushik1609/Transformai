@@ -17,6 +17,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY worker/*.py /app/
 COPY backend/app /backend/app
 
+# The worker imports the shared application package (`app.core.config` etc.)
+# which lives at /backend/app. Bake the path into the image so the worker runs
+# with the same PYTHONPATH regardless of what an orchestrator injects.
+ENV PYTHONPATH=/backend:/app
+
 # Create storage directory (shared volume with backend)
 RUN mkdir -p /app/storage
 

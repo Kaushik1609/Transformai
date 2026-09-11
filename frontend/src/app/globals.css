@@ -4,31 +4,181 @@
 
 @layer base {
   :root {
-    --background: 222 47% 5%;
-    --foreground: 228 100% 97%;
-    --card: 222 35% 7%;
-    --card-foreground: 228 100% 97%;
-    --popover: 222 35% 7%;
-    --popover-foreground: 228 100% 97%;
-    --primary: 237 75% 64%;
-    --primary-foreground: 228 100% 97%;
-    --secondary: 222 30% 10%;
-    --secondary-foreground: 228 100% 97%;
-    --muted: 222 25% 12%;
-    --muted-foreground: 222 20% 55%;
-    --accent: 222 30% 10%;
-    --accent-foreground: 228 100% 97%;
-    --destructive: 4 78% 62%;
-    --destructive-foreground: 228 100% 97%;
-    --border: 218 22% 17%;
-    --input: 218 22% 17%;
-    --ring: 237 75% 64%;
+    /* Fonts — Geist Variable (fontsource) + JetBrains Mono (next/font) */
+    --font-geist-sans: "Geist Variable", ui-sans-serif, system-ui,
+      -apple-system, "Segoe UI", sans-serif;
+
+    /* Material-3 brand tokens — light */
+    --background: #f8fafc;
+    --foreground: #1a1d24;
+    --card: #ffffff;
+    --card-foreground: #1a1d24;
+    --popover: #ffffff;
+    --popover-foreground: #1a1d24;
+    --primary: #0053db;
+    --primary-foreground: #ffffff;
+    --secondary: #eef1f6;
+    --secondary-foreground: #1a1d24;
+    --muted: #eceff5;
+    --muted-foreground: #4b525e;
+    --accent: #e8edf3;
+    --accent-foreground: #1a1d24;
+    --destructive: #ba1a1a;
+    --destructive-foreground: #ffffff;
+    --border: #e2e8f0;
+    --input: #d8deea;
+    --ring: #0053db;
     --radius: 0.5rem;
-    --success: 158 64% 51%;
-    --warning: 41 87% 60%;
-    --sidebar-bg: 222 40% 6%;
-    --sidebar-border: 218 22% 13%;
-    --surface-elevated: 222 30% 9%;
+    --success: #0b8a5f;
+    --warning: #b45309;
+    --sidebar-bg: #f8fafc;
+    --sidebar-border: #e2e8f0;
+    --surface-elevated: #ffffff;
+
+    /* Material-3 container / accent roles — light */
+    --primary-container: #dbe1ff;
+    --on-primary-container: #00174b;
+    --secondary-container: #acedff;
+    --on-secondary-container: #001f26;
+    --tertiary: #4a4ec0;
+    --tertiary-foreground: #ffffff;
+    --tertiary-container: #e1e0ff;
+    --on-tertiary-container: #07006c;
+    --error-container: #ffdad6;
+    --on-error-container: #690005;
+    --outline: #5b6470;
+    --outline-variant: #dfe5ee;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f4f6fa;
+    --surface-container: #eceff5;
+    --surface-container-high: #e5e9f0;
+    --surface-container-highest: #dfe4eb;
+    --surface-variant: #e3e7ee;
+    --on-surface-variant: #575d6b;
+
+    /* Brand identity */
+    --logo-gradient-from: #5b6cf6;
+    --logo-gradient-to: #7c8bff;
+
+    /* Stitch Surface & Base tokens — light */
+    --surface: #f8fafc;
+    --surface-dim: #f1f5f9;
+    --surface-bright: #ffffff;
+    --on-surface: #0f172a;
+    --on-primary: #ffffff;
+    --on-secondary: #ffffff;
+    --on-tertiary: #ffffff;
+    --secondary-fixed: #acedff;
+    --secondary-fixed-dim: #00687a;
+    --tertiary-fixed: #e1e0ff;
+    --tertiary-fixed-dim: #c0c1ff;
+    --border-subtle: #dce3ec;
+    --border-default: #cbd5e1;
+    --border-prominent: #94a3b8;
+    --status-success: #0b8a5f;
+    --status-warning: #b45309;
+    --status-error: #ba1a1a;
+    --status-info: #0284c7;
+    --status-neutral: #64748b;
+    --trust-trusted: #0b8a5f;
+    --trust-caution: #b45309;
+    --trust-unverified: #64748b;
+
+    /* Output-type identity colors */
+    --output-summary: #7c3aed;
+    --output-linkedin: #0369a1;
+    --output-advisory: #b45309;
+    --output-presentation: #0d9488;
+    --output-x: #52607a;
+    --output-infographic: #c2410c;
+    --output-video: #be185d;
+
+    color-scheme: light;
+  }
+
+  .dark {
+    /* Material-3 brand tokens — dark (operational default) */
+    --background: #0f131c;
+    --foreground: #dfe2ee;
+    --card: #1c2028;
+    --card-foreground: #dfe2ee;
+    --popover: #1c2028;
+    --popover-foreground: #dfe2ee;
+    --primary: #b4c5ff;
+    --primary-foreground: #002a78;
+    --secondary: #262a33;
+    --secondary-foreground: #dfe2ee;
+    --muted: #262a33;
+    --muted-foreground: #c3c6d7;
+    --accent: #31353e;
+    --accent-foreground: #dfe2ee;
+    --destructive: #ffb4ab;
+    --destructive-foreground: #690005;
+    --border: #2d3444;
+    --input: #262a33;
+    --ring: #2563eb;
+    --radius: 0.5rem;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --sidebar-bg: #181c24;
+    --sidebar-border: #232834;
+    --surface-elevated: #1c2028;
+
+    /* Material-3 container / accent roles — dark */
+    --primary-container: #2563eb;
+    --on-primary-container: #eeefff;
+    --secondary-container: #03b5d3;
+    --on-secondary-container: #00424e;
+    --tertiary: #c0c1ff;
+    --tertiary-foreground: #1000a9;
+    --tertiary-container: #585be6;
+    --on-tertiary-container: #f1eeff;
+    --error-container: #93000a;
+    --on-error-container: #ffdad6;
+    --outline: #8d90a0;
+    --outline-variant: #434655;
+    --surface-container-lowest: #0a0e16;
+    --surface-container-low: #181c24;
+    --surface-container: #1c2028;
+    --surface-container-high: #262a33;
+    --surface-container-highest: #31353e;
+    --surface-variant: #31353e;
+    --on-surface-variant: #c3c6d7;
+
+    /* Stitch Surface & Base tokens — dark */
+    --surface: #0f131c;
+    --surface-dim: #0f131c;
+    --surface-bright: #353942;
+    --on-surface: #dfe2ee;
+    --on-primary: #002a78;
+    --on-secondary: #003640;
+    --on-tertiary: #1000a9;
+    --secondary-fixed: #acedff;
+    --secondary-fixed-dim: #4cd7f6;
+    --tertiary-fixed: #e1e0ff;
+    --tertiary-fixed-dim: #c0c1ff;
+    --border-subtle: #232834;
+    --border-default: #2d3444;
+    --border-prominent: #3e475c;
+    --status-success: #10b981;
+    --status-warning: #f59e0b;
+    --status-error: #ef4444;
+    --status-info: #0ea5e9;
+    --status-neutral: #64748b;
+    --trust-trusted: #10b981;
+    --trust-caution: #f59e0b;
+    --trust-unverified: #64748b;
+
+    /* Output-type identity colors — dark (kept pastel for contrast) */
+    --output-summary: #a78bfa;
+    --output-linkedin: #38bdf8;
+    --output-advisory: #f4b740;
+    --output-presentation: #2dd4bf;
+    --output-x: #e2e8f0;
+    --output-infographic: #fb923c;
+    --output-video: #f472b6;
+
+    color-scheme: dark;
   }
 }
 
@@ -37,21 +187,34 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground tabular-nums;
+  }
+}
+
+/* Respect OS reduced-motion: collapse animations/transitions for users who
+   request it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 @layer components {
   .input-base {
-    @apply w-full rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply w-full rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-[color:color-mix(in_srgb,var(--muted-foreground)_75%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 }
 
-/* Scrollbar styling for dark theme */
+/* Scrollbar styling follows the active theme */
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(222 22% 17%) transparent;
+    scrollbar-color: var(--border) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -60,7 +223,77 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(222 22% 17%);
+    background-color: var(--border);
     border-radius: 3px;
+  }
+
+  /* Monospaced data labels (material label-mono roles) */
+  .label-mono-md {
+    font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+      Menlo, monospace;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .label-mono-sm {
+    font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+      Menlo, monospace;
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .label-mono-xs {
+    font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+      Menlo, monospace;
+    font-size: 0.625rem;
+    line-height: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+  }
+
+  /* Enterprise headline scale (Stitch hero / section headlines) */
+  .headline-xl {
+    font-size: clamp(1.75rem, 3vw + 0.5rem, 2.25rem);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+  }
+  .headline-lg {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  .headline-md {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    letter-spacing: -0.015em;
+    font-weight: 500;
+  }
+  .headline-sm {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  .body-lg {
+    font-size: 1rem;
+    line-height: 1.625rem;
+    letter-spacing: -0.005em;
+  }
+  .body-md {
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+  }
+  .body-sm {
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+  }
+  .caption {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: 0.01em;
   }
 }

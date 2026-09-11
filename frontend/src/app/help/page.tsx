@@ -9,20 +9,24 @@ import { useState } from "react";
 
 const FAQS = [
   {
-    q: "What is TransformIQ?",
-    a: "TransformIQ turns one source and one instruction into many communication formats at once.",
+    q: "What is KaryaSetu AI?",
+    a: "KaryaSetu AI turns one source and/or one instruction into many communication formats at once.",
+  },
+  {
+    q: "Do I need a source file?",
+    a: "No. KaryaSetu AI accepts a prompt alone, a source alone, or both. Attach a source for grounded, verifiable claims.",
   },
   {
     q: "Do I need to re-upload my source for each output?",
-    a: "No. Add your source once, choose any number of outputs, and TransformIQ orchestrates them together.",
+    a: "No. Add your source once, choose any number of outputs, and KaryaSetu AI orchestrates them together.",
   },
   {
     q: "What output formats are supported?",
-    a: "Summary, LinkedIn, Advisory, Presentation (PPTX), X Thread, Infographic, and Video package.",
+    a: "Summary, LinkedIn, Advisory, Presentation (PPTX), X Thread, Infographic, and Video package (storyboard + SRT).",
   },
   {
     q: "What file types can I upload?",
-    a: "PDF, DOCX, and TXT files are supported, plus pasted text.",
+    a: "PDF, DOCX, and TXT files are supported.",
   },
 ];
 
@@ -33,16 +37,16 @@ export default function HelpPage() {
     <AppShell
       active="/help"
       title="Help & Documentation"
-      subtitle="Everything you need to get the most from TransformIQ"
+      subtitle="Everything you need to get the most from KaryaSetu AI"
     >
       <div className="max-w-2xl space-y-6">
         <section>
           <h2 className="text-base font-semibold text-foreground">Getting started</h2>
           <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li className="flex gap-2"><span className="font-medium text-primary">1.</span> Open Home and describe what you want to create.</li>
-            <li className="flex gap-2"><span className="font-medium text-primary">2.</span> Add your source (PDF, DOCX, TXT or pasted text).</li>
-            <li className="flex gap-2"><span className="font-medium text-primary">3.</span> Choose a tone and audience.</li>
-            <li className="flex gap-2"><span className="font-medium text-primary">4.</span> Select one or more outputs and click Run Transformation.</li>
+            <li className="flex gap-2"><span className="font-medium text-primary">2.</span> Optionally add a source (PDF, DOCX or TXT) for grounded output.</li>
+            <li className="flex gap-2"><span className="font-medium text-primary">3.</span> Choose a tone, audience and output language.</li>
+            <li className="flex gap-2"><span className="font-medium text-primary">4.</span> Select one or more outputs and click Transform.</li>
             <li className="flex gap-2"><span className="font-medium text-primary">5.</span> Review each output&apos;s verification results (grounding, consistency, claims).</li>
             <li className="flex gap-2"><span className="font-medium text-primary">6.</span> Download available artifacts (text, PPTX, PNG, PDF, SRT), or copy text outputs.</li>
           </ol>

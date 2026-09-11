@@ -8,8 +8,14 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useId } from "react";
 import { AppShell } from "@/components/layout";
+import { useTheme, type Theme } from "@/components/theme";
+import {
+  getAuthUser,
+  getDevSession,
+  isDevAuthBypassEnabled,
+} from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
   User,
@@ -84,12 +90,14 @@ export default function SettingsPage() {
 // --------------------------------------------------------------------------
 
 function Field({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-foreground">
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-foreground">
         {label}
       </label>
       <input
+        id={id}
         value={value}
         readOnly
         aria-label={label}
@@ -100,23 +108,69 @@ function Field({ label, value, hint }: { label: string; value: string; hint?: st
   );
 }
 
+interface AccountIdentity {
+  name: string;
+  email: string;
+  subtitle: string;
+  development: boolean;
+}
+
+/**
+ * Resolve the account shown in Settings truthfully:
+ * - a real authenticated user (set by password login) takes priority,
+ * - the explicit development identity is shown only when the development
+ *   bypass is enabled (or a development session exists),
+ * - an authenticated token without a stored identity never renders a fake
+ *   "dev" persona.
+ */
+function resolveAccountIdentity(): AccountIdentity {
+  const user = getAuthUser();
+  if (user) {
+    return {
+      name: user.name,
+      email: user.email,
+      subtitle: "Signed in",
+      development: false,
+    };
+  }
+
+  const session = isDevAuthBypassEnabled() ? getDevSession() : null;
+  if (session) {
+    return {
+      name: session.name,
+      email: session.email,
+      subtitle: "Development identity",
+      development: true,
+    };
+  }
+
+  return {
+    name: "Signed in",
+    email: "",
+    subtitle: "Account",
+    development: false,
+  };
+}
+
 function AccountSection() {
+  const identity = resolveAccountIdentity();
   return (
     <div className="space-y-5">
       <div>
         <h3 className="text-base font-semibold text-foreground">Profile</h3>
         <p className="text-xs text-muted-foreground">
-          Your account is currently using the development identity provided by
-          the backend.
+          {identity.development
+            ? "Your account is currently using the explicit development identity (dev mode)."
+            : "This is the account you are signed in with."}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Name" value="Dev User" />
-        <Field label="Email" value="dev@transformiq.local" />
+        <Field label="Name" value={identity.name} />
+        <Field label="Email" value={identity.email || "—"} />
       </div>
       <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-        Password management is handled server-side. Real authentication is not
-        yet available in this build.
+        Password hashes are stored server-side (PBKDF2-SHA256). The frontend
+        never sees or stores your password.
       </div>
     </div>
   );
@@ -133,10 +187,13 @@ function PreferencesSection() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-default-tone"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Default tone
           </label>
-          <select className="input-base">
+          <select id="settings-default-tone" className="input-base">
             <option>Professional</option>
             <option>Conversational</option>
             <option>Executive</option>
@@ -146,10 +203,13 @@ function PreferencesSection() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-default-audience"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Default audience
           </label>
-          <select className="input-base">
+          <select id="settings-default-audience" className="input-base">
             <option>General</option>
             <option>Executives</option>
             <option>Technical</option>
@@ -159,10 +219,19 @@ function PreferencesSection() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-language"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Language
           </label>
-          <input value="English" readOnly aria-label="Language" className="input-base opacity-70" />
+          <input
+            id="settings-language"
+            value="English"
+            readOnly
+            aria-label="Language"
+            className="input-base opacity-70"
+          />
         </div>
       </div>
       <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
@@ -174,6 +243,25 @@ function PreferencesSection() {
 }
 
 function AISection() {
+  const [provider, setProvider] = useState<string>("server");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("transformiq.llm_provider");
+      if (stored) {
+        setProvider(stored);
+      }
+    }
+  }, []);
+
+  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setProvider(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("transformiq.llm_provider", val);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div>
@@ -186,23 +274,40 @@ function AISection() {
       </div>
       <div className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-llm-provider"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             LLM provider
           </label>
-          <select className="input-base" aria-label="LLM provider">
-            <option>OpenAI (server-configured)</option>
-            <option>Development (fake)</option>
+          <select
+            id="settings-llm-provider"
+            className="input-base"
+            aria-label="LLM provider"
+            value={provider}
+            onChange={handleProviderChange}
+          >
+            <option value="server">Server-configured (OpenAI / Gemini / Fallback)</option>
+            <option value="fake">Development (Fake - Testing Purpose)</option>
           </select>
           <p className="mt-1 text-xs text-muted-foreground">
-            Provider is configured server-side. API keys are never exposed to
-            the browser.
+            {provider === "fake"
+              ? "Running in Testing Purpose mode: full orchestration and artifact generation run offline without external LLM API keys."
+              : "Provider is configured server-side. API keys are never exposed to the browser."}
           </p>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label
+            htmlFor="settings-source-grounding"
+            className="mb-1 block text-sm font-medium text-foreground"
+          >
             Source grounding
           </label>
-          <select className="input-base" aria-label="Source grounding">
+          <select
+            id="settings-source-grounding"
+            className="input-base"
+            aria-label="Source grounding"
+          >
             <option>Auto</option>
             <option>Always on</option>
             <option>Off</option>
@@ -292,10 +397,10 @@ function ToggleRow({
 }
 
 function AppearanceSection() {
-  const [theme, setTheme] = useState<"dark" | "light" | "system">("dark");
-  const themes: { id: "dark" | "light" | "system"; label: string }[] = [
-    { id: "dark", label: "Dark" },
+  const { theme, setTheme } = useTheme();
+  const themes: { id: Theme; label: string }[] = [
     { id: "light", label: "Light" },
+    { id: "dark", label: "Dark" },
     { id: "system", label: "System" },
   ];
   return (
@@ -303,7 +408,7 @@ function AppearanceSection() {
       <div>
         <h3 className="text-base font-semibold text-foreground">Appearance</h3>
         <p className="text-xs text-muted-foreground">
-          Choose how TransformIQ looks.
+          Choose how KaryaSetu AI looks on this device.
         </p>
       </div>
       <div role="radiogroup" aria-label="Theme" className="flex gap-2">
@@ -326,8 +431,9 @@ function AppearanceSection() {
         ))}
       </div>
       <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-        TransformIQ currently ships a dark-first interface. Light mode is being
-        prepared for a future release.
+        Your choice is stored on this device and applied instantly.{" "}
+        &ldquo;System&rdquo; follows the operating system preference and stays
+        live as it changes.
       </div>
     </div>
   );

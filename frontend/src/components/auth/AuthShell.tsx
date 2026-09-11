@@ -2,8 +2,6 @@
  * TransformIQ — Authentication shell (split-screen).
  *
  * Left: brand + value proposition. Right: the auth form.
- * The backend currently runs with a development identity (DEV_AUTH_BYPASS),
- * so signing in proceeds to the app rather than issuing a JWT.
  */
 "use client";
 
@@ -19,7 +17,7 @@ const OUTPUTS = [
   "Presentation",
   "X Thread",
   "Infographic",
-  "Video",
+  "Video Package",
 ];
 
 export function AuthShell({
@@ -34,7 +32,7 @@ export function AuthShell({
         <Link href="/" className="flex items-center gap-2.5">
           <LogoMark size={34} />
           <span className="text-lg font-semibold tracking-tight text-foreground">
-            TransformIQ
+            KaryaSetu AI
           </span>
         </Link>
 
@@ -47,7 +45,7 @@ export function AuthShell({
             </h1>
             <p className="max-w-md text-muted-foreground">
               Upload your source, describe what you need, choose your outputs,
-              and let TransformIQ orchestrate the rest.
+              and let KaryaSetu AI orchestrate the rest.
             </p>
           </div>
 
@@ -65,14 +63,14 @@ export function AuthShell({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          7 output formats · 1 source
+          7 output formats · 1 prompt or source
         </p>
       </div>
 
       {/* Right — form panel */}
-      <div className="flex w-full flex-1 items-center justify-center p-6">
+      <main className="flex w-full flex-1 items-center justify-center p-6">
         <div className="w-full max-w-sm">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

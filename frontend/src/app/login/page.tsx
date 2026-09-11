@@ -1,9 +1,14 @@
 /**
  * TransformIQ — Login page.
  *
- * The backend currently authenticates via a stable development identity
- * (DEV_AUTH_BYPASS). Signing in proceeds to the app without issuing a JWT —
- * no credentials are invented or transmitted.
+ * Phase 15 flow: sign in with email + password. The backend issues a
+ * short-lived JWT (POST /api/v1/auth/login) that is stored with setAuthToken().
+ * A single generic 401 ("Invalid email or password.") is surfaced for every
+ * credential failure — account existence and activation state are not revealed.
+ *
+ * Development bypass: only when the frontend build explicitly enables it
+ * (NEXT_PUBLIC_DEV_AUTH_BYPASS=true) does signing in fall back to a local
+ * development identity. It is never the default path.
  */
 "use client";
 
@@ -15,15 +20,22 @@ import {
   PasswordInput,
   AuthSubmit,
 } from "@/components/auth";
-import { setDevSession } from "@/lib/auth";
+import {
+  isDevAuthBypassEnabled,
+  setAuthToken,
+  setAuthUser,
+  setDevSession,
+} from "@/lib/auth";
+import { authApi, errorMessage } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const devBypass = isDevAuthBypassEnabled();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,15 +43,32 @@ export default function LoginPage() {
       setError("Please enter your email and password.");
       return;
     }
+    if (devBypass) {
+      // Explicitly enabled development path — records a local identity only.
+      setSubmitting(true);
+      setError(null);
+      try {
+        await new Promise((r) => setTimeout(r, 350));
+        setDevSession(email.trim());
+        router.replace("/");
+      } catch {
+        setError("We couldn't sign you in. Please try again.");
+        setSubmitting(false);
+      }
+      return;
+    }
     setSubmitting(true);
     setError(null);
-    // The backend runs with DEV_AUTH_BYPASS — proceed to the app.
     try {
-      await new Promise((r) => setTimeout(r, 350));
-      setDevSession(email.trim());
+      const result = await authApi.login({
+        email: email.trim(),
+        password,
+      });
+      setAuthToken(result.access_token, Date.now() + result.expires_in * 1000);
+      setAuthUser(result.user);
       router.replace("/");
-    } catch {
-      setError("We couldn't sign you in. Please try again.");
+    } catch (err) {
+      setError(errorMessage(err, "We couldn't sign you in. Please try again."));
       setSubmitting(false);
     }
   };
@@ -52,7 +81,7 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="text-sm text-muted-foreground">
-            Sign in to continue to TransformIQ.
+            Sign in to continue to KaryaSetu AI.
           </p>
         </div>
 
@@ -91,22 +120,13 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-4 w-4 rounded border-input"
-              />
-              Remember me
-            </label>
-            <button
-              type="button"
+          <div className="flex justify-end">
+            <Link
+              href="/forgot-password"
               className="text-sm text-primary hover:underline"
             >
               Forgot password?
-            </button>
+            </Link>
           </div>
 
           {error && (
@@ -118,8 +138,9 @@ export default function LoginPage() {
           <AuthSubmit submitting={submitting} label="Sign in" />
 
           <p className="text-center text-xs text-muted-foreground">
-            This build uses a development identity. Real authentication is not
-            yet enabled.
+            {devBypass
+              ? "Development mode enabled (NEXT_PUBLIC_DEV_AUTH_BYPASS=true)."
+              : "Sign in with the password you created when registering."}
           </p>
         </form>
 

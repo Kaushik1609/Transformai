@@ -48,11 +48,13 @@ import { SourceUpload, CurrentSource } from "@/components/upload";
 import { SourceAnalysis } from "./SourceAnalysis";
 import { ConfigurationForm } from "@/components/configuration";
 import { OutputSelector } from "@/components/output-selection";
-import { ResultsPanel } from "@/components/results";
+import { ResultsPanel, PipelineStageTrack } from "@/components/results";
 import { HistoryPanel } from "@/components/history";
 
 interface TransformationWorkspaceProps {
   projectId: string;
+  /** Preferred source to preselect once the workspace boots (UI-7). */
+  initialSourceId?: string | null;
   /** Polling interval for job status (default 2000ms; shorter in tests). */
   pollIntervalMs?: number;
 }
@@ -68,6 +70,7 @@ type WorkspacePhase =
 
 export function TransformationWorkspace({
   projectId,
+  initialSourceId,
   pollIntervalMs = 2000,
 }: TransformationWorkspaceProps) {
   // ---- Project / sources / configs -------------------------------------
@@ -100,7 +103,11 @@ export function TransformationWorkspace({
       setProject(projectRes.data);
       const sourceList = sourcesRes.data;
       setSources(sourceList);
-      setCurrentSource(sourceList[0] ?? null);
+      const preferred =
+        initialSourceId != null
+          ? (sourceList.find((s) => s.id === initialSourceId) ?? null)
+          : null;
+      setCurrentSource(preferred ?? sourceList[0] ?? null);
       if (configsRes.data.length > 0) {
         setConfiguration(configsRes.data[0]);
       }
@@ -111,7 +118,7 @@ export function TransformationWorkspace({
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, initialSourceId]);
 
   useEffect(() => {
     void loadWorkspace();
@@ -191,12 +198,19 @@ export function TransformationWorkspace({
     if (!canGenerate || !currentSource || !configuration) return;
     setFormError(null);
     setOutputs([]);
+    const selectedProvider =
+      typeof window !== "undefined"
+        ? localStorage.getItem("transformiq.llm_provider")
+        : null;
     try {
       const res = await transformationsApi.create({
         project_id: projectId,
         source_id: currentSource.id,
         configuration_id: configuration.id,
         output_types: selectedOutputs,
+        ...(selectedProvider && selectedProvider !== "server"
+          ? { llm_provider: selectedProvider }
+          : {}),
       });
       setJob(res.data);
     } catch (err) {
@@ -228,7 +242,7 @@ export function TransformationWorkspace({
       case "processing":
         return "Processing source…";
       case "generating":
-        return "Generating…";
+        return "Transforming…";
       case "verifying":
         return "Verifying outputs…";
       case "completed":
@@ -268,9 +282,9 @@ export function TransformationWorkspace({
       {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
             {project?.name ?? "Transformation workspace"}
-          </h1>
+          </h2>
           {project?.description && (
             <p className="text-sm text-muted-foreground">
               {project.description}
@@ -344,9 +358,9 @@ export function TransformationWorkspace({
             />
           </SectionCard>
 
-          <SectionCard
-            title="3 · Outputs"
-            description="Choose what to generate."
+<SectionCard
+              title="3 · Outputs"
+              description="Choose what to transform."
             right={
               selectedOutputs.length > 0 && (
                 <StatusBadge variant="info">
@@ -368,7 +382,7 @@ export function TransformationWorkspace({
         {/* ------------------------------------------------------ */}
         <div className="space-y-6">
           <SectionCard
-            title="4 · Generate"
+            title="4 · Transform"
             description="Start an asynchronous transformation job."
           >
             <div className="space-y-4">
@@ -380,11 +394,11 @@ export function TransformationWorkspace({
               >
                 {phase === "generating" ? (
                   <>
-                    <LoadingSpinner size="sm" label="Generating…" />
-                    Generating…
+                    <LoadingSpinner size="sm" label="Transforming…" />
+                    Transforming…
                   </>
                 ) : (
-                  "Generate outputs"
+                  "Transform"
                 )}
               </button>
 
@@ -422,7 +436,7 @@ export function TransformationWorkspace({
           {job && (
             <SectionCard
               title="5 · Results & verification"
-              description="Generated artifacts and their verification state."
+              description="Transformed artifacts and their verification state."
             >
               <div className="space-y-3">
                 {job.status === "failed" && job.error_message && (
@@ -440,7 +454,7 @@ export function TransformationWorkspace({
 
           {!job && (
             <p className="hidden text-xs text-muted-foreground lg:block">
-              Results and verification will appear here after you generate.
+              Results and verification will appear here after you transform.
             </p>
           )}
 
@@ -501,13 +515,13 @@ function JobProgress({
   return (
     <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-xs font-medium text-foreground">
+        <span className="label-mono-sm flex items-center gap-2 font-medium text-foreground">
           Job {job.id.slice(0, 8)}…
           <StatusBadge variant={jobStatusVariant(job.status)}>
             {job.status}
           </StatusBadge>
         </span>
-        <span className="text-xs text-muted-foreground">
+        <span className="label-mono-sm text-muted-foreground">
           {running ? "In progress…" : `${job.progress}%`}
         </span>
       </div>
@@ -516,6 +530,8 @@ function JobProgress({
         value={determinate ? job.progress : null}
         label="Job progress"
       />
+
+      <PipelineStageTrack job={job} outputs={outputs} className="pt-1" />
 
       {running && (
         <p className="text-xs text-muted-foreground">

@@ -57,4 +57,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 ENV PORT 3000
+# Bind IPv4 too: Node otherwise listens on :: only, which busybox wget
+# (uses 127.0.0.1) cannot reach for in-container health probes.
+ENV HOST 0.0.0.0
 CMD ["node", "server.js"]

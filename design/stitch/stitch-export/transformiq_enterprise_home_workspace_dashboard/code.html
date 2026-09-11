@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary":"#003640","on-secondary-container":"#00424e","surface-tint":"#b4c5ff","primary-fixed-dim":"#b4c5ff","on-background":"#dfe2ee","on-error":"#690005","inverse-surface":"#dfe2ee","on-surface-variant":"#c3c6d7","inverse-on-surface":"#2c3039","surface-bright":"#353942","error":"#ffb4ab","outline":"#8d90a0","error-container":"#93000a","surface-dim":"#0f131c","surface-container":"#1c2028","tertiary-fixed":"#e1e0ff","surface-container-high":"#262a33","on-tertiary-fixed":"#07006c","secondary-fixed":"#acedff","surface":"#0f131c","tertiary-fixed-dim":"#c0c1ff","background":"#0f131c","on-primary-container":"#eeefff","on-secondary-fixed-variant":"#004e5c","tertiary":"#c0c1ff","secondary-fixed-dim":"#4cd7f6","on-primary-fixed-variant":"#003ea8","outline-variant":"#434655","on-secondary-fixed":"#001f26","on-primary":"#002a78","surface-variant":"#31353e","on-tertiary":"#1000a9","on-error-container":"#ffdad6","primary":"#b4c5ff","secondary":"#4cd7f6","surface-container-lowest":"#0a0e16","surface-container-highest":"#31353e","on-tertiary-container":"#f1eeff","tertiary-container":"#585be6","primary-fixed":"#dbe1ff","surface-container-low":"#181c24","on-tertiary-fixed-variant":"#2f2ebe","on-primary-fixed":"#00174b","secondary-container":"#03b5d3","on-surface":"#dfe2ee","inverse-primary":"#0053db","primary-container":"#2563eb"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"inspector-width":"24rem","grid-margin-tablet":"1rem","rail-width-collapsed":"4rem","grid-margin-desktop":"1.5rem","grid-margin-mobile":"0.75rem","card-padding-dense":"0.75rem","rail-width-expanded":"16rem","panel-gap":"1rem","card-padding-regular":"1.25rem"},fontFamily:{"label-mono-sm":["JetBrains Mono"],"headline-md":["Geist"],"body-md":["Geist"],caption:["Geist"],"headline-xl":["Geist"],"headline-lg":["Geist"],"label-mono-md":["JetBrains Mono"],"body-sm":["Geist"],"body-lg":["Geist"],"headline-sm":["Geist"],"headline-xl-mobile":["Geist"]},fontSize:{"label-mono-sm":["11px",{lineHeight:"14px",letterSpacing:"0.04em",fontWeight:"500"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.015em",fontWeight:"500"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],caption:["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-xl":["36px",{lineHeight:"44px",letterSpacing:"-0.025em",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.02em",fontWeight:"600"}],"label-mono-md":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"500"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",letterSpacing:"-0.005em",fontWeight:"400"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-xl-mobile":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-rail-width-expanded bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-4 flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">T</div><span class="font-headline-sm text-headline-sm tracking-tight text-on-surface">TransformIQ</span></div><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">ENTERPRISE</span></div><div class="px-3 pt-2 pb-4"><button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-headline-sm rounded shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all"><span class="material-symbols-outlined text-[18px]">add_circle</span><span>+ Create Transformation</span></button></div><nav class="flex flex-col gap-1 px-3" data-active-classes="bg-surface-container-high text-on-surface font-headline-sm"><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-colors bg-surface-container-high text-on-surface font-headline-sm" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md text-body-md">Home</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="projects" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-body-md text-body-md">Projects</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="history" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-body-md text-body-md">History</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="security-activity" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span class="font-body-md text-body-md">Security Activity</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">Settings</span></a></nav></div><div class="p-3 flex flex-col gap-3"><div class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Pipeline Active · Grounded RAG</span></div><div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-label-mono-md text-primary">EV</div><div class="flex flex-col"><span class="font-headline-sm text-body-sm text-on-surface leading-tight">Elena Vance</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Director of Threat Comms</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-[18px]">unfold_more</span></div></div></aside><div class="pl-rail-width-expanded flex flex-col min-h-screen"><header class="fixed top-0 left-rail-width-expanded right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-6 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-secondary text-[18px]">corporate_fare</span><span class="font-body-sm text-body-sm text-on-surface">Global Threat Intelligence Workspace</span><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div><div class="flex items-center flex-1 gap-2 bg-surface-container-lowest px-3 py-1.5 rounded max-w-md"><span class="material-symbols-outlined text-outline text-[18px]">search</span><input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" placeholder="Search sources, transformations, artifacts... (Cmd + K)" type="text"/></div></div><div class="flex items-center gap-3.5"><div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high"><span class="material-symbols-outlined text-secondary text-[16px]">verified_user</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface">FIPS 140-3 Compliant</span></div><button class="relative p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button><div class="flex items-center gap-2 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Wb0FI5CBqMnx2ey5yRvFNJugjQNyoWPB0cVo8k2zqEAFWD3IMv1NqZEPiFkT-9iCicYO9EBT88ttxHDPLe7fqBURm46knL6RcDFAZpKrZRsr6g8T2y_6P_Qa7Om9jqlsnR7lmSRy3kWlwaOfW72oAfLIt2ofZGuZXPz-E7Rz7odsPKQkbYPZUzVFFpvmDlD5XlWgoAZRqOdcbnF3V00Ytp6DkYtFBqhi6KYbgwx_FIIEZkdOmZVzcg1Hg"/><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div></div></header><main class="w-full pt-16 px-6 py-6 bg-background flex-1"><div class="flex flex-col w-full space-y-12">
+<!-- Top Global Metrics / System Status Ticker -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+<div class="flex items-center gap-6 flex-wrap">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase tracking-wider">Engine: Deterministic v3.4.12</span>
+</div>
+<div class="h-3 w-px bg-surface-container-highest hidden sm:block"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px]">verified</span>
+<span class="font-body-sm text-body-sm text-on-surface">Grounding Rate: <span class="font-label-mono-sm text-label-mono-sm text-secondary font-semibold">99.84% Evidence Parity</span></span>
+</div>
+<div class="h-3 w-px bg-surface-container-highest hidden md:block"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[16px]">shield_lock</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">DLP Gateways: Active (Level 4 Redaction)</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">FedRAMP High Equivalent</span>
+<div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+</div>
+</div>
+<!-- 1. Hero Header Section -->
+<section class="relative rounded-2xl bg-gradient-to-b from-surface-container to-surface-container-low p-8 lg:p-10 shadow-md overflow-hidden">
+<!-- Ambient directional glow -->
+<div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 bg-secondary/5 rounded-full blur-2xl pointer-events-none"></div>
+<div class="relative z-10 max-w-4xl space-y-6">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-surface-container-highest text-secondary shadow-sm">
+<span class="material-symbols-outlined text-[15px]">neurology</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-wider">Automated Enterprise Transformation Engine v3.4</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight max-w-3xl">
+        Transform information into <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-tertiary">communication</span>.
+      </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
+        Turn raw threat feeds, complex regulatory directives, or incident prompts into calibrated, mission-ready communication artifacts with deterministic AI governance.
+      </p>
+<div class="pt-2 flex flex-wrap items-center gap-4">
+<button class="inline-flex items-center gap-2.5 px-5 py-3 rounded-lg bg-primary-container text-on-primary font-headline-sm text-headline-sm hover:bg-primary-container/90 active:scale-[0.98] transition-all shadow-[0_0_16px_rgba(37,99,235,0.4)]" id="open-new-trans-modal">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+<span>+ Create Transformation</span>
+</button>
+<a class="inline-flex items-center gap-2 px-4 py-3 rounded-lg bg-surface-container-high text-on-surface font-body-md text-body-md hover:bg-surface-container-highest transition-colors shadow-sm" href="#">
+<span class="material-symbols-outlined text-outline text-[18px]">history</span>
+<span>View Transformation History</span>
+</a>
+<div class="flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface-variant shadow-inner">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-mono-sm text-label-mono-sm">Source Grounding: Multi-Document RAG Enabled</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. Quick Create Entry Point Area ("Create a new transformation") -->
+<section class="space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Create a new transformation</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Start with a source, a prompt, or both.</p>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">SELECT PIPELINE ARTIFACT VECTOR</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+<!-- Card 1: Source -->
+<div class="group relative bg-surface-container rounded-xl p-6 flex flex-col justify-between hover:bg-surface-container-high transition-all shadow-sm cursor-pointer">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-secondary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[26px]">upload_file</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant uppercase">Input Vector 01</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              Source
+              <span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2 leading-relaxed">
+              Upload raw reports, PDF briefings, advisories, or CSV telemetry data. Ground all transformations with strict, deterministic citations.
+            </p>
+</div>
+</div>
+<div class="pt-6 space-y-3">
+<div class="flex flex-wrap gap-2">
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-secondary">Multi-file supported</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">Auto-extraction</span>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="font-caption text-caption text-outline">STIX, PDF, CSV, MD, DOCX</span>
+<span class="material-symbols-outlined text-secondary text-[20px] group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Prompt -->
+<div class="group relative bg-surface-container rounded-xl p-6 flex flex-col justify-between hover:bg-surface-container-high transition-all shadow-sm cursor-pointer">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[26px]">terminal</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant uppercase">Input Vector 02</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              Prompt
+              <span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2 leading-relaxed">
+              Direct the transformation pipeline with tailored strategic guidelines, explicit target personas, incident severity parameters, or custom formatting.
+            </p>
+</div>
+</div>
+<div class="pt-6 space-y-3">
+<div class="flex flex-wrap gap-2">
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-primary">Template presets</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">Tone control</span>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="font-caption text-caption text-outline">Persona, Mandate, Severity rules</span>
+<span class="material-symbols-outlined text-primary text-[20px] group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Source + Prompt (Highlighted) -->
+<div class="group relative bg-surface-container-high rounded-xl p-6 flex flex-col justify-between hover:bg-surface-container-highest transition-all shadow-md cursor-pointer ring-0">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="w-12 h-12 rounded-lg bg-primary-container text-on-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-[0_0_12px_rgba(37,99,235,0.3)]">
+<span class="material-symbols-outlined text-[26px]">hub</span>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-secondary/15 text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase font-semibold">Recommended</span>
+</div>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              Source + Prompt
+              <span class="material-symbols-outlined text-[16px] text-secondary opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2 leading-relaxed">
+              Synthesize empirical source groundings with explicit strategic framing, custom executive lenses, and deterministic anti-hallucination boundaries.
+            </p>
+</div>
+</div>
+<div class="pt-6 space-y-3">
+<div class="flex flex-wrap gap-2">
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-secondary font-medium">Highest Grounding</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-tertiary">Full Provenance</span>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="font-caption text-caption text-secondary">Dual-verification Pipeline</span>
+<span class="material-symbols-outlined text-secondary text-[20px] group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. "What can you create?" — 7 Output Categories Grid -->
+<section class="space-y-4">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-2">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-secondary text-[18px]">auto_stories</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-wider">Multi-Format Dispatch</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">What can you create?</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+          Select one or bundle multiple communication formats generated simultaneously from a single validated source dossier.
+        </p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded bg-surface-container-high text-on-surface font-body-sm text-body-sm hover:bg-surface-container-highest transition-colors">Select All Formats</button>
+<button class="px-3 py-1.5 rounded bg-surface-container text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container-high transition-colors">Custom Presets</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- 1. Executive Summary (Spans 2 columns on larger displays for visual anchor) -->
+<div class="sm:col-span-2 bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group cursor-pointer">
+<div>
+<div class="flex items-start justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">assignment</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">1-2 Pages · Strict Evidence</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-4">Executive Summary</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 leading-relaxed">
+            High-level risk assessments, decision matrices, and bottom-line-up-front (BLUF) briefings calibrated for Board of Directors and C-suite consumption.
+          </p>
+</div>
+<div class="pt-4 mt-2 flex items-center justify-between">
+<span class="font-caption text-caption text-outline">Output: PDF / Structured Markdown</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary flex items-center gap-1 group-hover:underline">Preview Schema <span class="material-symbols-outlined text-[14px]">arrow_outward</span></span>
+</div>
+</div>
+<!-- 2. LinkedIn Post -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group cursor-pointer">
+<div>
+<div class="flex items-start justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-secondary group-hover:bg-secondary-container group-hover:text-on-secondary-container transition-colors">
+<span class="material-symbols-outlined text-[22px]">share</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">Executive Tone · MD</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-4">LinkedIn Post</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 leading-relaxed">
+            Public stakeholder updates, thought leadership briefs, and corporate cyber resilience announcements.
+          </p>
+</div>
+<div class="pt-4 mt-2 flex items-center justify-between">
+<span class="font-caption text-caption text-outline">TLP:CLEAR public format</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[18px]">add</span>
+</div>
+</div>
+<!-- 3. Advisory -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group cursor-pointer">
+<div>
+<div class="flex items-start justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-error group-hover:bg-error-container group-hover:text-on-error-container transition-colors">
+<span class="material-symbols-outlined text-[22px]">gpp_maybe</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">CVE / TLP Aware</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-4">Tactical Advisory</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 leading-relaxed">
+            Cybersecurity advisories, operational guidance, patch priority ladders, and remediation instructions.
+          </p>
+</div>
+<div class="pt-4 mt-2 flex items-center justify-between">
+<span class="font-caption text-caption text-outline">Mitre ATT&CK Mapped</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[18px]">add</span>
+</div>
+</div>
+<!-- 4. Presentation -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group cursor-pointer">
+<div>
+<div class="flex items-start justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-tertiary group-hover:bg-tertiary-container group-hover:text-on-tertiary-container transition-colors">
+<span class="material-symbols-outlined text-[22px]">slideshow</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">8-12 Slide Deck</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-4">Presentation</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 leading-relaxed">
+            Board-ready visual outlines, narrative arcs, metric callouts, and quarterly transformation briefs.
+          </p>
+</div>
+<div class="pt-4 mt-2 flex items-center justify-between">
+<span class="font-caption text-caption text-outline">Export: PPTX, Keynote</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[18px]">add</span>
+</div>
+</div>
+<!-- 5. X Thread -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group cursor-pointer">
+<div>
+<div class="flex items-start justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-secondary group-hover:bg-surface-bright transition-colors">
+<span class="material-symbols-outlined text-[22px]">tag</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">280 Char Rules</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-4">X Thread</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 leading-relaxed">
+            Rapid incident communications, sequential telemetry highlights, and public advisory broadcast series.
+          </p>
+</div>
+<div class="pt-4 mt-2 flex items-center justify-between">
+<span class="font-caption text-caption text-outline">Numbered Post Chains</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[18px]">add</span>
+</div>
+</div>
+<!-- 6. Infographic Blueprint -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group cursor-pointer">
+<div>
+<div class="flex items-start justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[22px]">insights</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">Structured SVG/Data</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-4">Infographic Blueprint</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 leading-relaxed">
+            Architecture diagrams, timeline callouts, attack pathway schematics, and quantitative metric layouts.
+          </p>
+</div>
+<div class="pt-4 mt-2 flex items-center justify-between">
+<span class="font-caption text-caption text-outline">Vector-ready Spec</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[18px]">add</span>
+</div>
+</div>
+<!-- 7. Video Package -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group cursor-pointer">
+<div>
+<div class="flex items-start justify-between">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-tertiary group-hover:bg-tertiary-container group-hover:text-on-tertiary-container transition-colors">
+<span class="material-symbols-outlined text-[22px]">videocam</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant">Voiceover & Cues</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mt-4">Video Package</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 leading-relaxed">
+            Complete presenter teleprompter script, visual B-roll cues, graphic lower-third triggers, and narrative storyboard.
+          </p>
+</div>
+<div class="pt-4 mt-2 flex items-center justify-between">
+<span class="font-caption text-caption text-outline">Timed Script & Directives</span>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[18px]">add</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. Controlled Transformation Pipeline (Security & Trust Preview Card) -->
+<section class="rounded-2xl bg-surface-container p-6 lg:p-7 shadow-md space-y-6">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">verified_user</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Controlled Transformation Pipeline</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+          Enterprise guardrails ensuring strict evidence preservation, zero external training leakage, and hallucination elimination.
+        </p>
+</div>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-highest text-emerald-400 font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">lock</span> Zero Data Retention
+        </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-highest text-primary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">sync_saved_locally</span> Deterministic Verification
+        </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[15px]">fingerprint</span> Provenance Signatures
+        </span>
+</div>
+</div>
+<!-- Step-by-Step Architecture Ribbon -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-2">
+<!-- Step 1 -->
+<div class="p-3.5 rounded-lg bg-surface-container-lowest flex flex-col justify-between space-y-3 relative group">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold">STAGE 01</span>
+<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+</div>
+<div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Input Ingestion</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+            OCR, multi-modal parser, PDF text tree extraction & STIX chunking.
+          </p>
+</div>
+<div class="font-label-mono-sm text-[10px] text-outline">Latency: ~120ms</div>
+</div>
+<!-- Step 2 -->
+<div class="p-3.5 rounded-lg bg-surface-container-lowest flex flex-col justify-between space-y-3 relative group">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold">STAGE 02</span>
+<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+</div>
+<div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Security & DLP</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+            Automated PII scrubbing, secret detection & clearance level boundary checks.
+          </p>
+</div>
+<div class="font-label-mono-sm text-[10px] text-outline">FIPS 140-3 Filter</div>
+</div>
+<!-- Step 3 -->
+<div class="p-3.5 rounded-lg bg-surface-container-lowest flex flex-col justify-between space-y-3 relative group">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold">STAGE 03</span>
+<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+</div>
+<div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Context & RAG</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+            High-dimension vector index, semantic proximity pairing & source anchoring.
+          </p>
+</div>
+<div class="font-label-mono-sm text-[10px] text-outline">Dense Retrieval</div>
+</div>
+<!-- Step 4 -->
+<div class="p-3.5 rounded-lg bg-surface-container-lowest flex flex-col justify-between space-y-3 relative group">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold">STAGE 04</span>
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+</div>
+<div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Controlled Synthesis</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+            Target schema adherence, persona injection & guardrail constrained execution.
+          </p>
+</div>
+<div class="font-label-mono-sm text-[10px] text-outline">Temp: 0.15 Deterministic</div>
+</div>
+<!-- Step 5 -->
+<div class="p-3.5 rounded-lg bg-surface-container-lowest flex flex-col justify-between space-y-3 relative group">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold">STAGE 05</span>
+<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+</div>
+<div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Evidence Audit</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+            Line-by-line citation verification against ingested source dossier chunks.
+          </p>
+</div>
+<div class="font-label-mono-sm text-[10px] text-outline">Zero Speculation</div>
+</div>
+<!-- Step 6 -->
+<div class="p-3.5 rounded-lg bg-surface-container-lowest flex flex-col justify-between space-y-3 relative group">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold">STAGE 06</span>
+<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+</div>
+<div>
+<div class="font-headline-sm text-body-sm text-on-surface font-semibold">Artifact Integrity</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-normal">
+            Cryptographic hash stamping, audit log commit & multi-channel rendering.
+          </p>
+</div>
+<div class="font-label-mono-sm text-[10px] text-outline">SHA-256 Validated</div>
+</div>
+</div>
+</section>
+<!-- 5. Recent Transformations Section -->
+<section class="space-y-4">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Recent Transformations</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Live audit ledger of multi-format generation runs and verified outputs.</p>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<!-- Filter Tabs -->
+<div class="flex items-center bg-surface-container p-1 rounded-lg">
+<button class="filter-tab active px-3 py-1 rounded bg-surface-container-highest text-on-surface font-body-sm text-body-sm transition-colors" data-filter="all">All (24)</button>
+<button class="filter-tab px-3 py-1 rounded text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm transition-colors" data-filter="completed">Completed (21)</button>
+<button class="filter-tab px-3 py-1 rounded text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm transition-colors" data-filter="processing">In Review (3)</button>
+<button class="filter-tab px-3 py-1 rounded text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm transition-colors" data-filter="pinned">Pinned (5)</button>
+</div>
+<!-- Search input -->
+<div class="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-lg w-full sm:w-64">
+<span class="material-symbols-outlined text-outline text-[18px]">search</span>
+<input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" id="recent-search-input" placeholder="Filter jobs, CVEs, authors..." type="text"/>
+</div>
+<!-- Empty State Preview Trigger Button -->
+<button class="px-3 py-1.5 rounded bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm hover:bg-surface-container-high transition-colors flex items-center gap-1.5" id="toggle-empty-state">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Preview Clean Slate</span>
+</button>
+</div>
+</div>
+<!-- Main Transformations Container -->
+<div class="space-y-3" id="transformations-container">
+<!-- Item 1: CVE Incident Brief -->
+<div class="transformation-row bg-surface-container hover:bg-surface-container-high transition-colors rounded-xl p-4 sm:p-5 shadow-sm space-y-3 cursor-pointer" data-status="completed">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-secondary shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[22px]">security</span>
+</div>
+<div>
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface">Cybersecurity Incident Brief: CVE-2025-4102 Mitigation</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">COMPLETED</span>
+<span class="inline-flex items-center gap-1 font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-secondary">
+<span class="material-symbols-outlined text-[14px]">verified</span> Grounded RAG
+                </span>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant font-caption text-caption mt-1 flex-wrap">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">description</span> Threat_Advisory_Feb2025.pdf (2.4 MB)</span>
+<span>•</span>
+<span>Provenance: 42 Deterministic Citations</span>
+<span>•</span>
+<span>Updated 14 mins ago by <strong class="text-on-surface font-normal">Elena Vance</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 self-start md:self-center">
+<span class="font-label-mono-sm text-label-mono-sm text-outline hidden xl:inline">OUTPUTS:</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-primary font-label-mono-sm text-label-mono-sm">Summary</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-error font-label-mono-sm text-label-mono-sm">Advisory</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-mono-sm text-label-mono-sm">LinkedIn</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant font-label-mono-sm text-label-mono-sm">X Thread</span>
+</div>
+<button class="p-2 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors ml-1">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Item 2: Zero Trust Strategy -->
+<div class="transformation-row bg-surface-container hover:bg-surface-container-high transition-colors rounded-xl p-4 sm:p-5 shadow-sm space-y-3 cursor-pointer" data-status="processing">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[22px]">policy</span>
+</div>
+<div>
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface">Zero Trust Strategy & Federal Mandate Roadmap</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> PROCESSING
+                </span>
+<span class="inline-flex items-center gap-1 font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-primary">
+<span class="material-symbols-outlined text-[14px]">sync</span> Context Verification Pass (Step 4/6)
+                </span>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant font-caption text-caption mt-1 flex-wrap">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">dataset</span> Policy_Memo_v4.docx + Executive Prompt</span>
+<span>•</span>
+<span>Active Model: Deterministic Sec-RAG v3</span>
+<span>•</span>
+<span>Updated 1 hour ago by <strong class="text-on-surface font-normal">T. Chen</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 self-start md:self-center">
+<span class="font-label-mono-sm text-label-mono-sm text-outline hidden xl:inline">OUTPUTS:</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-primary font-label-mono-sm text-label-mono-sm">Executive Summary</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-tertiary font-label-mono-sm text-label-mono-sm">Presentation (12 slides)</span>
+</div>
+<button class="p-2 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors ml-1">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Item 3: Critical Minerals Disruption -->
+<div class="transformation-row bg-surface-container hover:bg-surface-container-high transition-colors rounded-xl p-4 sm:p-5 shadow-sm space-y-3 cursor-pointer" data-status="completed">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-secondary shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[22px]">public</span>
+</div>
+<div>
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface">Global Supply Chain Critical Minerals Disruption Analysis</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">COMPLETED</span>
+<span class="inline-flex items-center gap-1 font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-secondary">
+<span class="material-symbols-outlined text-[14px]">verified</span> Verified & Grounded
+                </span>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant font-caption text-caption mt-1 flex-wrap">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">folder_copy</span> Multi-source RAG Dossier (6 files)</span>
+<span>•</span>
+<span>Provenance: 108 Cross-document Citations</span>
+<span>•</span>
+<span>Updated Yesterday by <strong class="text-on-surface font-normal">Elena Vance</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 self-start md:self-center">
+<span class="font-label-mono-sm text-label-mono-sm text-outline hidden xl:inline">OUTPUTS:</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-primary font-label-mono-sm text-label-mono-sm">Executive Summary</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-secondary font-label-mono-sm text-label-mono-sm">Infographic Spec</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-tertiary font-label-mono-sm text-label-mono-sm">Video Script</span>
+</div>
+<button class="p-2 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors ml-1">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Item 4: Critical Infrastructure Ransomware Defense -->
+<div class="transformation-row bg-surface-container hover:bg-surface-container-high transition-colors rounded-xl p-4 sm:p-5 shadow-sm space-y-3 cursor-pointer" data-status="completed">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-error shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[22px]">emergency</span>
+</div>
+<div>
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface">Critical Infrastructure Ransomware Defense Advisory</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">COMPLETED</span>
+<span class="inline-flex items-center gap-1 font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-lowest text-secondary">
+<span class="material-symbols-outlined text-[14px]">verified</span> Grounded RAG
+                </span>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant font-caption text-caption mt-1 flex-wrap">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">terminal</span> Prompt Direction (Incident Commander Template)</span>
+<span>•</span>
+<span>Clearance: CISA Tier 1</span>
+<span>•</span>
+<span>Updated 2 days ago by <strong class="text-on-surface font-normal">M. Kowalski</strong></span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 self-start md:self-center">
+<span class="font-label-mono-sm text-label-mono-sm text-outline hidden xl:inline">OUTPUTS:</span>
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-error font-label-mono-sm text-label-mono-sm">Advisory</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest text-primary font-label-mono-sm text-label-mono-sm">Executive Summary</span>
+</div>
+<button class="p-2 rounded hover:bg-surface-container-highest text-on-surface-variant transition-colors ml-1">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Demonstration: Clean Fallback / Empty State Container (Hidden by default) -->
+<div class="hidden rounded-xl bg-surface-container p-12 text-center flex-col items-center justify-center space-y-5 shadow-sm" id="empty-state-view">
+<div class="w-16 h-16 rounded-2xl bg-surface-container-highest flex items-center justify-center text-secondary">
+<svg class="w-8 h-8 text-secondary" fill="none" stroke="currentColor" stroke-width="1.75" viewbox="0 0 24 24">
+<rect height="7" rx="1.5" width="7" x="3" y="3"></rect>
+<rect height="7" rx="1.5" width="7" x="14" y="3"></rect>
+<rect height="7" rx="1.5" width="7" x="14" y="14"></rect>
+<rect height="7" rx="1.5" width="7" x="3" y="14"></rect>
+<path d="M10 6.5h4"></path>
+<path d="M6.5 10v4"></path>
+<path d="M17.5 10v4"></path>
+<path d="M10 17.5h4"></path>
+</svg>
+</div>
+<div class="max-w-md space-y-2">
+<h3 class="font-headline-md text-headline-md text-on-surface">No transformations yet</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Start with a source document, an analytical prompt, or both to generate your first verified communication artifacts.
+        </p>
+</div>
+<button class="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-primary-container text-on-primary font-headline-sm text-headline-sm hover:bg-primary-container/90 transition-all shadow-[0_0_12px_rgba(37,99,235,0.3)]">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span>+ Create Transformation</span>
+</button>
+</div>
+</section>
+<!-- 6. Projects / Workspace Overview Section -->
+<section class="space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Workspaces & Project Libraries</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Compartmentalized security domains with independent RAG vector stores.</p>
+</div>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-body-sm text-body-sm transition-colors self-start sm:self-auto shadow-sm">
+<span class="material-symbols-outlined text-[18px]">create_new_folder</span>
+<span>+ New Project</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Project 1: Threat Intelligence -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-secondary text-[24px]">radar</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Active 14m ago</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors">Threat Intelligence</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+              Continuous monitoring, CVE bulletins, and adversary TTP translation.
+            </p>
+</div>
+</div>
+<div class="pt-5 space-y-3">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-on-surface-variant bg-surface-container-lowest px-2.5 py-1.5 rounded">
+<span>18 Transformations</span>
+<span class="text-secondary font-medium">44 Artifacts</span>
+</div>
+<div class="flex items-center justify-between pt-1">
+<a class="font-body-sm text-body-sm text-primary hover:underline" href="#">Open Project</a>
+<button class="font-label-mono-sm text-label-mono-sm text-on-surface-variant hover:text-on-surface px-2 py-1 rounded hover:bg-surface-container-highest transition-colors">+ Transform</button>
+</div>
+</div>
+</div>
+<!-- Project 2: Policy & Regulatory Comms -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-primary text-[24px]">balance</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Active 3h ago</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors">Policy & Regulatory Comms</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+              Government mandates, compliance guidelines, and executive briefings.
+            </p>
+</div>
+</div>
+<div class="pt-5 space-y-3">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-on-surface-variant bg-surface-container-lowest px-2.5 py-1.5 rounded">
+<span>12 Transformations</span>
+<span class="text-primary font-medium">31 Artifacts</span>
+</div>
+<div class="flex items-center justify-between pt-1">
+<a class="font-body-sm text-body-sm text-primary hover:underline" href="#">Open Project</a>
+<button class="font-label-mono-sm text-label-mono-sm text-on-surface-variant hover:text-on-surface px-2 py-1 rounded hover:bg-surface-container-highest transition-colors">+ Transform</button>
+</div>
+</div>
+</div>
+<!-- Project 3: Incident Response -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-error text-[24px]">campaign</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Active Yesterday</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-error transition-colors">Incident Response</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+              Real-time incident disclosure, crisis threads, and customer notifications.
+            </p>
+</div>
+</div>
+<div class="pt-5 space-y-3">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-on-surface-variant bg-surface-container-lowest px-2.5 py-1.5 rounded">
+<span>29 Transformations</span>
+<span class="text-error font-medium">86 Artifacts</span>
+</div>
+<div class="flex items-center justify-between pt-1">
+<a class="font-body-sm text-body-sm text-primary hover:underline" href="#">Open Project</a>
+<button class="font-label-mono-sm text-label-mono-sm text-on-surface-variant hover:text-on-surface px-2 py-1 rounded hover:bg-surface-container-highest transition-colors">+ Transform</button>
+</div>
+</div>
+</div>
+<!-- Project 4: Research Briefs -->
+<div class="bg-surface-container rounded-xl p-5 hover:bg-surface-container-high transition-all shadow-sm flex flex-col justify-between group">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-tertiary text-[24px]">biotech</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Active 3d ago</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-tertiary transition-colors">Research Briefs</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-normal">
+              Academic papers, market syntheses, and technical defense whitepapers.
+            </p>
+</div>
+</div>
+<div class="pt-5 space-y-3">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-on-surface-variant bg-surface-container-lowest px-2.5 py-1.5 rounded">
+<span>8 Transformations</span>
+<span class="text-tertiary font-medium">19 Artifacts</span>
+</div>
+<div class="flex items-center justify-between pt-1">
+<a class="font-body-sm text-body-sm text-primary hover:underline" href="#">Open Project</a>
+<button class="font-label-mono-sm text-label-mono-sm text-on-surface-variant hover:text-on-surface px-2 py-1 rounded hover:bg-surface-container-highest transition-colors">+ Transform</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive Modal: Quick Create Transformation Overlay -->
+<div class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4" id="transformation-modal">
+<div class="bg-surface-container-high w-full max-w-2xl rounded-2xl p-6 lg:p-7 shadow-2xl space-y-6 relative border border-outline-variant/30">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[18px]">add_task</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Initiate Transformation</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Step 1: Choose input configuration & target outputs</p>
+</div>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface" id="close-modal-btn">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="space-y-4">
+<div>
+<label class="font-label-mono-sm text-label-mono-sm text-on-surface uppercase block mb-1.5">Project Workspace</label>
+<select class="w-full bg-surface-container-lowest px-3 py-2 rounded text-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container">
+<option>Threat Intelligence (Default)</option>
+<option>Policy & Regulatory Comms</option>
+<option>Incident Response</option>
+<option>Research Briefs</option>
+</select>
+</div>
+<div>
+<label class="font-label-mono-sm text-label-mono-sm text-on-surface uppercase block mb-1.5">Transformation Vector</label>
+<div class="grid grid-cols-3 gap-2">
+<button class="px-3 py-2.5 rounded bg-surface-container hover:bg-surface-container-highest text-left text-body-sm text-on-surface focus:ring-1 focus:ring-secondary" type="button">
+<span class="block font-headline-sm text-body-sm">Source Only</span>
+<span class="font-caption text-[11px] text-on-surface-variant">Upload documents</span>
+</button>
+<button class="px-3 py-2.5 rounded bg-surface-container hover:bg-surface-container-highest text-left text-body-sm text-on-surface focus:ring-1 focus:ring-secondary" type="button">
+<span class="block font-headline-sm text-body-sm">Prompt Only</span>
+<span class="font-caption text-[11px] text-on-surface-variant">Direct instruction</span>
+</button>
+<button class="px-3 py-2.5 rounded bg-primary-container/20 text-secondary text-left text-body-sm ring-1 ring-secondary" type="button">
+<span class="block font-headline-sm text-body-sm">Source + Prompt</span>
+<span class="font-caption text-[11px] text-secondary/80">Recommended</span>
+</button>
+</div>
+</div>
+<div class="p-6 border-2 border-dashed border-surface-container-highest rounded-xl text-center space-y-2 bg-surface-container-lowest/50">
+<span class="material-symbols-outlined text-outline text-[32px]">cloud_upload</span>
+<p class="font-body-sm text-body-sm text-on-surface">Drag & drop reference files (PDF, DOCX, STIX, CSV)</p>
+<p class="font-caption text-caption text-outline">Deterministic OCR + RAG chunking pipeline applied automatically</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2">
+<div class="flex items-center gap-1.5 text-secondary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>Zero Data Retention Active</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 rounded bg-surface-container text-on-surface font-body-sm text-body-sm hover:bg-surface-container-highest" id="cancel-modal-btn">Cancel</button>
+<button class="px-4 py-2 rounded bg-primary-container text-on-primary font-headline-sm text-body-sm hover:bg-primary-container/90 shadow-[0_0_12px_rgba(37,99,235,0.3)]">Proceed to Output Specs</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Filter tabs behavior
+  const filterTabs = document.querySelectorAll('.filter-tab');
+  const rows = document.querySelectorAll('.transformation-row');
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      filterTabs.forEach(t => {
+        t.classList.remove('bg-surface-container-highest', 'text-on-surface');
+        t.classList.add('text-on-surface-variant');
+      });
+      tab.classList.add('bg-surface-container-highest', 'text-on-surface');
+      tab.classList.remove('text-on-surface-variant');
+
+      const filter = tab.getAttribute('data-filter');
+      rows.forEach(row => {
+        if (filter === 'all') {
+          row.style.display = 'block';
+        } else if (filter === 'completed' && row.getAttribute('data-status') === 'completed') {
+          row.style.display = 'block';
+        } else if (filter === 'processing' && row.getAttribute('data-status') === 'processing') {
+          row.style.display = 'block';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  });
+
+  // Client-side search filtering
+  const searchInput = document.getElementById('recent-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase();
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(val) ? 'block' : 'none';
+      });
+    });
+  }
+
+  // Toggle Empty State Demonstration
+  const emptyToggle = document.getElementById('toggle-empty-state');
+  const transContainer = document.getElementById('transformations-container');
+  const emptyView = document.getElementById('empty-state-view');
+  let showingEmpty = false;
+
+  if (emptyToggle && transContainer && emptyView) {
+    emptyToggle.addEventListener('click', () => {
+      showingEmpty = !showingEmpty;
+      if (showingEmpty) {
+        transContainer.classList.add('hidden');
+        emptyView.classList.remove('hidden');
+        emptyView.classList.add('flex');
+        emptyToggle.innerHTML = '<span class="material-symbols-outlined text-[16px]">restart_alt</span><span>Restore Live Items</span>';
+      } else {
+        transContainer.classList.remove('hidden');
+        emptyView.classList.add('hidden');
+        emptyView.classList.remove('flex');
+        emptyToggle.innerHTML = '<span class="material-symbols-outlined text-[16px]">visibility</span><span>Preview Clean Slate</span>';
+      }
+    });
+  }
+
+  // Quick Modal Open / Close
+  const modal = document.getElementById('transformation-modal');
+  const openModalBtn = document.getElementById('open-new-trans-modal');
+  const closeModalBtn = document.getElementById('close-modal-btn');
+  const cancelModalBtn = document.getElementById('cancel-modal-btn');
+
+  if (openModalBtn && modal) {
+    openModalBtn.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    });
+  }
+
+  const hideModal = () => {
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  };
+
+  if (closeModalBtn) closeModalBtn.addEventListener('click', hideModal);
+  if (cancelModalBtn) cancelModalBtn.addEventListener('click', hideModal);
+</script></main></div></body></html>

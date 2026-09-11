@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary":"#003640","on-secondary-container":"#00424e","surface-tint":"#b4c5ff","primary-fixed-dim":"#b4c5ff","on-background":"#dfe2ee","on-error":"#690005","inverse-surface":"#dfe2ee","on-surface-variant":"#c3c6d7","inverse-on-surface":"#2c3039","surface-bright":"#353942","error":"#ffb4ab","outline":"#8d90a0","error-container":"#93000a","surface-dim":"#0f131c","surface-container":"#1c2028","tertiary-fixed":"#e1e0ff","surface-container-high":"#262a33","on-tertiary-fixed":"#07006c","secondary-fixed":"#acedff","surface":"#0f131c","tertiary-fixed-dim":"#c0c1ff","background":"#0f131c","on-primary-container":"#eeefff","on-secondary-fixed-variant":"#004e5c","tertiary":"#c0c1ff","secondary-fixed-dim":"#4cd7f6","on-primary-fixed-variant":"#003ea8","outline-variant":"#434655","on-secondary-fixed":"#001f26","on-primary":"#002a78","surface-variant":"#31353e","on-tertiary":"#1000a9","on-error-container":"#ffdad6","primary":"#b4c5ff","secondary":"#4cd7f6","surface-container-lowest":"#0a0e16","surface-container-highest":"#31353e","on-tertiary-container":"#f1eeff","tertiary-container":"#585be6","primary-fixed":"#dbe1ff","surface-container-low":"#181c24","on-tertiary-fixed-variant":"#2f2ebe","on-primary-fixed":"#00174b","secondary-container":"#03b5d3","on-surface":"#dfe2ee","inverse-primary":"#0053db","primary-container":"#2563eb"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"inspector-width":"24rem","grid-margin-tablet":"1rem","rail-width-collapsed":"4rem","grid-margin-desktop":"1.5rem","grid-margin-mobile":"0.75rem","card-padding-dense":"0.75rem","rail-width-expanded":"16rem","panel-gap":"1rem","card-padding-regular":"1.25rem"},fontFamily:{"label-mono-sm":["JetBrains Mono"],"headline-md":["Geist"],"body-md":["Geist"],caption:["Geist"],"headline-xl":["Geist"],"headline-lg":["Geist"],"label-mono-md":["JetBrains Mono"],"body-sm":["Geist"],"body-lg":["Geist"],"headline-sm":["Geist"],"headline-xl-mobile":["Geist"]},fontSize:{"label-mono-sm":["11px",{lineHeight:"14px",letterSpacing:"0.04em",fontWeight:"500"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.015em",fontWeight:"500"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],caption:["12px",{lineHeight:"16px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-xl":["36px",{lineHeight:"44px",letterSpacing:"-0.025em",fontWeight:"600"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.02em",fontWeight:"600"}],"label-mono-md":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"500"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}],"body-lg":["16px",{lineHeight:"26px",letterSpacing:"-0.005em",fontWeight:"400"}],"headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-xl-mobile":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-rail-width-expanded bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-16 px-4 flex items-center justify-between"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm">T</div><span class="font-headline-sm text-headline-sm tracking-tight text-on-surface">TransformIQ</span></div><span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary uppercase">ENTERPRISE</span></div><div class="px-3 pt-2 pb-4"><button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-headline-sm rounded shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all"><span class="material-symbols-outlined text-[18px]">add_circle</span><span>+ Create Transformation</span></button></div><nav class="flex flex-col gap-1 px-3" data-active-classes="bg-surface-container-high text-on-surface font-headline-sm"><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-colors bg-surface-container-high text-on-surface font-headline-sm" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md text-body-md">Home</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="projects" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-body-md text-body-md">Projects</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="history" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-body-md text-body-md">History</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="security-activity" href="#"><span class="material-symbols-outlined text-[20px]">security</span><span class="font-body-md text-body-md">Security Activity</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">Settings</span></a></nav></div><div class="p-3 flex flex-col gap-3"><div class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-surface-container-lowest"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">Pipeline Active · Grounded RAG</span></div><div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-label-mono-md text-label-mono-md text-primary">EV</div><div class="flex flex-col"><span class="font-headline-sm text-body-sm text-on-surface leading-tight">Elena Vance</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Director of Threat Comms</span></div></div><span class="material-symbols-outlined text-on-surface-variant text-[18px]">unfold_more</span></div></div></aside><div class="pl-rail-width-expanded flex flex-col min-h-screen"><header class="fixed top-0 left-rail-width-expanded right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 flex items-center justify-between px-6 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-secondary text-[18px]">corporate_fare</span><span class="font-body-sm text-body-sm text-on-surface">Global Threat Intelligence Workspace</span><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div><div class="flex items-center flex-1 gap-2 bg-surface-container-lowest px-3 py-1.5 rounded max-w-md"><span class="material-symbols-outlined text-outline text-[18px]">search</span><input class="bg-transparent text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" placeholder="Search sources, transformations, artifacts... (Cmd + K)" type="text"/></div></div><div class="flex items-center gap-3.5"><div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high"><span class="material-symbols-outlined text-secondary text-[16px]">verified_user</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface">FIPS 140-3 Compliant</span></div><button class="relative p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button><div class="flex items-center gap-2 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Wb0FI5CBqMnx2ey5yRvFNJugjQNyoWPB0cVo8k2zqEAFWD3IMv1NqZEPiFkT-9iCicYO9EBT88ttxHDPLe7fqBURm46knL6RcDFAZpKrZRsr6g8T2y_6P_Qa7Om9jqlsnR7lmSRy3kWlwaOfW72oAfLIt2ofZGuZXPz-E7Rz7odsPKQkbYPZUzVFFpvmDlD5XlWgoAZRqOdcbnF3V00Ytp6DkYtFBqhi6KYbgwx_FIIEZkdOmZVzcg1Hg"/><span class="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span></div></div></header><main class="w-full pt-16 px-6 py-6 bg-background flex-1"><div class="flex flex-col w-full">
+<!-- Top Command & Workflow Bar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between pb-6 gap-4">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="hover:text-on-surface cursor-pointer transition-colors">Workspace</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-headline-sm">Create Transformation</span>
+<span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary-fixed-dim text-[10px] tracking-wider uppercase ml-1 font-label-mono-sm">RAG Stage 4.2</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Create Transformation</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Turn a source, prompt, or both into purpose-specific intelligence and executive communication.</p>
+</div>
+<!-- Quick Utilities & Job Dispatch Indicator -->
+<div class="flex items-center gap-3">
+<button class="px-3.5 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-headline-sm text-body-sm flex items-center gap-2 transition-all" id="btn-save-draft">
+<span class="material-symbols-outlined text-[18px] text-outline">bookmark_border</span>
+<span>Save Draft</span>
+</button>
+<button class="px-4 py-2 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm flex items-center gap-2 shadow-[0_0_16px_rgba(37,99,235,0.35)] transition-all" id="btn-simulate-pipeline">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+<span id="cta-action-label">Transform (Execute 5 Artifacts)</span>
+</button>
+</div>
+</div>
+<!-- Stepper Indicator -->
+<div class="bg-surface-container-low rounded-lg p-2.5 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+<!-- Step 1 -->
+<button class="step-nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded bg-surface-container-high text-on-surface text-left transition-all" id="step-tab-1" onclick="goToStep(1)">
+<div class="step-badge w-6 h-6 rounded flex items-center justify-center font-label-mono-sm text-label-mono-sm bg-primary-container text-on-primary">1</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface leading-tight truncate">1. Input Workspace</span>
+<span class="font-caption text-caption text-secondary truncate">Source & Prompt</span>
+</div>
+</button>
+<!-- Step 2 -->
+<button class="step-nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded hover:bg-surface-container text-on-surface-variant text-left transition-all" id="step-tab-2" onclick="goToStep(2)">
+<div class="step-badge w-6 h-6 rounded flex items-center justify-center font-label-mono-sm text-label-mono-sm bg-surface-container-highest text-on-surface">2</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface leading-tight truncate">2. Configure</span>
+<span class="font-caption text-caption text-outline truncate">Audience & Framing</span>
+</div>
+</button>
+<!-- Step 3 -->
+<button class="step-nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded hover:bg-surface-container text-on-surface-variant text-left transition-all" id="step-tab-3" onclick="goToStep(3)">
+<div class="step-badge w-6 h-6 rounded flex items-center justify-center font-label-mono-sm text-label-mono-sm bg-surface-container-highest text-on-surface">3</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface leading-tight truncate">3. Output Packages</span>
+<span class="font-caption text-caption text-outline truncate">5 Formats Selected</span>
+</div>
+</button>
+<!-- Step 4 -->
+<button class="step-nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded hover:bg-surface-container text-on-surface-variant text-left transition-all" id="step-tab-4" onclick="goToStep(4)">
+<div class="step-badge w-6 h-6 rounded flex items-center justify-center font-label-mono-sm text-label-mono-sm bg-surface-container-highest text-on-surface">4</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-body-sm text-on-surface leading-tight truncate">4. Review & Dispatch</span>
+<span class="font-caption text-caption text-outline truncate">Audit Verification</span>
+</div>
+</button>
+</div>
+</div>
+<!-- Operational Mode Notification Banner -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 rounded-lg bg-surface-container-low mb-6 gap-3">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[20px]">layers</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-body-sm text-on-surface">Operational Mode:</span>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-secondary/15 text-secondary tracking-wide uppercase" id="mode-status-badge">
+            Mode C: Source + Prompt Active
+          </span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant" id="mode-instruction-text">Provide a source document, a guidance mandate prompt, or combine both for deterministic grounded synthesis.</span>
+</div>
+</div>
+<div class="flex items-center gap-2 self-end sm:self-auto">
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Deterministic Engine</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary-fixed-dim">Enforced</span>
+</div>
+</div>
+<!-- MAIN WORKFLOW VIEW CONTAINER -->
+<div class="flex flex-col gap-6">
+<!-- ======================================================== -->
+<!-- STEP 1: INPUT WORKSPACE                                  -->
+<!-- ======================================================== -->
+<div class="step-view flex flex-col gap-6" id="step-container-1">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- LEFT COLUMN: SOURCE AREA (7 Cols) -->
+<div class="lg:col-span-7 flex flex-col bg-surface-container-low rounded-lg p-5">
+<div class="flex items-center justify-between pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">description</span>
+<span class="font-headline-md text-headline-sm text-on-surface">1. Primary Source Corpus</span>
+</div>
+<div class="flex items-center bg-surface-container p-0.5 rounded">
+<button class="px-2.5 py-1 text-caption font-label-mono-sm rounded bg-surface-container-high text-on-surface transition-colors" id="tab-file-mode" onclick="setSourceTab('file')">File Upload</button>
+<button class="px-2.5 py-1 text-caption font-label-mono-sm rounded text-outline hover:text-on-surface transition-colors" id="tab-text-mode" onclick="setSourceTab('text')">Raw Ingest</button>
+</div>
+</div>
+<!-- File Upload View -->
+<div class="flex flex-col gap-4" id="source-file-section">
+<!-- Active Document Card (Pre-populated Realistic State) -->
+<div class="flex flex-col p-4 rounded bg-surface-container" id="active-document-card">
+<div class="flex items-start justify-between gap-4">
+<div class="flex items-start gap-3.5">
+<div class="w-10 h-10 rounded bg-error-container/20 text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[24px]">picture_as_pdf</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-body-sm text-on-surface">Annual Threat Assessment 2025.pdf</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-[10px]">PARSED</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant mt-0.5">PDF Document · 2.4 MB · 48 Pages · Encrypted Digest SHA-256</span>
+<div class="flex items-center gap-3 mt-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">verified</span> 48/48 Pages Indexed</span>
+<span>·</span>
+<span class="text-on-surface-variant">OCR Text Confidence: 99.4%</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1.5 shrink-0">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" onclick="simulateReplaceFile()" title="Replace Source">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-error hover:bg-error/10 transition-colors" onclick="simulateRemoveFile()" title="Remove Document">
+<span class="material-symbols-outlined text-[18px]">delete_outline</span>
+</button>
+</div>
+</div>
+<!-- Inline Provenance Metrics Bar -->
+<div class="mt-4 pt-3 bg-surface-container-lowest/60 -mx-4 -mb-4 px-4 py-2.5 rounded-b flex items-center justify-between text-caption font-caption text-on-surface-variant">
+<div class="flex items-center gap-2 font-label-mono-sm text-label-mono-sm">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-on-surface">Embeddings Cached</span>
+<span class="text-outline">(1,420 chunks in active workspace memory)</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Ready for Synthesis</span>
+</div>
+</div>
+<!-- Drag & Drop Zone Area -->
+<div class="rounded p-6 bg-surface-container-lowest/40 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-surface-container-lowest/70 transition-all text-center" id="file-dropzone">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary mb-1">
+<span class="material-symbols-outlined text-[22px]">cloud_upload</span>
+</div>
+<p class="font-headline-sm text-body-sm text-on-surface">Upload additional intelligence artifact or drag & drop</p>
+<p class="font-caption text-caption text-outline">Supported formats: PDF, DOCX, TXT, STIX/TAXII JSON (Max 50MB per file)</p>
+<button class="mt-2 px-3 py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-mono-sm text-label-mono-sm transition-colors">
+                Browse System Files
+              </button>
+</div>
+</div>
+<!-- Raw Text Section (Toggled) -->
+<div class="hidden flex flex-col gap-3" id="source-text-section">
+<textarea class="w-full bg-surface-container rounded p-3 text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-high resize-none" id="raw-source-input" placeholder="Paste intelligence intercept, raw report excerpt, unformatted speech or notes here..." rows="8"></textarea>
+<div class="flex items-center justify-between text-caption font-label-mono-sm text-outline">
+<span>Supports plaintext, Markdown syntax, and structured logs</span>
+<span id="raw-char-counter">0 / 250,000 characters</span>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: PROMPT AREA (5 Cols) -->
+<div class="lg:col-span-5 flex flex-col bg-surface-container-low rounded-lg p-5">
+<div class="flex items-center justify-between pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">psychology</span>
+<span class="font-headline-md text-headline-sm text-on-surface">2. Strategic Prompt & Mandate</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase">Optional</span>
+</div>
+<div class="flex flex-col gap-3 flex-1">
+<p class="font-caption text-caption text-on-surface-variant">Guide how TransformIQ extracts, contextualizes, and refines the knowledge base.</p>
+<div class="relative flex-1 flex flex-col">
+<textarea class="w-full h-full min-h-[160px] bg-surface-container rounded p-3 text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-high resize-none" id="prompt-input" placeholder="Describe what you want TransformIQ to create... e.g., Create a concise executive briefing focused on major risks and immediate mitigations." rows="8">Extract key geopolitical supply chain exposure vectors for Q2, prioritize C-suite risk mitigations, and isolate specific compliance mandates.</textarea>
+<button class="absolute top-2 right-2 p-1 rounded text-outline hover:text-on-surface transition-colors" onclick="clearPrompt()" title="Clear text">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<!-- Quick Starter Presets -->
+<div class="flex flex-col gap-1.5 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Strategic Quick Directives:</span>
+<div class="flex flex-wrap gap-1.5">
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm transition-colors flex items-center gap-1" onclick="applyDirective('Executive BLUF Brief: Synthesize bottom-line-up-front actions.')">
+<span class="material-symbols-outlined text-[14px] text-secondary">bolt</span>
+                  Executive BLUF Brief
+                </button>
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm transition-colors flex items-center gap-1" onclick="applyDirective('Threat Mitigation Action Plan: Focus strictly on vulnerability remediations with 30-day timelines.')">
+<span class="material-symbols-outlined text-[14px] text-secondary">security</span>
+                  Mitigation Action Plan
+                </button>
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm transition-colors flex items-center gap-1" onclick="applyDirective('Crisis Disclosure Memo: Formulate transparent public narrative with zero speculative attribution.')">
+<span class="material-symbols-outlined text-[14px] text-secondary">announcement</span>
+                  Crisis Disclosure
+                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Navigation Footer -->
+<div class="flex items-center justify-between pt-2">
+<div class="flex items-center gap-2 font-caption text-caption text-outline">
+<span class="material-symbols-outlined text-[16px] text-secondary">info</span>
+<span>Source and prompt will be cross-anchored with Grounded RAG token guards.</span>
+</div>
+<button class="px-5 py-2.5 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm flex items-center gap-2 shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all" onclick="goToStep(2)">
+<span>Continue to Configuration</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- ======================================================== -->
+<!-- STEP 2: TRANSFORMATION CONFIGURATION                     -->
+<!-- ======================================================== -->
+<div class="step-view hidden flex flex-col gap-6" id="step-container-2">
+<div class="bg-surface-container-low rounded-lg p-6 flex flex-col gap-6">
+<div class="flex flex-col gap-1 pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[22px]">tune</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Transformation Configuration</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Calibrate synthesis tone, clearance posture, multilingual rendering, and structural intent.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- 1. Language Control (First-Class Citizen) -->
+<div class="flex flex-col gap-2 bg-surface-container p-4 rounded">
+<div class="flex items-center justify-between">
+<label class="font-headline-sm text-body-sm text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">translate</span>
+                Target Language
+              </label>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Native RAG</span>
+</div>
+<select class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded px-3 py-2 focus:outline-none focus:bg-surface-container-high cursor-pointer" id="config-language">
+<option selected="" value="en-US">English (US) — Official Corporate</option>
+<option value="en-GB">English (UK) — Diplomatic Standard</option>
+<option value="hi">Hindi (हिन्दी) — Formal Enterprise</option>
+<option value="mr">Marathi (मराठी) — Executive Regional</option>
+<option value="de">German (Deutsch) — Technisches Deutsch</option>
+<option value="fr">French (Français) — Direction Générale</option>
+<option value="ja">Japanese (日本語) — ビジネス敬語 (Keigo)</option>
+</select>
+<span class="font-caption text-caption text-outline">Output terminology will be strictly adapted to jurisdiction norms.</span>
+</div>
+<!-- 2. Target Audience -->
+<div class="flex flex-col gap-2 bg-surface-container p-4 rounded">
+<label class="font-headline-sm text-body-sm text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">group</span>
+              Target Audience
+            </label>
+<select class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded px-3 py-2 focus:outline-none cursor-pointer" id="config-audience">
+<option selected="" value="Executive">Executive (Board, CEO, VP Suite)</option>
+<option value="Analyst">Intelligence Analysts & Researchers</option>
+<option value="Technical Team">SecOps & Technical Engineering</option>
+<option value="General Audience">General Enterprise Employees</option>
+<option value="Public">Public & Regulatory Bodies</option>
+<option value="Social">Social Media & Industry Followers</option>
+</select>
+<span class="font-caption text-caption text-outline">Controls abstraction level and domain acronym retention.</span>
+</div>
+<!-- 3. Tone & Delivery -->
+<div class="flex flex-col gap-2 bg-surface-container p-4 rounded">
+<label class="font-headline-sm text-body-sm text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">record_voice_over</span>
+              Delivery Tone
+            </label>
+<select class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded px-3 py-2 focus:outline-none cursor-pointer" id="config-tone">
+<option selected="" value="Concise & Formal">Concise & Formal (No preamble)</option>
+<option value="Authoritative">Authoritative Threat Advisory</option>
+<option value="Persuasive">Persuasive Strategic Justification</option>
+<option value="Informative">Informative & Neutral</option>
+<option value="Technical">Deep Technical & Forensic</option>
+</select>
+<span class="font-caption text-caption text-outline">Ensures zero conversational fluff or speculative narrative.</span>
+</div>
+<!-- 4. Detail Level (Segmented Selector) -->
+<div class="flex flex-col gap-2 bg-surface-container p-4 rounded">
+<label class="font-headline-sm text-body-sm text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">format_align_justify</span>
+              Detail Depth
+            </label>
+<div class="grid grid-cols-3 gap-1 bg-surface-container-lowest p-1 rounded">
+<button class="detail-btn py-1.5 rounded text-caption font-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="setDetailLevel('Brief', this)">Brief</button>
+<button class="detail-btn py-1.5 rounded text-caption font-label-mono-sm bg-primary-container text-on-primary transition-colors" onclick="setDetailLevel('Standard', this)">Standard</button>
+<button class="detail-btn py-1.5 rounded text-caption font-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="setDetailLevel('Detailed', this)">Detailed</button>
+</div>
+<span class="font-caption text-caption text-outline">Target density: ~650 tokens per artifact container.</span>
+</div>
+<!-- 5. Strategic Objective -->
+<div class="flex flex-col gap-2 bg-surface-container p-4 rounded">
+<label class="font-headline-sm text-body-sm text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">flag</span>
+              Strategic Objective
+            </label>
+<div class="grid grid-cols-3 gap-1 bg-surface-container-lowest p-1 rounded">
+<button class="objective-btn py-1.5 rounded text-caption font-label-mono-sm bg-secondary/20 text-secondary transition-colors" onclick="setObjective('Brief', this)">Brief</button>
+<button class="objective-btn py-1.5 rounded text-caption font-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="setObjective('Summarize', this)">Summarize</button>
+<button class="objective-btn py-1.5 rounded text-caption font-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="setObjective('Advise', this)">Advise</button>
+</div>
+<span class="font-caption text-caption text-outline">Drives decision matrices and priority sequencing.</span>
+</div>
+<!-- 6. Style Framing -->
+<div class="flex flex-col gap-2 bg-surface-container p-4 rounded">
+<label class="font-headline-sm text-body-sm text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">dashboard_customize</span>
+              Style Archetype
+            </label>
+<select class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded px-3 py-2 focus:outline-none cursor-pointer" id="config-style">
+<option selected="" value="Executive">Executive Intelligence Brief</option>
+<option value="Analytical">Analytical Whitepaper</option>
+<option value="Advisory">Operational Risk Advisory</option>
+<option value="News-style">News Flash / Threat Dispatch</option>
+<option value="Technical">Technical Runbook Schema</option>
+</select>
+<span class="font-caption text-caption text-outline">Applies verified enterprise formatting frameworks.</span>
+</div>
+</div>
+<!-- 7. Intent / Situational Context Buffer -->
+<div class="flex flex-col gap-2 bg-surface-container p-4 rounded">
+<label class="font-headline-sm text-body-sm text-on-surface flex items-center justify-between">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">add_comment</span>
+              Situational Context & Critical Intent
+            </span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Injected as priority constraint</span>
+</label>
+<input class="w-full bg-surface-container-lowest text-on-surface font-body-md text-body-md rounded px-3.5 py-2 focus:outline-none focus:bg-surface-container-high" id="config-intent" placeholder="Add specific scheduling, audience sensitivities, or decision deadlines..." type="text" value="Board meeting briefing scheduled for Thursday; highlight fiscal liability and Q2 supply chain exposure."/>
+</div>
+</div>
+<!-- Action Navigation Footer -->
+<div class="flex items-center justify-between pt-2">
+<button class="px-4 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-headline-sm text-body-sm flex items-center gap-2 transition-all" onclick="goToStep(1)">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Back to Input</span>
+</button>
+<button class="px-5 py-2.5 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm flex items-center gap-2 shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all" onclick="goToStep(3)">
+<span>Continue to Output Selection</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- ======================================================== -->
+<!-- STEP 3: OUTPUT SELECTION                                 -->
+<!-- ======================================================== -->
+<div class="step-view hidden flex flex-col gap-6" id="step-container-3">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[22px]">output</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Choose Your Outputs</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Select target communication artifacts. TransformIQ simultaneously maps grounded citations across each output.</p>
+</div>
+<!-- Batch Action Controls -->
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm transition-colors" onclick="selectAllOutputs(true)">
+            Select All
+          </button>
+<button class="px-2.5 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-outline hover:text-on-surface font-label-mono-sm text-label-mono-sm transition-colors" onclick="selectAllOutputs(false)">
+            Reset Selection
+          </button>
+<button class="px-3 py-1.5 rounded bg-secondary/15 hover:bg-secondary/25 text-secondary font-label-mono-sm text-label-mono-sm flex items-center gap-1 transition-colors" onclick="applyOutputPreset('csuite')">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+<span>Preset: C-Suite Dossier</span>
+</button>
+</div>
+</div>
+<!-- 7 Polished Output Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+<!-- 1. Executive Summary (Selected) -->
+<div class="output-card cursor-pointer flex flex-col justify-between p-4 rounded-lg bg-surface-container-low transition-all bg-surface-container-high ring-1 ring-primary shadow-[0_0_12px_rgba(37,99,235,0.2)]" data-output-id="exec-summary" onclick="toggleOutputCard(this)">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div class="w-9 h-9 rounded bg-primary-container/20 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">summarize</span>
+</div>
+<div class="output-checkbox w-5 h-5 rounded bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Executive Summary</span>
+<p class="font-body-sm text-caption text-on-surface-variant mt-1">Concise, decision-ready summary framed with key intelligence findings and immediate board impact.</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-3 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="text-secondary">~450 tokens</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface">Markdown / PDF</span>
+</div>
+</div>
+<!-- 2. LinkedIn Post (Selected) -->
+<div class="output-card cursor-pointer flex flex-col justify-between p-4 rounded-lg bg-surface-container-low transition-all bg-surface-container-high ring-1 ring-primary shadow-[0_0_12px_rgba(37,99,235,0.2)]" data-output-id="linkedin" onclick="toggleOutputCard(this)">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div class="w-9 h-9 rounded bg-secondary/15 text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</div>
+<div class="output-checkbox w-5 h-5 rounded bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">LinkedIn Communication</span>
+<p class="font-body-sm text-caption text-on-surface-variant mt-1">Professional industry thought leadership narrative with structural hook lines and hashtags.</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-3 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="text-secondary">~320 tokens</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface">Social Copy</span>
+</div>
+</div>
+<!-- 3. Advisory (Selected) -->
+<div class="output-card cursor-pointer flex flex-col justify-between p-4 rounded-lg bg-surface-container-low transition-all bg-surface-container-high ring-1 ring-primary shadow-[0_0_12px_rgba(37,99,235,0.2)]" data-output-id="advisory" onclick="toggleOutputCard(this)">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div class="w-9 h-9 rounded bg-error-container/20 text-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+</div>
+<div class="output-checkbox w-5 h-5 rounded bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Threat Advisory Memo</span>
+<p class="font-body-sm text-caption text-on-surface-variant mt-1">Structured operational guidance document with severity indicators, CVE cross-refs, and actions.</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-3 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="text-secondary">~850 tokens</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface">DOCX / HTML</span>
+</div>
+</div>
+<!-- 4. Presentation (Selected) -->
+<div class="output-card cursor-pointer flex flex-col justify-between p-4 rounded-lg bg-surface-container-low transition-all bg-surface-container-high ring-1 ring-primary shadow-[0_0_12px_rgba(37,99,235,0.2)]" data-output-id="presentation" onclick="toggleOutputCard(this)">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div class="w-9 h-9 rounded bg-tertiary-container/30 text-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">slideshow</span>
+</div>
+<div class="output-checkbox w-5 h-5 rounded bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Slide Deck & Speaker Notes</span>
+<p class="font-body-sm text-caption text-on-surface-variant mt-1">6-slide presentation blueprint with header hierarchy, bulleted assertions, and spoken cadence.</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-3 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="text-secondary">~1,100 tokens</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface">PPTX Schema</span>
+</div>
+</div>
+<!-- 5. X Thread (Unselected) -->
+<div class="output-card cursor-pointer flex flex-col justify-between p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all" data-output-id="x-thread" onclick="toggleOutputCard(this)">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div class="w-9 h-9 rounded bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">forum</span>
+</div>
+<div class="output-checkbox w-5 h-5 rounded bg-surface-container-highest text-transparent flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">X / Twitter Thread</span>
+<p class="font-body-sm text-caption text-on-surface-variant mt-1">Concise 5-post thread optimized for rapid public dissemination and threat awareness.</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-3 font-label-mono-sm text-label-mono-sm text-outline">
+<span>~280 tokens</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">Threaded Text</span>
+</div>
+</div>
+<!-- 6. Infographic Package (Selected) -->
+<div class="output-card cursor-pointer flex flex-col justify-between p-4 rounded-lg bg-surface-container-low transition-all bg-surface-container-high ring-1 ring-primary shadow-[0_0_12px_rgba(37,99,235,0.2)]" data-output-id="infographic" onclick="toggleOutputCard(this)">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div class="w-9 h-9 rounded bg-secondary-container/20 text-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">view_quilt</span>
+</div>
+<div class="output-checkbox w-5 h-5 rounded bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Infographic Blueprint</span>
+<p class="font-body-sm text-caption text-on-surface-variant mt-1">Structured visual communication spec: stat callouts, matrix data, chart coordinate suggestions.</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-3 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="text-secondary">~620 tokens</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface">Visual JSON / SVG</span>
+</div>
+</div>
+<!-- 7. Video Package (Unselected) -->
+<div class="output-card cursor-pointer flex flex-col justify-between p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all" data-output-id="video-package" onclick="toggleOutputCard(this)">
+<div class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div class="w-9 h-9 rounded bg-surface-container text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">movie</span>
+</div>
+<div class="output-checkbox w-5 h-5 rounded bg-surface-container-highest text-transparent flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-sm text-on-surface">Video Production Package</span>
+<p class="font-body-sm text-caption text-on-surface-variant mt-1">90-second video script with B-roll visual cues, teleprompter timing notes (Script spec, not raw MP4).</p>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-3 font-label-mono-sm text-label-mono-sm text-outline">
+<span>~950 tokens</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">Audio/Visual Script</span>
+</div>
+</div>
+</div>
+<!-- Action Navigation Footer -->
+<div class="flex items-center justify-between pt-2">
+<button class="px-4 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-headline-sm text-body-sm flex items-center gap-2 transition-all" onclick="goToStep(2)">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Back to Configuration</span>
+</button>
+<button class="px-5 py-2.5 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm flex items-center gap-2 shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all" onclick="goToStep(4)">
+<span>Review & Ready to Execute</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- ======================================================== -->
+<!-- STEP 4: REVIEW & CONFIRMATION PANEL                      -->
+<!-- ======================================================== -->
+<div class="step-view hidden flex flex-col gap-6" id="step-container-4">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Summary Card (8 Cols) -->
+<div class="lg:col-span-8 flex flex-col gap-4 bg-surface-container-low rounded-lg p-6">
+<div class="flex items-center justify-between pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[22px]">verified</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Transformation Blueprint Audit</h2>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-secondary/10 text-secondary">
+              PASS: GUARDRAILS VALIDATED
+            </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Review synthesis parameters prior to parallel dispatch across the Grounded RAG neural pipeline.</p>
+<!-- Review Blocks -->
+<div class="flex flex-col gap-3 mt-2">
+<!-- Block 1: Inputs -->
+<div class="bg-surface-container p-4 rounded flex flex-col gap-2">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-outline uppercase">
+<span class="flex items-center gap-1.5 text-primary"><span class="material-symbols-outlined text-[16px]">input</span> Step 1: Input Corpus</span>
+<button class="hover:text-on-surface underline" onclick="goToStep(1)">Edit</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-outline">Source Asset</span>
+<span class="font-headline-sm text-body-sm text-on-surface">Annual Threat Assessment 2025.pdf</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">48 Pages · 1,420 Chunks Cached</span>
+</div>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-outline">Strategic Directive</span>
+<span class="font-headline-sm text-body-sm text-on-surface truncate">Extract key geopolitical supply chain exposure vectors...</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">Executive BLUF Prioritization</span>
+</div>
+</div>
+</div>
+<!-- Block 2: Configuration -->
+<div class="bg-surface-container p-4 rounded flex flex-col gap-2">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-outline uppercase">
+<span class="flex items-center gap-1.5 text-primary"><span class="material-symbols-outlined text-[16px]">tune</span> Step 2: Configuration</span>
+<button class="hover:text-on-surface underline" onclick="goToStep(2)">Edit</button>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-1 font-label-mono-sm text-label-mono-sm">
+<div class="flex flex-col">
+<span class="text-outline">Language</span>
+<span class="text-on-surface">English (US)</span>
+</div>
+<div class="flex flex-col">
+<span class="text-outline">Audience</span>
+<span class="text-on-surface">Executive</span>
+</div>
+<div class="flex flex-col">
+<span class="text-outline">Tone</span>
+<span class="text-on-surface">Concise & Formal</span>
+</div>
+<div class="flex flex-col">
+<span class="text-outline">Detail</span>
+<span class="text-on-surface">Standard</span>
+</div>
+<div class="flex flex-col">
+<span class="text-outline">Objective</span>
+<span class="text-on-surface">Brief</span>
+</div>
+<div class="flex flex-col">
+<span class="text-outline">Style</span>
+<span class="text-on-surface">Executive Brief</span>
+</div>
+</div>
+</div>
+<!-- Block 3: Outputs -->
+<div class="bg-surface-container p-4 rounded flex flex-col gap-2">
+<div class="flex items-center justify-between font-label-mono-sm text-label-mono-sm text-outline uppercase">
+<span class="flex items-center gap-1.5 text-primary"><span class="material-symbols-outlined text-[16px]">output</span> Step 3: Targeted Outputs (5 Artifacts)</span>
+<button class="hover:text-on-surface underline" onclick="goToStep(3)">Edit</button>
+</div>
+<div class="flex flex-wrap gap-2 pt-1">
+<span class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">check</span> Executive Summary
+                </span>
+<span class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">check</span> LinkedIn Post
+                </span>
+<span class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">check</span> Advisory Memo
+                </span>
+<span class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">check</span> Presentation Deck
+                </span>
+<span class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[14px]">check</span> Infographic Blueprint
+                </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Security & Execution Action Dock (4 Cols) -->
+<div class="lg:col-span-4 flex flex-col gap-4">
+<div class="bg-surface-container-low rounded-lg p-5 flex flex-col gap-4">
+<span class="font-headline-sm text-body-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">lock</span>
+              Compliance & Provenance
+            </span>
+<div class="flex flex-col gap-2 font-body-sm text-body-sm">
+<div class="flex items-center justify-between py-1.5 bg-surface-container px-2.5 rounded">
+<span class="text-on-surface-variant font-caption text-caption">Security Clearance</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">FIPS 140-3 Compliant</span>
+</div>
+<div class="flex items-center justify-between py-1.5 bg-surface-container px-2.5 rounded">
+<span class="text-on-surface-variant font-caption text-caption">PII Redaction Engine</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">Auto-Redact Active</span>
+</div>
+<div class="flex items-center justify-between py-1.5 bg-surface-container px-2.5 rounded">
+<span class="text-on-surface-variant font-caption text-caption">Token Allocation</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">~3,340 tokens (Est.)</span>
+</div>
+<div class="flex items-center justify-between py-1.5 bg-surface-container px-2.5 rounded">
+<span class="text-on-surface-variant font-caption text-caption">Vector Model</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">TIQ-Titan-Vector-v3</span>
+</div>
+</div>
+<!-- Primary Dispatch CTA -->
+<button class="w-full py-3 px-4 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-md flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all" onclick="launchExecutionModal()">
+<span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+<span>+ Transform (Execute 5 Artifacts)</span>
+</button>
+<p class="font-caption text-caption text-outline text-center">TransformIQ guarantees line-by-line attribution back to source vector chunks.</p>
+</div>
+<!-- Quick Test / Error Simulation Switcher for Operators -->
+<div class="bg-surface-container-low rounded-lg p-4 flex flex-col gap-2">
+<span class="font-label-mono-sm text-label-mono-sm text-outline uppercase flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">bug_report</span> Simulator Controls
+            </span>
+<div class="grid grid-cols-2 gap-2 pt-1">
+<button class="px-2 py-1.5 text-caption font-label-mono-sm rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-left" onclick="simulateError('empty')">
+                Test Empty Error
+              </button>
+<button class="px-2 py-1.5 text-caption font-label-mono-sm rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-left" onclick="simulateError('corrupt')">
+                Test Corrupt Error
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Navigation Footer -->
+<div class="flex items-center justify-between pt-2">
+<button class="px-4 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-headline-sm text-body-sm flex items-center gap-2 transition-all" onclick="goToStep(3)">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Back to Outputs</span>
+</button>
+<button class="px-5 py-2.5 rounded bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-sm text-body-sm flex items-center gap-2 shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all" onclick="launchExecutionModal()">
+<span>Dispatch Transformation</span>
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</button>
+</div>
+</div>
+</div>
+<!-- ======================================================== -->
+<!-- MODAL / OVERLAY: LIVE PIPELINE EXECUTION                 -->
+<!-- ======================================================== -->
+<div class="fixed inset-0 bg-surface-container-lowest/80 backdrop-blur-md z-50 hidden items-center justify-center p-4" id="execution-modal">
+<div class="bg-surface-container-low rounded-xl w-full max-w-2xl overflow-hidden shadow-[0_16px_48px_rgba(0,0,0,0.6)] flex flex-col">
+<!-- Execution Header -->
+<div class="p-5 bg-surface-container flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[20px] animate-spin">autorenew</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-body-md text-on-surface">Transformation in progress</span>
+<span class="font-label-mono-sm text-label-mono-sm px-1.5 py-0.5 rounded bg-secondary/15 text-secondary">JOB #TRQ-88219</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Executing deterministic RAG pipeline across 5 outputs</span>
+</div>
+</div>
+<button class="p-1 rounded text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors" onclick="closeExecutionModal()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Pipeline Multi-Stage Tracker -->
+<div class="p-6 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+<!-- Stage 1: Ingestion -->
+<div class="flex items-start gap-3.5">
+<div class="w-6 h-6 rounded-full bg-secondary/20 text-secondary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<div class="flex flex-col flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface">Stage 1: Input Ingestion & PDF Parsing</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">COMPLETED (120ms)</span>
+</div>
+<span class="font-caption text-caption text-outline">48 pages extracted · 1,420 token vectors normalized · OCR verified</span>
+</div>
+</div>
+<!-- Stage 2: Security & Guardrails (Running) -->
+<div class="flex items-start gap-3.5">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center shrink-0 mt-0.5 animate-pulse">
+<span class="material-symbols-outlined text-[16px]">hourglass_top</span>
+</div>
+<div class="flex flex-col flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface">Stage 2: Security & Guardrail Checks</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+                RUNNING (Stage 2/6)
+              </span>
+</div>
+<!-- Sub-checks breakdown -->
+<div class="mt-2.5 p-3 rounded bg-surface-container flex flex-col gap-2 font-label-mono-sm text-label-mono-sm">
+<div class="flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-1.5 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Input Validation & Format Conformance</span>
+<span class="text-secondary">Passed</span>
+</div>
+<div class="flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-1.5 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Malware, Macro & Binary Signature Scan</span>
+<span class="text-secondary">Clean (0 threats)</span>
+</div>
+<div class="flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-1.5 text-secondary"><span class="material-symbols-outlined text-[14px]">check_circle</span> PII & Secret Scrubbing</span>
+<span class="text-secondary">3 Internal IPs Redacted</span>
+</div>
+<div class="flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-1.5 text-primary"><span class="material-symbols-outlined text-[14px] animate-spin">sync</span> Prompt-Injection Defense Verification</span>
+<span class="text-primary-fixed-dim">Verifying... (99.8% safe)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Stage 3: Vector RAG Anchoring -->
+<div class="flex items-start gap-3.5 opacity-60">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-outline flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+</div>
+<div class="flex flex-col flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface">Stage 3: Context & Vector RAG Anchoring</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">QUEUED</span>
+</div>
+<span class="font-caption text-caption text-outline">Synthesizing similarity matrices against organizational graph</span>
+</div>
+</div>
+<!-- Stage 4: Controlled Synthesis -->
+<div class="flex items-start gap-3.5 opacity-60">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-outline flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+</div>
+<div class="flex flex-col flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface">Stage 4: Controlled Synthesis & Generation</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">QUEUED</span>
+</div>
+<span class="font-caption text-caption text-outline">Parallel rendering 5 output formats in English (US)</span>
+</div>
+</div>
+<!-- Stage 5: Line-by-Line Provenance -->
+<div class="flex items-start gap-3.5 opacity-60">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-outline flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+</div>
+<div class="flex flex-col flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface">Stage 5: Evidence & Line-by-Line Provenance Trace</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">QUEUED</span>
+</div>
+<span class="font-caption text-caption text-outline">Attributing every statement to source coordinates</span>
+</div>
+</div>
+<!-- Stage 6: Cryptographic Seal -->
+<div class="flex items-start gap-3.5 opacity-60">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-outline flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+</div>
+<div class="flex flex-col flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-sm text-on-surface">Stage 6: Artifact Cryptographic Seal & Export</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">QUEUED</span>
+</div>
+<span class="font-caption text-caption text-outline">Generating audit package bundle with SHA-256 seal</span>
+</div>
+</div>
+</div>
+<!-- Modal Footer Telemetry -->
+<div class="p-4 bg-surface-container-lowest flex items-center justify-between">
+<div class="flex items-center gap-2 font-label-mono-sm text-label-mono-sm text-outline">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span>Latency: ~3.4s remaining</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm transition-colors" onclick="closeExecutionModal()">
+            Run in Background
+          </button>
+<button class="px-3.5 py-1.5 rounded bg-secondary/20 hover:bg-secondary/30 text-secondary font-label-mono-sm text-label-mono-sm transition-colors" onclick="simulateFinishExecution()">
+            Preview Finished Artifacts
+          </button>
+</div>
+</div>
+</div>
+</div>
+<!-- ======================================================== -->
+<!-- ENTERPRISE ERROR STATE NOTIFICATIONS (DYNAMIC)           -->
+<!-- ======================================================== -->
+<div class="fixed bottom-6 right-6 max-w-md bg-surface-container-low p-4 rounded-lg shadow-2xl hidden z-50 flex items-start gap-3" id="error-toast">
+<div class="w-8 h-8 rounded bg-error-container/20 text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">error_outline</span>
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-headline-sm text-body-sm text-error" id="error-toast-title">Input Validation Error</span>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5" id="error-toast-msg">Provide a source, a prompt, or both to initialize the transformation engine.</p>
+</div>
+<button class="p-1 rounded text-outline hover:text-on-surface transition-colors" onclick="dismissError()">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<!-- Client-side Interactive Logic -->
+<script>
+  let currentStep = 1;
+  let hasSource = true;
+  let hasPrompt = true;
+
+  // Step Navigation Logic
+  function goToStep(stepNumber) {
+    currentStep = stepNumber;
+    
+    // Hide all steps
+    document.querySelectorAll('.step-view').forEach(el => {
+      el.classList.add('hidden');
+    });
+
+    // Show target step
+    const target = document.getElementById(`step-container-${stepNumber}`);
+    if (target) {
+      target.classList.remove('hidden');
+    }
+
+    // Update Stepper Navigation visuals
+    for (let i = 1; i <= 4; i++) {
+      const tab = document.getElementById(`step-tab-i`.replace('i', i));
+      const badge = tab.querySelector('.step-badge');
+      
+      if (i === stepNumber) {
+        tab.className = "step-nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded bg-surface-container-high text-on-surface text-left transition-all";
+        badge.className = "step-badge w-6 h-6 rounded flex items-center justify-center font-label-mono-sm text-label-mono-sm bg-primary-container text-on-primary";
+      } else if (i < stepNumber) {
+        tab.className = "step-nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded bg-surface-container text-on-surface text-left transition-all";
+        badge.className = "step-badge w-6 h-6 rounded flex items-center justify-center font-label-mono-sm text-label-mono-sm bg-secondary/20 text-secondary";
+      } else {
+        tab.className = "step-nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded hover:bg-surface-container text-on-surface-variant text-left transition-all";
+        badge.className = "step-badge w-6 h-6 rounded flex items-center justify-center font-label-mono-sm text-label-mono-sm bg-surface-container-highest text-on-surface";
+      }
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Source Tab Toggling (File vs Raw text)
+  function setSourceTab(mode) {
+    const fileSec = document.getElementById('source-file-section');
+    const textSec = document.getElementById('source-text-section');
+    const tabFile = document.getElementById('tab-file-mode');
+    const tabText = document.getElementById('tab-text-mode');
+
+    if (mode === 'file') {
+      fileSec.classList.remove('hidden');
+      textSec.classList.add('hidden');
+      tabFile.className = "px-2.5 py-1 text-caption font-label-mono-sm rounded bg-surface-container-high text-on-surface transition-colors";
+      tabText.className = "px-2.5 py-1 text-caption font-label-mono-sm rounded text-outline hover:text-on-surface transition-colors";
+    } else {
+      fileSec.classList.add('hidden');
+      textSec.classList.remove('hidden');
+      tabText.className = "px-2.5 py-1 text-caption font-label-mono-sm rounded bg-surface-container-high text-on-surface transition-colors";
+      tabFile.className = "px-2.5 py-1 text-caption font-label-mono-sm rounded text-outline hover:text-on-surface transition-colors";
+    }
+  }
+
+  // Document Replace / Remove Simulation
+  function simulateRemoveFile() {
+    const docCard = document.getElementById('active-document-card');
+    docCard.style.display = 'none';
+    hasSource = false;
+    updateModeStatus();
+  }
+
+  function simulateReplaceFile() {
+    const docCard = document.getElementById('active-document-card');
+    docCard.style.display = 'flex';
+    hasSource = true;
+    updateModeStatus();
+  }
+
+  // Prompt actions
+  function clearPrompt() {
+    const input = document.getElementById('prompt-input');
+    input.value = '';
+    hasPrompt = false;
+    updateModeStatus();
+  }
+
+  function applyDirective(text) {
+    const input = document.getElementById('prompt-input');
+    input.value = text;
+    hasPrompt = true;
+    updateModeStatus();
+  }
+
+  // Update Dynamic Mode Status Pill
+  function updateModeStatus() {
+    const badge = document.getElementById('mode-status-badge');
+    const note = document.getElementById('mode-instruction-text');
+
+    if (hasSource && hasPrompt) {
+      badge.textContent = "Mode C: Source + Prompt Active";
+      badge.className = "font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-secondary/15 text-secondary tracking-wide uppercase";
+      note.textContent = "Source and strategic prompt are coupled. Grounded RAG will prioritize prompt constraints strictly within corpus boundaries.";
+    } else if (hasSource && !hasPrompt) {
+      badge.textContent = "Mode B: Source Only";
+      badge.className = "font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-primary-container/20 text-primary-fixed-dim tracking-wide uppercase";
+      note.textContent = "Source document will undergo autonomous structural synthesis based on default executive intelligence templates.";
+    } else if (!hasSource && hasPrompt) {
+      badge.textContent = "Mode A: Prompt Only";
+      badge.className = "font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-tertiary-container/20 text-tertiary-fixed tracking-wide uppercase";
+      note.textContent = "No document provided. Engine will query verified enterprise knowledge base and indexed historical vectors.";
+    } else {
+      badge.textContent = "Invalid State: No Input Provided";
+      badge.className = "font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-error/20 text-error tracking-wide uppercase";
+      note.textContent = "Warning: Add a source or enter a prompt to continue transformation.";
+    }
+  }
+
+  // Step 2 Segmented Selectors
+  function setDetailLevel(level, btn) {
+    document.querySelectorAll('.detail-btn').forEach(b => {
+      b.className = "detail-btn py-1.5 rounded text-caption font-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors";
+    });
+    btn.className = "detail-btn py-1.5 rounded text-caption font-label-mono-sm bg-primary-container text-on-primary transition-colors";
+  }
+
+  function setObjective(obj, btn) {
+    document.querySelectorAll('.objective-btn').forEach(b => {
+      b.className = "objective-btn py-1.5 rounded text-caption font-label-mono-sm text-on-surface-variant hover:text-on-surface transition-colors";
+    });
+    btn.className = "objective-btn py-1.5 rounded text-caption font-label-mono-sm bg-secondary/20 text-secondary transition-colors";
+  }
+
+  // Step 3 Output Selection Card Toggles
+  function toggleOutputCard(card) {
+    const checkbox = card.querySelector('.output-checkbox');
+    const isSelected = card.classList.contains('bg-surface-container-high');
+
+    if (isSelected) {
+      card.classList.remove('bg-surface-container-high', 'ring-1', 'ring-primary', 'shadow-[0_0_12px_rgba(37,99,235,0.2)]');
+      card.classList.add('hover:bg-surface-container');
+      checkbox.classList.remove('bg-primary-container', 'text-on-primary');
+      checkbox.classList.add('bg-surface-container-highest', 'text-transparent');
+    } else {
+      card.classList.add('bg-surface-container-high', 'ring-1', 'ring-primary', 'shadow-[0_0_12px_rgba(37,99,235,0.2)]');
+      card.classList.remove('hover:bg-surface-container');
+      checkbox.classList.add('bg-primary-container', 'text-on-primary');
+      checkbox.classList.remove('bg-surface-container-highest', 'text-transparent');
+    }
+    updateSelectedCount();
+  }
+
+  function selectAllOutputs(select) {
+    document.querySelectorAll('.output-card').forEach(card => {
+      const checkbox = card.querySelector('.output-checkbox');
+      if (select) {
+        card.classList.add('bg-surface-container-high', 'ring-1', 'ring-primary', 'shadow-[0_0_12px_rgba(37,99,235,0.2)]');
+        card.classList.remove('hover:bg-surface-container');
+        checkbox.classList.add('bg-primary-container', 'text-on-primary');
+        checkbox.classList.remove('bg-surface-container-highest', 'text-transparent');
+      } else {
+        card.classList.remove('bg-surface-container-high', 'ring-1', 'ring-primary', 'shadow-[0_0_12px_rgba(37,99,235,0.2)]');
+        card.classList.add('hover:bg-surface-container');
+        checkbox.classList.remove('bg-primary-container', 'text-on-primary');
+        checkbox.classList.add('bg-surface-container-highest', 'text-transparent');
+      }
+    });
+    updateSelectedCount();
+  }
+
+  function applyOutputPreset(preset) {
+    selectAllOutputs(false);
+    // C-suite preset: Exec Summary, Advisory, Slide Deck
+    const presetIds = ['exec-summary', 'advisory', 'presentation'];
+    document.querySelectorAll('.output-card').forEach(card => {
+      const id = card.getAttribute('data-output-id');
+      if (presetIds.includes(id)) {
+        const checkbox = card.querySelector('.output-checkbox');
+        card.classList.add('bg-surface-container-high', 'ring-1', 'ring-primary', 'shadow-[0_0_12px_rgba(37,99,235,0.2)]');
+        card.classList.remove('hover:bg-surface-container');
+        checkbox.classList.add('bg-primary-container', 'text-on-primary');
+        checkbox.classList.remove('bg-surface-container-highest', 'text-transparent');
+      }
+    });
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const count = document.querySelectorAll('.output-card.bg-surface-container-high').length;
+    const label = document.getElementById('cta-action-label');
+    if (label) {
+      label.textContent = `Transform (Execute ${count} Artifacts)`;
+    }
+  }
+
+  // Execution Modal Controls
+  function launchExecutionModal() {
+    const modal = document.getElementById('execution-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeExecutionModal() {
+    const modal = document.getElementById('execution-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  function simulateFinishExecution() {
+    alert("Transformation complete: 5 Artifacts sealed with SHA-256 and sent to the History repository.");
+    closeExecutionModal();
+  }
+
+  // Error simulation for verification
+  function simulateError(type) {
+    const toast = document.getElementById('error-toast');
+    const title = document.getElementById('error-toast-title');
+    const msg = document.getElementById('error-toast-msg');
+
+    if (type === 'empty') {
+      title.textContent = "Empty Input Error";
+      msg.textContent = "Provide a source, a prompt, or both to initialize the transformation engine.";
+    } else if (type === 'corrupt') {
+      title.textContent = "Corrupted Header Error";
+      msg.textContent = "Annual Threat Assessment 2025.pdf failed PDF magic bytes check. Please re-upload.";
+    }
+    toast.classList.remove('hidden');
+    setTimeout(() => {
+      dismissError();
+    }, 5000);
+  }
+
+  function dismissError() {
+    document.getElementById('error-toast').classList.add('hidden');
+  }
+
+  // Event listener for prompt input validation tracking
+  document.getElementById('prompt-input').addEventListener('input', (e) => {
+    hasPrompt = e.target.value.trim().length > 0;
+    updateModeStatus();
+  });
+
+  // Simulator CTA trigger
+  document.getElementById('btn-simulate-pipeline').addEventListener('click', () => {
+    launchExecutionModal();
+  });
+</script></main></div></body></html>

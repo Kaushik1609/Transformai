@@ -9,12 +9,15 @@ recorded without destroying successful outputs from the same job.
 
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+from app.core.metrics import metrics
 from app.db.models.project import Project
 from app.db.models.transformation_job import TransformationJob
 from app.rag.service import RAGService
@@ -46,14 +49,17 @@ def _verify_job_ownership(db: Session, job: TransformationJob) -> Transformation
         raise TransformationError(
             f"Transformation job {job.id} references a project without an owner."
         )
-    # The job's source must belong to the job's project (relationship integrity).
-    from app.db.models.source import Source
+    # The job's source (when present) must belong to the job's project
+    # (relationship integrity). Prompt-only jobs (source_id is None) skip the
+    # source assertion.
+    if job.source_id is not None:
+        from app.db.models.source import Source
 
-    source = db.get(Source, job.source_id)
-    if source is None or source.project_id != job.project_id:
-        raise TransformationError(
-            f"Transformation job {job.id} source/ownership mismatch."
-        )
+        source = db.get(Source, job.source_id)
+        if source is None or source.project_id != job.project_id:
+            raise TransformationError(
+                f"Transformation job {job.id} source/ownership mismatch."
+            )
     return job
 
 
@@ -68,6 +74,8 @@ def run_transformation_job(
     llm_provider: Any | None = None,
     storage: Any | None = None,
     transformation_job_timeout: int | None = None,
+    cache_backend: Any | None = None,
+    cache_enabled: bool | None = None,
 ) -> dict[str, Any]:
     """Run one transformation job to completion using authoritative DB state.
 
@@ -102,16 +110,125 @@ def run_transformation_job(
             "errors": [],
         }
 
+    # Phase 11L-D — atomic worker claim.  A single UPDATE...WHERE on the status
+    # transition (queued/failed -> running) is the worker's lease on the job.
+    # Only ONE worker can get rowcount == 1 for a given job, so concurrent
+    # workers / accidental re-enqueues can never execute the same script twice
+    # (existing Phase 11E idempotent planning guards remain as defense-in-depth).
+    claimed = db.execute(
+        update(TransformationJob)
+        .where(
+            TransformationJob.id == job_id,
+            TransformationJob.status.in_(("queued", "failed")),
+        )
+        .values(status="running")
+    )
+    if claimed.rowcount != 1:
+        return {
+            "job_id": str(job_id),
+            "skipped": True,
+            "reason": "claim_denied_already_running_or_terminal",
+            "outputs": [],
+            "errors": [],
+        }
+    # Persist the claim so the "running" lease is durable before any provider
+    # work begins (a crash mid-run is surfaced by the RQ failure handler).
+    db.commit()
+
+    # Phase 11L-A — cache wiring.  When enabled, successful LLM generations are
+    # cached per project (scope = job.project_id) so repeated transformations of
+    # the same source never pay the provider cost twice.  Default off: historical
+    # behavior is preserved and tests stay deterministic.
+    provider = llm_provider
+    use_cache = settings.CACHE_ENABLED if cache_enabled is None else cache_enabled
+    if provider is not None and use_cache:
+        backend = cache_backend
+        if backend is None:
+            from app.core.cache import build_cache_backend
+
+            backend = build_cache_backend()
+        if backend is not None:
+            from app.transformation.llm.cache import CachingLLMProvider
+
+            provider = CachingLLMProvider(
+                provider,
+                backend,
+                scope=str(job.project_id),
+                ttl_seconds=settings.CACHE_TTL_SECONDS,
+                key_version=settings.CACHE_KEY_VERSION,
+                provider_name=(settings.LLM_PROVIDER or "unknown"),
+            )
+
     orchestrator = TransformationOrchestrator(
         session=db,
         rag_service=rag_service,
         verification_hook=verification_hook,
         get_generator=get_generator,
         rag_mode=rag_mode,
-        llm_provider=llm_provider,
+        llm_provider=provider,
         storage=storage,
         transformation_job_timeout=transformation_job_timeout,
     )
+    started = time.monotonic()
     result = orchestrator.execute(job_id)
+    # Phase 11M — POST-GENERATION integrity/provenance. Once generation has
+    # completed (and without touching the AI pipeline), record the content
+    # digest of every successfully persisted artifact. This is fail-open:
+    # provenance failure never blocks or aborts the artifact or the job result.
+    if settings.INTEGRITY_RECORD_ENABLED:
+        _record_job_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
     db.commit()
+    metrics.observe(
+        "transformation_job_duration_seconds", time.monotonic() - started
+    )
     return result
+
+
+def _record_job_integrity(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    storage: Any | None = None,
+    project_id: str | None = None,
+) -> None:
+    """Record integrity/provenance for a job's completed binary artifacts.
+
+    Called only from the post-generation hook in ``run_transformation_job``.
+    Loads the completed outputs and records a digest for each persisted
+    artifact, storing the provenance status in ``output_metadata.integrity``.
+    Never raises on a ledger failure: provenance is fail-open.
+    """
+    from app.db.models.output import Output
+    from app.integrity.factory import build_ledger
+    from app.integrity.service import record_output_integrity
+    from app.transformation.artifacts import get_storage
+
+    ledger = build_ledger()
+    storage = storage or get_storage()
+    try:
+        outputs = db.execute(
+            select(Output).where(
+                Output.job_id == job_id,
+                Output.status == "completed",
+            )
+        ).scalars().all()
+    except Exception:
+        metrics.inc(
+            "integrity_hashes_total", {"result": "load_failed", "provider": "n/a"}
+        )
+        return
+    for output in outputs:
+        try:
+            record_output_integrity(
+                output,
+                storage=storage,
+                ledger=ledger,
+                algorithm=settings.INTEGRITY_ALGORITHM,
+                project_id=project_id,
+            )
+        except Exception:
+            # Provenance must never break the job; record the failure metric and
+            # continue with the remaining outputs.
+            metrics.inc(
+                "integrity_hashes_total", {"result": "error", "provider": "n/a"}
+            )

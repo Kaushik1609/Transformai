@@ -18,7 +18,7 @@ import {
 import { StatusBadge } from "@/components/common";
 import { DownloadButton, CopyButton, ExportButton } from "@/components/export";
 import { artifactOptions } from "@/components/export/DownloadButton";
-import { VerificationPanel } from "@/components/verification";
+import { VerificationPanel, FactVerificationPanel, ArtifactIntegrity } from "@/components/verification";
 
 interface ResultsPanelProps {
   outputs: OutputResponse[];
@@ -65,9 +65,12 @@ function OutputCard({ output }: { output: OutputResponse }) {
   return (
     <article className="rounded-lg border border-border">
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <h3 className="text-sm font-semibold text-foreground">
-          {outputTypeLabel(output.output_type)}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground">
+            {outputTypeLabel(output.output_type)}
+          </h3>
+          <ArtifactIntegrity output={output} compact />
+        </div>
         <StatusBadge variant={outputStatusVariant(output.status)}>
           {output.status}
         </StatusBadge>
@@ -125,12 +128,16 @@ function OutputCard({ output }: { output: OutputResponse }) {
         )}
 
         {!failed && <VerificationPanel outputId={output.id} />}
+
+        {output.status === "completed" && (
+          <FactVerificationPanel outputId={output.id} />
+        )}
       </div>
     </article>
   );
 }
 
-function FailureDetails({
+export function FailureDetails({
   output,
   failure,
 }: {
@@ -176,7 +183,7 @@ function FailureDetails({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+export function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="shrink-0 uppercase tracking-wide">{label}</dt>
@@ -185,7 +192,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function OutputContent({ output }: { output: OutputResponse }) {
+export function OutputContent({ output }: { output: OutputResponse }) {
   // Structured, type-specific previews (safe enumerable fields only).
   if (output.output_type === "x") {
     return <XThreadView output={output} />;
@@ -215,7 +222,7 @@ function OutputContent({ output }: { output: OutputResponse }) {
   );
 }
 
-function XThreadView({ output }: { output: OutputResponse }) {
+export function XThreadView({ output }: { output: OutputResponse }) {
   const thread = (output.structured_content as { thread?: unknown } | null)
     ?.thread;
   if (Array.isArray(thread) && thread.length > 0) {
@@ -249,7 +256,7 @@ interface SlideData {
   key_message?: unknown;
 }
 
-function SlideView({ output }: { output: OutputResponse }) {
+export function SlideView({ output }: { output: OutputResponse }) {
   const raw = output.structured_content as {
     slides?: unknown;
     title?: unknown;
@@ -294,7 +301,7 @@ interface SectionData {
   message?: unknown;
 }
 
-function InfographicView({ output }: { output: OutputResponse }) {
+export function InfographicView({ output }: { output: OutputResponse }) {
   const raw = output.structured_content as {
     sections?: unknown;
     key_messages?: unknown;
@@ -342,7 +349,7 @@ interface SceneData {
   narration?: unknown;
 }
 
-function VideoView({ output }: { output: OutputResponse }) {
+export function VideoView({ output }: { output: OutputResponse }) {
   const raw = output.structured_content as {
     storyboard?: unknown;
     script?: unknown;

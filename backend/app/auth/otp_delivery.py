@@ -42,6 +42,7 @@ class OtpDeliveryResult:
     channel: str
     identifier: str
     provider_name: str
+    otp: str | None = None
 
 
 def _mask(identifier: str) -> str:
@@ -112,6 +113,7 @@ class ConsoleOtpProvider(OtpDeliveryProvider):
             channel=channel,
             identifier=identifier,
             provider_name=self.provider_name,
+            otp=otp if settings.ENVIRONMENT in ("development", "staging") else None,
         )
 
     def last_otp_for(self, channel: Channel, identifier: str) -> str | None:
@@ -160,20 +162,41 @@ class EmailOtpProvider(OtpDeliveryProvider):
             f"It expires in {settings.OTP_EXPIRY_SECONDS} seconds. "
             "If you did not request this, you can safely ignore this email."
         )
+        delivered_via = self.provider_name
+        delivered_otp = None
         try:
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=5) as server:
                 server.starttls()
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
                 server.send_message(message)
+            logger.info("otp_email_delivered", identifier=_mask(identifier))
         except Exception as exc:
-            logger.warning("otp_email_delivery_failed", identifier=_mask(identifier))
-            raise OtpDeliveryError(f"Failed to deliver email OTP: {exc}") from exc
-        logger.info("otp_email_delivered", identifier=_mask(identifier))
+            logger.warning(
+                "otp_email_delivery_failed",
+                identifier=_mask(identifier),
+                error=str(exc),
+            )
+            # In staging or development, cloud platforms (Render, Heroku free tiers)
+            # block outbound SMTP (ports 25, 465, 587) to prevent spam.
+            # Do not crash user registration; fallback gracefully and log the code.
+            if settings.ENVIRONMENT in ("development", "staging"):
+                logger.info(
+                    "otp_email_delivery_fallback_code",
+                    identifier=_mask(identifier),
+                    otp=otp,
+                    reason=reason,
+                )
+                delivered_via = "email_fallback"
+                delivered_otp = otp
+            else:
+                raise OtpDeliveryError(f"Failed to deliver email OTP: {exc}") from exc
+
         return OtpDeliveryResult(
             delivered=True,
             channel="email",
             identifier=identifier,
-            provider_name=self.provider_name,
+            provider_name=delivered_via,
+            otp=delivered_otp,
         )
 
 

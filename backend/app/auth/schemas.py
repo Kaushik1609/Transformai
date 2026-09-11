@@ -213,6 +213,7 @@ class OtpDeliveryDetails(BaseModel):
     channel: str
     identifier: str
     resend_after_seconds: int = 0
+    dev_otp: str | None = None
 
 
 class RegisterResponse(BaseModel):

@@ -155,6 +155,69 @@ async def create_transformation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Configuration {body.configuration_id} not found in project {body.project_id}.",
         )
+
+    # Phase 2A/2B: Deterministic Policy Engine Gate (Pre-AI Enforcement)
+    from app.core.audit import emit_security_event
+    from app.policy import (
+        DEFAULT_CLASSIFICATION,
+        PolicyEvaluationContext,
+        get_policy_engine,
+        resolve_source_classification,
+    )
+
+    # 1. Resolve information classification from source or default
+    classification = DEFAULT_CLASSIFICATION
+    if body.source_id is not None:
+        # source was already verified above
+        classification = resolve_source_classification(source.source_metadata)
+
+    # 2. Determine requested provider and environment
+    requested_provider = (
+        (body.llm_provider or settings.LLM_PROVIDER or "openai").strip().lower()
+    )
+    environment = (settings.ENVIRONMENT or "development").strip().lower()
+
+    # 3. Evaluate deterministic policy
+    context = PolicyEvaluationContext(
+        classification=classification,
+        requested_outputs=body.output_types,
+        requested_provider=requested_provider,
+        environment=environment,
+    )
+    policy_engine = get_policy_engine()
+    decision = policy_engine.evaluate(context)
+
+    # 4. Record audit event
+    emit_security_event(
+        "policy_evaluated",
+        outcome="allowed" if decision.allowed else "denied",
+        user_id=str(current_user.id),
+        project_id=str(body.project_id),
+        source_id=str(body.source_id) if body.source_id else None,
+        reason=decision.reason,
+        details={
+            "classification": decision.classification.value,
+            "processing_route": decision.processing_route,
+            "requested_outputs": body.output_types,
+            "provider": requested_provider,
+            "environment": environment,
+            "requires_review": decision.requires_review,
+        },
+    )
+
+    # 5. Fail closed if not allowed (HTTP 403, 0 jobs, 0 LLM calls, 0 artifacts)
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Processing blocked by policy.",
+                "reason": decision.reason,
+                "classification": decision.classification.value,
+                "processing_route": decision.processing_route,
+                "requires_review": decision.requires_review,
+            },
+        )
+
     job = await transformation_service.create_job(
         db,
         project_id=body.project_id,

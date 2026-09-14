@@ -135,6 +135,140 @@ def run_transformation_job(
     # work begins (a crash mid-run is surfaced by the RQ failure handler).
     db.commit()
 
+    # Phase 2A/2B — Worker-side policy defense-in-depth re-evaluation.
+    from app.core.audit import emit_security_event
+    from app.policy import (
+        DEFAULT_CLASSIFICATION,
+        PolicyEvaluationContext,
+        get_policy_engine,
+        resolve_source_classification,
+    )
+
+    # 1. Resolve classification
+    worker_classification = DEFAULT_CLASSIFICATION
+    if job.source_id is not None:
+        from app.db.models.source import Source
+
+        job_source = db.get(Source, job.source_id)
+        if job_source is not None:
+            worker_classification = resolve_source_classification(job_source.source_metadata)
+    elif job.requested_outputs and isinstance(job.requested_outputs, dict):
+        if "classification" in job.requested_outputs:
+            from app.policy.classification import normalize_classification
+
+            worker_classification = normalize_classification(job.requested_outputs["classification"])
+
+    # 2. Resolve requested outputs
+    worker_outputs: list[str] = []
+    if job.requested_outputs and isinstance(job.requested_outputs, dict):
+        raw_types = job.requested_outputs.get("output_types")
+        if isinstance(raw_types, list):
+            worker_outputs = [str(x) for x in raw_types]
+
+    # 3. Resolve requested provider
+    worker_provider_name = ""
+    if job.requested_outputs and isinstance(job.requested_outputs, dict):
+        worker_provider_name = str(job.requested_outputs.get("llm_provider") or "")
+    if not worker_provider_name:
+        if llm_provider is not None:
+            actual = llm_provider
+            visited = set()
+            while actual is not None and id(actual) not in visited:
+                visited.add(id(actual))
+                if hasattr(actual, "primary") and getattr(actual, "primary") is not None:
+                    actual = getattr(actual, "primary")
+                elif hasattr(actual, "provider") and getattr(actual, "provider") is not None:
+                    actual = getattr(actual, "provider")
+                elif hasattr(actual, "_provider") and getattr(actual, "_provider") is not None:
+                    actual = getattr(actual, "_provider")
+                elif hasattr(actual, "delegate") and getattr(actual, "delegate") is not None:
+                    actual = getattr(actual, "delegate")
+                else:
+                    break
+
+            from app.transformation.llm.fake import FakeLLMProvider
+
+            if isinstance(actual, FakeLLMProvider):
+                worker_provider_name = "fake"
+            else:
+                raw_name = (
+                    getattr(actual, "provider_name", None)
+                    or getattr(actual, "name", None)
+                    or type(actual).__name__.lower()
+                )
+                raw_str = str(raw_name).strip().lower()
+                if "gemini" in raw_str:
+                    worker_provider_name = "gemini"
+                elif "openai" in raw_str:
+                    worker_provider_name = "openai"
+                elif "local" in raw_str:
+                    worker_provider_name = "local"
+                else:
+                    from app.transformation.llm.provider import LLMProvider
+
+                    if isinstance(actual, LLMProvider) or any(
+                        t in raw_str
+                        for t in (
+                            "fake",
+                            "mock",
+                            "test",
+                            "flaky",
+                            "fail",
+                            "poison",
+                            "script",
+                            "json",
+                            "stub",
+                            "invalid",
+                            "string",
+                            "hashtag",
+                        )
+                    ):
+                        worker_provider_name = "fake"
+                    else:
+                        worker_provider_name = raw_str
+        else:
+            worker_provider_name = settings.LLM_PROVIDER or "openai"
+
+    worker_env = (settings.ENVIRONMENT or "development").strip().lower()
+
+    eval_ctx = PolicyEvaluationContext(
+        classification=worker_classification,
+        requested_outputs=worker_outputs,
+        requested_provider=worker_provider_name,
+        environment=worker_env,
+    )
+    worker_decision = get_policy_engine().evaluate(eval_ctx)
+
+    if not worker_decision.allowed:
+        emit_security_event(
+            "policy_evaluated",
+            outcome="denied",
+            project_id=str(job.project_id),
+            source_id=str(job.source_id) if job.source_id else None,
+            job_id=str(job.id),
+            reason=worker_decision.reason,
+            details={
+                "classification": worker_decision.classification.value,
+                "processing_route": worker_decision.processing_route,
+                "requested_outputs": worker_outputs,
+                "provider": worker_provider_name,
+                "environment": worker_env,
+                "requires_review": worker_decision.requires_review,
+                "denial_context": "worker_defense_in_depth",
+            },
+        )
+        job.status = "failed"
+        job.error_message = f"Processing blocked by policy: {worker_decision.reason}"
+        db.commit()
+        return {
+            "job_id": str(job_id),
+            "skipped": True,
+            "policy_denied": True,
+            "reason": worker_decision.reason,
+            "outputs": [],
+            "errors": [worker_decision.reason],
+        }
+
     # Phase 11L-A — cache wiring.  When enabled, successful LLM generations are
     # cached per project (scope = job.project_id) so repeated transformations of
     # the same source never pay the provider cost twice.  Default off: historical
@@ -265,6 +399,72 @@ def execute_transformation_job_sync(
             provider_override = None
             if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
                 provider_override = job_record.requested_outputs.get("llm_provider")
+
+            # Phase 2A/2B: Pre-AI Policy Check in execute_transformation_job_sync
+            from app.core.audit import emit_security_event
+            from app.policy import (
+                DEFAULT_CLASSIFICATION,
+                PolicyEvaluationContext,
+                get_policy_engine,
+                resolve_source_classification,
+            )
+            pre_classification = DEFAULT_CLASSIFICATION
+            if job_record.source_id:
+                from app.db.models.source import Source
+                pre_source = session.get(Source, job_record.source_id)
+                if pre_source:
+                    pre_classification = resolve_source_classification(pre_source.source_metadata)
+            elif job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                if "classification" in job_record.requested_outputs:
+                    from app.policy.classification import normalize_classification
+
+                    pre_classification = normalize_classification(job_record.requested_outputs["classification"])
+
+            pre_outputs: list[str] = []
+            if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                raw_out = job_record.requested_outputs.get("output_types")
+                if isinstance(raw_out, list):
+                    pre_outputs = [str(x) for x in raw_out]
+
+            pre_provider = str(provider_override or settings.LLM_PROVIDER or "openai")
+            pre_env = (settings.ENVIRONMENT or "development").strip().lower()
+
+            pre_decision = get_policy_engine().evaluate(
+                PolicyEvaluationContext(
+                    classification=pre_classification,
+                    requested_outputs=pre_outputs,
+                    requested_provider=pre_provider,
+                    environment=pre_env,
+                )
+            )
+            if not pre_decision.allowed:
+                emit_security_event(
+                    "policy_evaluated",
+                    outcome="denied",
+                    project_id=str(job_record.project_id),
+                    source_id=str(job_record.source_id) if job_record.source_id else None,
+                    job_id=str(job_record.id),
+                    reason=pre_decision.reason,
+                    details={
+                        "classification": pre_decision.classification.value,
+                        "processing_route": pre_decision.processing_route,
+                        "requested_outputs": pre_outputs,
+                        "provider": pre_provider,
+                        "environment": pre_env,
+                        "requires_review": pre_decision.requires_review,
+                        "denial_context": "sync_worker_gate",
+                    },
+                )
+                job_record.status = "failed"
+                job_record.error_message = f"Processing blocked by policy: {pre_decision.reason}"
+                session.commit()
+                return {
+                    "job_id": str(job_id),
+                    "status": "failed",
+                    "policy_denied": True,
+                    "reason": pre_decision.reason,
+                    "error": pre_decision.reason,
+                }
 
             if provider_override and str(provider_override).strip().lower() in (
                 "fake",

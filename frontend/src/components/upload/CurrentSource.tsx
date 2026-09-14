@@ -6,13 +6,21 @@
  */
 "use client";
 
-import type { SourceResponse } from "@/lib/api";
+import {
+  type SourceResponse,
+  getSourceClassification,
+  getPolicyPosture,
+} from "@/lib/api";
 import {
   sourceStatusVariant,
   formatFileSize,
   formatDateTime,
 } from "@/lib/outputTypes";
-import { LoadingSpinner, StatusBadge } from "@/components/common";
+import {
+  LoadingSpinner,
+  StatusBadge,
+  type BadgeVariant,
+} from "@/components/common";
 
 interface CurrentSourceProps {
   source: SourceResponse;
@@ -26,8 +34,27 @@ function displayName(source: SourceResponse): string {
   );
 }
 
+function classificationBadgeVariant(
+  classification: string,
+): BadgeVariant {
+  switch (classification) {
+    case "RESTRICTED":
+      return "error";
+    case "CONFIDENTIAL":
+      return "warning";
+    case "INTERNAL":
+      return "info";
+    case "PUBLIC":
+      return "default";
+    default:
+      return "muted";
+  }
+}
+
 export function CurrentSource({ source }: CurrentSourceProps) {
   const processing = source.status === "processing" || source.status === "uploaded";
+  const classification = getSourceClassification(source);
+  const policyPosture = getPolicyPosture(classification);
 
   return (
     <div className="rounded-md border border-border bg-muted/20 px-3 py-3">
@@ -37,6 +64,9 @@ export function CurrentSource({ source }: CurrentSourceProps) {
         </p>
         <span className="inline-flex items-center gap-2">
           {processing && <LoadingSpinner size="sm" label="Processing…" />}
+          <StatusBadge variant={classificationBadgeVariant(classification)}>
+            {classification}
+          </StatusBadge>
           <StatusBadge variant={sourceStatusVariant(source.status)}>
             {source.status}
           </StatusBadge>
@@ -45,6 +75,8 @@ export function CurrentSource({ source }: CurrentSourceProps) {
 
       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
         <Field label="Type" value={source.source_type} />
+        <Field label="Classification" value={classification} />
+        <Field label="Policy posture" value={policyPosture} />
         <Field label="Language" value={source.language} />
         <Field label="Size" value={formatFileSize(source.file_size)} />
         <Field label="Added" value={formatDateTime(source.created_at)} />

@@ -50,6 +50,33 @@ describe("SourceUpload — text mode", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       text: "Key market insights for the quarter.",
       language: "en",
+      classification: "INTERNAL",
+    });
+  });
+
+  it("allows selecting a custom classification", async () => {
+    const onSourceAdded = jest.fn();
+    mockFetch.mockResolvedValueOnce(jsonResponse({ success: true, data: SOURCE }, 201));
+
+    render(<SourceUpload projectId="p1" onSourceAdded={onSourceAdded} />);
+
+    await userEvent.selectOptions(
+      screen.getByLabelText("Information classification"),
+      "CONFIDENTIAL",
+    );
+    await userEvent.type(
+      screen.getByLabelText("Source text"),
+      "Internal strategy memorandum.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add text source" }));
+
+    await waitFor(() => expect(onSourceAdded).toHaveBeenCalledWith(SOURCE));
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      text: "Internal strategy memorandum.",
+      language: "en",
+      classification: "CONFIDENTIAL",
     });
   });
 

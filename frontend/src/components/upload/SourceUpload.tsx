@@ -8,7 +8,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { SourceResponse, sourcesApi, ApiError } from "@/lib/api";
+import {
+  type SourceResponse,
+  type InformationClassification,
+  sourcesApi,
+  ApiError,
+} from "@/lib/api";
 import { LoadingSpinner, StatusBadge } from "@/components/common";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +33,8 @@ export function SourceUpload({
   disabled = false,
 }: SourceUploadProps) {
   const [mode, setMode] = useState<InputMode>("text");
+  const [classification, setClassification] =
+    useState<InformationClassification>("INTERNAL");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +46,12 @@ export function SourceUpload({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await sourcesApi.ingestText(projectId, text);
+      const res = await sourcesApi.ingestText(
+        projectId,
+        text,
+        "en",
+        classification,
+      );
       setText("");
       onSourceAdded(res.data);
     } catch (err) {
@@ -54,7 +66,7 @@ export function SourceUpload({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await sourcesApi.ingestFile(projectId, file);
+      const res = await sourcesApi.ingestFile(projectId, file, classification);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onSourceAdded(res.data);
@@ -67,6 +79,41 @@ export function SourceUpload({
 
   return (
     <div className="space-y-3">
+      {/* Information classification selector */}
+      <div className="space-y-1">
+        <label
+          htmlFor="classification-select"
+          className="block text-xs font-medium text-foreground"
+        >
+          Information classification
+        </label>
+        <select
+          id="classification-select"
+          aria-label="Information classification"
+          value={classification}
+          onChange={(e) =>
+            setClassification(e.target.value as InformationClassification)
+          }
+          disabled={disabled || submitting}
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="PUBLIC">PUBLIC — Cloud processing allowed</option>
+          <option value="INTERNAL">
+            INTERNAL — Controlled internal processing (Default)
+          </option>
+          <option value="CONFIDENTIAL">
+            CONFIDENTIAL — Private / local processing required
+          </option>
+          <option value="RESTRICTED">
+            RESTRICTED — Private / local required (Cloud denied)
+          </option>
+        </select>
+        <p className="text-[11px] text-muted-foreground">
+          KaryaSetu internal policy label. Does not represent official government
+          classification.
+        </p>
+      </div>
+
       {/* Mode tabs */}
       <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
         {(["text", "file"] as InputMode[]).map((m) => (

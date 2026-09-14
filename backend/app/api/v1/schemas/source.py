@@ -50,6 +50,10 @@ class SourceCreate(BaseModel):
         default=None,
         description="Flexible metadata (page count, author, etc.)",
     )
+    classification: str | None = Field(
+        default=None,
+        description="KaryaSetu information classification: PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED",
+    )
 
 
 class DirectTextSourceCreate(BaseModel):
@@ -58,6 +62,10 @@ class DirectTextSourceCreate(BaseModel):
     text: str = Field(..., min_length=1, description="Source text content")
     language: str = Field(default="en", max_length=10)
     metadata: dict[str, Any] | None = Field(default=None)
+    classification: str | None = Field(
+        default=None,
+        description="KaryaSetu information classification: PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +86,12 @@ class SourceResponse(BaseModel):
     status: str
     source_metadata: dict[str, Any] | None = None
     created_at: datetime
+
+    @property
+    def classification(self) -> str:
+        if self.source_metadata and isinstance(self.source_metadata, dict):
+            return str(self.source_metadata.get("classification") or "INTERNAL")
+        return "INTERNAL"
 
     model_config = {"from_attributes": True}
 

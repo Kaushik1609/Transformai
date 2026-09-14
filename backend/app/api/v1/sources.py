@@ -83,6 +83,7 @@ async def create_source(
         mime_type=body.mime_type,
         language=body.language,
         metadata=body.metadata,
+        classification=body.classification,
     )
     emit_security_event(
         "source_uploaded",
@@ -126,6 +127,7 @@ async def ingest_direct_text(
             mime_type="text/plain",
             language=body.language,
             metadata=body.metadata,
+            classification=body.classification,
         )
     except ValueError as exc:
         raise _ingestion_error(exc) from exc
@@ -150,6 +152,7 @@ async def ingest_txt_file(
     project_id: uuid.UUID,
     file: UploadFile = File(...),
     language: str = Form(default="en"),
+    classification: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
     _: None = Depends(rate_limit_bucket("source_upload")),
@@ -173,6 +176,7 @@ async def ingest_txt_file(
             mime_type=file.content_type or "",
             language=language,
             metadata=None,
+            classification=classification,
         )
     except ValueError as exc:
         raise _ingestion_error(exc) from exc
@@ -197,6 +201,7 @@ async def ingest_document_file(
     project_id: uuid.UUID,
     file: UploadFile = File(...),
     language: str = Form(default="en"),
+    classification: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
     _: None = Depends(rate_limit_bucket("source_upload")),
@@ -226,6 +231,7 @@ async def ingest_document_file(
             filename=file.filename,
             mime_type=file.content_type or "",
             language=language,
+            classification=classification,
         )
     except (DocumentExtractionError, ValueError) as exc:
         raise _ingestion_error(exc) from exc
@@ -263,6 +269,7 @@ async def queue_source_ingestion(
             detail=f"Project {project_id} not found.",
         )
 
+    classification_val: str | None = None
     content_type = request.headers.get("content-type", "")
     if content_type.startswith("application/json"):
         payload = await request.json()
@@ -275,6 +282,7 @@ async def queue_source_ingestion(
         mime_type = "text/plain"
         language = payload.get("language", "en")
         metadata = payload.get("metadata")
+        classification_val = payload.get("classification")
     elif content_type.startswith("multipart/form-data"):
         form = await request.form()
         upload = form.get("file")
@@ -289,6 +297,9 @@ async def queue_source_ingestion(
         mime_type = upload.content_type or ""
         language = str(form.get("language", "en"))
         metadata = None
+        form_class = form.get("classification")
+        if form_class is not None:
+            classification_val = str(form_class)
     else:
         raise _ingestion_error(ValueError("Use JSON or multipart form data."))
 
@@ -302,6 +313,7 @@ async def queue_source_ingestion(
             mime_type=mime_type,
             language=language,
             metadata=metadata,
+            classification=classification_val,
         )
         enqueue_source_ingestion(source.id, queue=get_ingestion_queue())
     except (SourceValidationError, ValueError) as exc:

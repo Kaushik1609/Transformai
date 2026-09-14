@@ -66,7 +66,7 @@ export interface OtpDeliveryDetails {
   channel: string;
   identifier: string;
   resend_after_seconds: number;
-  dev_otp?: string | null;
+  delivery_status?: string;
 }
 
 export interface RegisterResponse {
@@ -151,6 +151,52 @@ export interface DeleteResponse {
 // Response types — sources
 // ---------------------------------------------------------------------------
 
+export type InformationClassification =
+  | "PUBLIC"
+  | "INTERNAL"
+  | "CONFIDENTIAL"
+  | "RESTRICTED";
+
+export function getSourceClassification(
+  source: SourceResponse,
+): InformationClassification {
+  const metaClass = source.source_metadata?.classification;
+  if (
+    metaClass === "PUBLIC" ||
+    metaClass === "INTERNAL" ||
+    metaClass === "CONFIDENTIAL" ||
+    metaClass === "RESTRICTED"
+  ) {
+    return metaClass as InformationClassification;
+  }
+  if (
+    source.classification === "PUBLIC" ||
+    source.classification === "INTERNAL" ||
+    source.classification === "CONFIDENTIAL" ||
+    source.classification === "RESTRICTED"
+  ) {
+    return source.classification as InformationClassification;
+  }
+  return "INTERNAL";
+}
+
+export function getPolicyPosture(
+  classification: InformationClassification,
+): string {
+  switch (classification) {
+    case "PUBLIC":
+      return "Cloud Allowed";
+    case "INTERNAL":
+      return "Controlled Processing";
+    case "CONFIDENTIAL":
+      return "Private / Local Required";
+    case "RESTRICTED":
+      return "Private / Local Required (Cloud Denied)";
+    default:
+      return "Controlled Processing";
+  }
+}
+
 export interface SourceResponse {
   id: string;
   project_id: string;
@@ -161,6 +207,7 @@ export interface SourceResponse {
   file_size: number | null;
   language: string;
   status: string;
+  classification?: InformationClassification;
   source_metadata: Record<string, unknown> | null;
   created_at: string;
 }
@@ -507,11 +554,17 @@ export function getApiBaseUrl(): string {
 async function throwApiError(response: Response): Promise<never> {
   let detail = `HTTP ${response.status}`;
   try {
-    const body: ApiErrorResponse = await response.json();
+    const body: any = await response.json();
     if (typeof body.detail === "string") {
       detail = body.detail;
     } else if (Array.isArray(body.detail)) {
-      detail = body.detail.map((e) => e.msg).join("; ");
+      detail = body.detail.map((e: any) => e.msg).join("; ");
+    } else if (body.detail && typeof body.detail === "object") {
+      if (body.detail.message && body.detail.reason) {
+        detail = `${body.detail.message} ${body.detail.reason}`;
+      } else {
+        detail = body.detail.message || body.detail.reason || JSON.stringify(body.detail);
+      }
     }
   } catch {
     // ignore JSON parse failure — use status text
@@ -520,47 +573,93 @@ async function throwApiError(response: Response): Promise<never> {
 }
 
 /**
- * React to an expired/invalid bearer token: drop the stored credentials and
- * send the user back to the login page instead of retrying silently.
+ * React to an expired/invalid bearer token: drop stored credentials and
+ * redirect the user to login with an explicit session-expired parameter.
  */
 function handleUnauthorized(): void {
   clearAuthToken();
   if (typeof window !== "undefined") {
     try {
-      window.location.assign("/login");
+      if (
+        !window.location.pathname.startsWith("/login") &&
+        !window.location.pathname.startsWith("/register")
+      ) {
+        window.location.assign("/login?session_expired=true");
+      }
     } catch {
-      // Navigation is not available in every environment (e.g. tests) —
-      // the token has still been cleared.
+      // Navigation not available in tests
     }
   }
+}
+
+const MAX_TRANSIENT_RETRIES = 2;
+const RETRY_DELAY_MS = process.env.NODE_ENV === "test" ? 10 : 800;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isTransientStatus(status: number): boolean {
+  return status === 502 || status === 503;
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${getApiBaseUrl()}${path}`;
   const hadBearerToken = getAuthToken() !== null;
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-        ...options?.headers,
-      },
-      ...options,
-    });
-  } catch {
-    throw new ApiError(0, `Network error: could not reach ${url}`);
-  }
-
-  if (!response.ok) {
-    if (response.status === 401 && hadBearerToken) {
-      handleUnauthorized();
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt++) {
+    let response: Response | undefined;
+    try {
+      response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(),
+          ...options?.headers,
+        },
+        ...options,
+      });
+    } catch {
+      lastError = new ApiError(0, `Network error: could not reach ${url}`);
+      if (attempt < MAX_TRANSIENT_RETRIES) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      throw lastError;
     }
-    await throwApiError(response);
-  }
 
-  return response.json() as Promise<T>;
+    if (!response || typeof response.ok !== "boolean") {
+      if (lastError) throw lastError;
+      throw new ApiError(0, `Network error: could not reach ${url}`);
+    }
+
+    if (!response.ok) {
+      if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+        let detail = `HTTP ${response.status}`;
+        try {
+          if (typeof response.clone === "function") {
+            const body = await response.clone().json();
+            if (body?.detail) detail = body.detail;
+          } else if (typeof response.json === "function") {
+            const body = await response.json();
+            if (body?.detail) detail = body.detail;
+          }
+        } catch {
+          // ignore
+        }
+        lastError = new ApiError(response.status, detail);
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      if (response.status === 401 && hadBearerToken) {
+        handleUnauthorized();
+      }
+      await throwApiError(response);
+    }
+
+    return response.json() as Promise<T>;
+  }
+  throw lastError || new ApiError(0, `Network error: could not reach ${url}`);
 }
 
 async function apiFetchForm<T>(
@@ -571,30 +670,60 @@ async function apiFetchForm<T>(
   const url = `${getApiBaseUrl()}${path}`;
   const hadBearerToken = getAuthToken() !== null;
 
-  let response: Response;
-  try {
-    // The browser sets the multipart content-type with its boundary for us.
-    response = await fetch(url, {
-      ...options,
-      method: options?.method ?? "POST",
-      body: formData,
-      headers: {
-        ...authHeaders(),
-        ...options?.headers,
-      },
-    });
-  } catch {
-    throw new ApiError(0, `Network error: could not reach ${url}`);
-  }
-
-  if (!response.ok) {
-    if (response.status === 401 && hadBearerToken) {
-      handleUnauthorized();
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt++) {
+    let response: Response | undefined;
+    try {
+      response = await fetch(url, {
+        ...options,
+        method: options?.method ?? "POST",
+        body: formData,
+        headers: {
+          ...authHeaders(),
+          ...options?.headers,
+        },
+      });
+    } catch {
+      lastError = new ApiError(0, `Network error: could not reach ${url}`);
+      if (attempt < MAX_TRANSIENT_RETRIES) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      throw lastError;
     }
-    await throwApiError(response);
-  }
 
-  return response.json() as Promise<T>;
+    if (!response || typeof response.ok !== "boolean") {
+      if (lastError) throw lastError;
+      throw new ApiError(0, `Network error: could not reach ${url}`);
+    }
+
+    if (!response.ok) {
+      if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+        let detail = `HTTP ${response.status}`;
+        try {
+          if (typeof response.clone === "function") {
+            const body = await response.clone().json();
+            if (body?.detail) detail = body.detail;
+          } else if (typeof response.json === "function") {
+            const body = await response.json();
+            if (body?.detail) detail = body.detail;
+          }
+        } catch {
+          // ignore
+        }
+        lastError = new ApiError(response.status, detail);
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      if (response.status === 401 && hadBearerToken) {
+        handleUnauthorized();
+      }
+      await throwApiError(response);
+    }
+
+    return response.json() as Promise<T>;
+  }
+  throw lastError || new ApiError(0, `Network error: could not reach ${url}`);
 }
 
 function parseFilenameFromDisposition(
@@ -788,12 +917,21 @@ export const sourcesApi = {
     apiFetch<SourceListResponse>(`/api/v1/projects/${projectId}/sources`),
 
   /** Ingest a direct text source. */
-  ingestText: (projectId: string, text: string, language = "en") =>
+  ingestText: (
+    projectId: string,
+    text: string,
+    language = "en",
+    classification?: InformationClassification,
+  ) =>
     apiFetch<SourceDetailResponse>(
       `/api/v1/projects/${projectId}/sources/text`,
       {
         method: "POST",
-        body: JSON.stringify({ text, language }),
+        body: JSON.stringify({
+          text,
+          language,
+          ...(classification ? { classification } : {}),
+        }),
       },
     ),
 
@@ -801,7 +939,11 @@ export const sourcesApi = {
    * Upload a source file. TXT goes through the /file endpoint, PDF/DOCX
    * through /document (matching the backend contract).
    */
-  ingestFile: (projectId: string, file: File) => {
+  ingestFile: (
+    projectId: string,
+    file: File,
+    classification?: InformationClassification,
+  ) => {
     const name = file.name || "";
     const ext = name.includes(".")
       ? name.split(".").pop()!.toLowerCase()
@@ -809,6 +951,9 @@ export const sourcesApi = {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("language", "en");
+    if (classification) {
+      formData.append("classification", classification);
+    }
     const endpoint =
       ext === "pdf" || ext === "docx"
         ? `${projectId}/sources/document`

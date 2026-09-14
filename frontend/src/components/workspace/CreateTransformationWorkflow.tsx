@@ -30,6 +30,8 @@ import {
   transformationsApi,
   errorMessage,
   ApiError,
+  getSourceClassification,
+  getPolicyPosture,
 } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import {
@@ -202,7 +204,11 @@ export function CreateTransformationWorkflow({
       const quick = await ensureQuickProject();
       setQuickProjectId(quick.id);
 
-      const configsRes = await configurationsApi.list(quick.id);
+      const [configsRes, sourcesRes] = await Promise.all([
+        configurationsApi.list(quick.id),
+        sourcesApi.list(quick.id).catch(() => ({ data: [] })),
+      ]);
+      // Sources hydrated for quick workspace; user explicitly chooses/attaches active source
       if (configsRes.data.length > 0) {
         const c = configsRes.data[0];
         setConfiguration(c);
@@ -435,9 +441,18 @@ export function CreateTransformationWorkflow({
       const res = await transformationsApi.create(payload);
       setJob(res.data);
     } catch (err) {
-      setFormError(
-        errorMessage(err, "The transformation could not be started."),
-      );
+      if (err instanceof ApiError && err.status === 403) {
+        const msg = err.detail || "Processing blocked by policy.";
+        setFormError(
+          msg.toLowerCase().includes("policy")
+            ? msg
+            : `Processing blocked by policy: ${msg}`,
+        );
+      } else {
+        setFormError(
+          errorMessage(err, "The transformation could not be started."),
+        );
+      }
       setPhase("idle");
     }
   };
@@ -1235,6 +1250,8 @@ function SourceCard({
   const failed = source.status === "failed";
   const processing = source.status === "processing" || source.status === "uploaded";
   const signals = sourceSecuritySignals(source);
+  const classification = getSourceClassification(source);
+  const policyPosture = getPolicyPosture(classification);
 
   return (
     <div className="flex flex-col rounded-xl bg-surface-container p-4">
@@ -1251,6 +1268,16 @@ function SourceCard({
               <span className="rounded bg-surface-container-highest px-1.5 py-0.5 label-mono-sm text-[10px] text-secondary-fixed-dim">
                 {source.status.toUpperCase()}
               </span>
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 label-mono-sm text-[10px] font-semibold",
+                  classification === "RESTRICTED" || classification === "CONFIDENTIAL"
+                    ? "bg-destructive/20 text-destructive"
+                    : "bg-surface-container-highest text-foreground",
+                )}
+              >
+                {classification}
+              </span>
             </div>
             <span className="caption mt-0.5 text-muted-foreground">
               {mimeTypeLabel(source)} · {formatFileSize(source.file_size)} · {languageLabel(source.language)}
@@ -1260,7 +1287,7 @@ function SourceCard({
                 <CheckCircle2 className="h-3.5 w-3.5" /> Indexed & Ready
               </span>
               <span>·</span>
-              <span className="text-muted-foreground">Deterministic Grounding</span>
+              <span className="text-muted-foreground">{policyPosture}</span>
             </div>
           </div>
         </div>

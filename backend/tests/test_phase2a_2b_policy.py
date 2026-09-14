@@ -640,3 +640,131 @@ class TestPolicyEnforcementPipeline:
             },
         )
         assert transform_res.status_code == 201
+
+    def test_27_worker_uses_source_classification_when_source_exists(self, sync_db_session: Session):
+        """Worker uses source classification when source exists, even if parameters or outputs differ."""
+        proj = Project(id=uuid.uuid4(), user_id=TEST_USER_ID, name="Source Priority Proj")
+        sync_db_session.add(proj)
+        src = Source(
+            id=uuid.uuid4(),
+            project_id=proj.id,
+            source_type="text",
+            extracted_text="Classified source text.",
+            source_metadata={"classification": "CONFIDENTIAL"},
+        )
+        sync_db_session.add(src)
+
+        # Job with missing/INTERNAL in parameters, but source is CONFIDENTIAL
+        job = TransformationJob(
+            id=uuid.uuid4(),
+            project_id=proj.id,
+            source_id=src.id,
+            configuration_id=uuid.uuid4(),
+            status="queued",
+            requested_outputs={"output_types": ["summary"], "llm_provider": "openai"},
+        )
+        setattr(job, "parameters", {"classification": "INTERNAL"})
+        sync_db_session.add(job)
+        sync_db_session.commit()
+
+        mock_llm = MagicMock()
+        mock_orchestrator = MagicMock()
+        with patch("app.transformation.service.TransformationOrchestrator", return_value=mock_orchestrator):
+            result = run_transformation_job(sync_db_session, job.id, llm_provider=mock_llm)
+            assert result["policy_denied"] is True
+            assert "Confidential information requires private or local model processing" in result["reason"]
+            mock_orchestrator.execute.assert_not_called()
+            mock_llm.generate.assert_not_called()
+
+    def test_28_worker_uses_job_parameters_when_source_is_missing(self, sync_db_session: Session):
+        """Worker respects job.parameters['classification'] when source is missing or prompt-only."""
+        proj = Project(id=uuid.uuid4(), user_id=TEST_USER_ID, name="Prompt Only Proj")
+        sync_db_session.add(proj)
+
+        # Prompt-only job (source_id is None) with CONFIDENTIAL in job.parameters
+        job = TransformationJob(
+            id=uuid.uuid4(),
+            project_id=proj.id,
+            source_id=None,
+            configuration_id=uuid.uuid4(),
+            status="queued",
+            prompt="Prompt with confidential requirements",
+            requested_outputs={"output_types": ["summary"], "llm_provider": "local"},
+        )
+        setattr(job, "parameters", {"classification": "CONFIDENTIAL"})
+        sync_db_session.add(job)
+        sync_db_session.commit()
+
+        mock_llm = MagicMock()
+        mock_llm.provider_name = "local"
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.execute.return_value = {"outputs": []}
+
+        with patch("app.transformation.service.TransformationOrchestrator", return_value=mock_orchestrator):
+            result = run_transformation_job(sync_db_session, job.id, llm_provider=mock_llm)
+            # Allowed for local provider
+            assert result.get("policy_denied") is not True
+
+    def test_29_restricted_in_job_parameters_cloud_denied_no_llm_call(self, sync_db_session: Session):
+        """RESTRICTED in job.parameters + external cloud provider is denied by worker without calling LLM."""
+        proj = Project(id=uuid.uuid4(), user_id=TEST_USER_ID, name="Restricted Parameters Proj")
+        sync_db_session.add(proj)
+
+        job = TransformationJob(
+            id=uuid.uuid4(),
+            project_id=proj.id,
+            source_id=None,
+            configuration_id=uuid.uuid4(),
+            status="queued",
+            requested_outputs={"output_types": ["summary"], "llm_provider": "openai"},
+        )
+        setattr(job, "parameters", {"classification": "RESTRICTED"})
+        sync_db_session.add(job)
+        sync_db_session.commit()
+
+        mock_llm = MagicMock()
+        mock_orchestrator = MagicMock()
+
+        with patch("app.transformation.service.TransformationOrchestrator", return_value=mock_orchestrator):
+            result = run_transformation_job(sync_db_session, job.id, llm_provider=mock_llm)
+            assert result["policy_denied"] is True
+            assert result["skipped"] is True
+            assert "Restricted information cannot be processed by external cloud" in result["reason"]
+            mock_orchestrator.execute.assert_not_called()
+            mock_llm.generate.assert_not_called()
+
+            sync_db_session.refresh(job)
+            assert job.status == "failed"
+            assert "Processing blocked by policy" in job.error_message
+
+    def test_30_confidential_in_job_parameters_cloud_denied_no_llm_call(self, sync_db_session: Session):
+        """CONFIDENTIAL in job.parameters + external cloud provider is denied by worker without calling LLM."""
+        proj = Project(id=uuid.uuid4(), user_id=TEST_USER_ID, name="Confidential Parameters Proj")
+        sync_db_session.add(proj)
+
+        job = TransformationJob(
+            id=uuid.uuid4(),
+            project_id=proj.id,
+            source_id=None,
+            configuration_id=uuid.uuid4(),
+            status="queued",
+            requested_outputs={"output_types": ["summary"], "llm_provider": "gemini"},
+        )
+        setattr(job, "parameters", {"classification": "CONFIDENTIAL"})
+        sync_db_session.add(job)
+        sync_db_session.commit()
+
+        mock_llm = MagicMock()
+        mock_orchestrator = MagicMock()
+
+        with patch("app.transformation.service.TransformationOrchestrator", return_value=mock_orchestrator):
+            result = run_transformation_job(sync_db_session, job.id, llm_provider=mock_llm)
+            assert result["policy_denied"] is True
+            assert result["skipped"] is True
+            assert "Confidential information requires private or local model processing" in result["reason"]
+            mock_orchestrator.execute.assert_not_called()
+            mock_llm.generate.assert_not_called()
+
+            sync_db_session.refresh(job)
+            assert job.status == "failed"
+            assert "Processing blocked by policy" in job.error_message

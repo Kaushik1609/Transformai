@@ -145,18 +145,29 @@ def run_transformation_job(
     )
 
     # 1. Resolve classification
-    worker_classification = DEFAULT_CLASSIFICATION
+    worker_classification: Any = None
     if job.source_id is not None:
         from app.db.models.source import Source
 
         job_source = db.get(Source, job.source_id)
         if job_source is not None:
             worker_classification = resolve_source_classification(job_source.source_metadata)
-    elif job.requested_outputs and isinstance(job.requested_outputs, dict):
+
+    if worker_classification is None and hasattr(job, "parameters") and isinstance(getattr(job, "parameters"), dict):
+        param_class = getattr(job, "parameters").get("classification")
+        if param_class:
+            from app.policy.classification import normalize_classification
+
+            worker_classification = normalize_classification(param_class)
+
+    if worker_classification is None and job.requested_outputs and isinstance(job.requested_outputs, dict):
         if "classification" in job.requested_outputs:
             from app.policy.classification import normalize_classification
 
             worker_classification = normalize_classification(job.requested_outputs["classification"])
+
+    if worker_classification is None:
+        worker_classification = DEFAULT_CLASSIFICATION
 
     # 2. Resolve requested outputs
     worker_outputs: list[str] = []
@@ -408,17 +419,28 @@ def execute_transformation_job_sync(
                 get_policy_engine,
                 resolve_source_classification,
             )
-            pre_classification = DEFAULT_CLASSIFICATION
+            pre_classification: Any = None
             if job_record.source_id:
                 from app.db.models.source import Source
                 pre_source = session.get(Source, job_record.source_id)
                 if pre_source:
                     pre_classification = resolve_source_classification(pre_source.source_metadata)
-            elif job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+
+            if pre_classification is None and hasattr(job_record, "parameters") and isinstance(getattr(job_record, "parameters"), dict):
+                param_class = getattr(job_record, "parameters").get("classification")
+                if param_class:
+                    from app.policy.classification import normalize_classification
+
+                    pre_classification = normalize_classification(param_class)
+
+            if pre_classification is None and job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
                 if "classification" in job_record.requested_outputs:
                     from app.policy.classification import normalize_classification
 
                     pre_classification = normalize_classification(job_record.requested_outputs["classification"])
+
+            if pre_classification is None:
+                pre_classification = DEFAULT_CLASSIFICATION
 
             pre_outputs: list[str] = []
             if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):

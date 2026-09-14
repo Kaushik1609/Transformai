@@ -218,6 +218,43 @@ async def create_transformation(
             },
         )
 
+    # 6. Phase 2C — Pre-Job PolicyRouter Validation
+    from app.policy.routing import get_policy_router
+    router = get_policy_router()
+    route_decision = router.route(
+        decision=decision,
+        requested_provider=requested_provider,
+        requested_model=body.model,
+        environment=environment,
+    )
+
+    emit_security_event(
+        "routing_resolved",
+        outcome="routed" if route_decision.allowed else "failed_unavailable",
+        user_id=str(current_user.id),
+        project_id=str(body.project_id),
+        source_id=str(body.source_id) if body.source_id else None,
+        reason=route_decision.reason,
+        details={
+            "provider": route_decision.provider_id,
+            "model": route_decision.model_id,
+            "route": route_decision.processing_route.value,
+            "classification": route_decision.classification.value,
+            "error_code": route_decision.error_code,
+        },
+    )
+
+    if not route_decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Processing blocked by routing policy.",
+                "reason": route_decision.reason,
+                "classification": route_decision.classification.value,
+                "error_code": route_decision.error_code,
+            },
+        )
+
     job = await transformation_service.create_job(
         db,
         project_id=body.project_id,
@@ -226,6 +263,7 @@ async def create_transformation(
         output_types=body.output_types,
         prompt=body.prompt,
         llm_provider=body.llm_provider,
+        model=body.model,
     )
     # Enqueue the transformation job for asynchronous processing.
     try:

@@ -45,7 +45,11 @@ class TransformationJobCreate(BaseModel):
     )
     llm_provider: str | None = Field(
         default=None,
-        description="Optional LLM provider override: fake | gemini | openai",
+        description="Optional LLM provider override: fake | gemini | openai | local",
+    )
+    model: str | None = Field(
+        default=None,
+        description="Optional model identifier override (e.g. 'gpt-4o-mini', 'llama-3-8b')",
     )
 
     @field_validator("prompt")

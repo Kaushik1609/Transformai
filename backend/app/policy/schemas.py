@@ -19,6 +19,7 @@ class ProviderCategory(str, Enum):
     EXTERNAL_CLOUD = "EXTERNAL_CLOUD"
     PRIVATE_LOCAL = "PRIVATE_LOCAL"
     TEST_DEVELOPMENT = "TEST_DEVELOPMENT"
+    UNKNOWN = "UNKNOWN"
 
 
 class ProcessingRoute(str, Enum):
@@ -86,6 +87,53 @@ class PolicyDecision(BaseModel):
     details: dict[str, Any] = Field(
         default_factory=dict,
         description="Structured non-sensitive operational details of the evaluation.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class RouteDecision(BaseModel):
+    """Immutable outcome produced by the PolicyRouter.
+
+    Captures the resolved compliant provider, model, route, and failure codes (if any).
+    Never contains secret keys, credentials, prompts, or source text.
+    """
+
+    allowed: bool = Field(
+        ...,
+        description="Whether a compliant route and provider could be resolved.",
+    )
+    provider_id: str = Field(
+        ...,
+        description="Canonical identifier of the resolved provider (e.g. 'openai', 'local', 'fake').",
+    )
+    model_id: str = Field(
+        ...,
+        description="Target model identifier.",
+    )
+    provider_category: ProviderCategory = Field(
+        ...,
+        description="Conceptual category of the resolved provider.",
+    )
+    processing_route: ProcessingRoute = Field(
+        ...,
+        description="Target processing route.",
+    )
+    classification: InformationClassification = Field(
+        ...,
+        description="The evaluated information classification.",
+    )
+    reason: str = Field(
+        ...,
+        description="Human-readable justification for the routing outcome.",
+    )
+    error_code: str | None = Field(
+        default=None,
+        description="Standardized error code if routing failed (e.g. COMPLIANT_PROVIDER_UNAVAILABLE).",
+    )
+    details: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Safe operational metadata for audit and observability.",
     )
 
     model_config = ConfigDict(extra="forbid")

@@ -280,11 +280,74 @@ def run_transformation_job(
             "errors": [worker_decision.reason],
         }
 
+    # Phase 2C — PolicyRouter resolution. Map PolicyDecision to compliant provider & model.
+    from app.policy.routing import ERROR_COMPLIANT_PROVIDER_UNAVAILABLE, get_policy_router
+    worker_requested_model: str | None = None
+    if job.requested_outputs and isinstance(job.requested_outputs, dict):
+        worker_requested_model = job.requested_outputs.get("model")
+
+    route_decision = get_policy_router().route(
+        decision=worker_decision,
+        requested_provider=worker_provider_name,
+        requested_model=worker_requested_model,
+        environment=worker_env,
+    )
+
+    emit_security_event(
+        "routing_resolved",
+        outcome="routed" if route_decision.allowed else "failed_unavailable",
+        project_id=str(job.project_id),
+        source_id=str(job.source_id) if job.source_id else None,
+        job_id=str(job.id),
+        reason=route_decision.reason,
+        details={
+            "provider": route_decision.provider_id,
+            "model": route_decision.model_id,
+            "route": route_decision.processing_route.value,
+            "classification": route_decision.classification.value,
+            "error_code": route_decision.error_code,
+        },
+    )
+
+    if not route_decision.allowed:
+        job.status = "failed"
+        job.error_message = f"Processing blocked by routing policy: {route_decision.reason}"
+        db.commit()
+        return {
+            "job_id": str(job_id),
+            "skipped": True,
+            "routing_failed": True,
+            "error_code": route_decision.error_code,
+            "reason": route_decision.reason,
+            "outputs": [],
+            "errors": [route_decision.reason],
+        }
+
+    # If an explicit llm_provider instance was passed into run_transformation_job (e.g. in unit tests),
+    # honor it; otherwise, construct the compliant provider using router_factory.
+    provider = llm_provider
+    if provider is None and (job.requested_outputs and job.requested_outputs.get("llm_provider")):
+        from app.transformation.llm.router_factory import build_routed_llm_provider, CompliantRoutingError
+        try:
+            provider = build_routed_llm_provider(route_decision, resilient=True)
+        except CompliantRoutingError as exc:
+            job.status = "failed"
+            job.error_message = f"Processing blocked by routing policy: {str(exc)}"
+            db.commit()
+            return {
+                "job_id": str(job_id),
+                "skipped": True,
+                "routing_failed": True,
+                "error_code": ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
+                "reason": str(exc),
+                "outputs": [],
+                "errors": [str(exc)],
+            }
+
     # Phase 11L-A — cache wiring.  When enabled, successful LLM generations are
     # cached per project (scope = job.project_id) so repeated transformations of
     # the same source never pay the provider cost twice.  Default off: historical
     # behavior is preserved and tests stay deterministic.
-    provider = llm_provider
     use_cache = settings.CACHE_ENABLED if cache_enabled is None else cache_enabled
     if provider is not None and use_cache:
         backend = cache_backend
@@ -391,7 +454,7 @@ def execute_transformation_job_sync(
     wins the lease and the other gracefully skips.
     """
     import structlog
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, select
     from app.transformation.llm.factory import build_llm_provider, build_resilient_provider
     from app.transformation.llm.metered import MeteredLLMProvider
 
@@ -488,13 +551,65 @@ def execute_transformation_job_sync(
                     "error": pre_decision.reason,
                 }
 
-            if provider_override and str(provider_override).strip().lower() in (
-                "fake",
-                "development (fake - testing purpose)",
-            ):
-                base_provider = build_llm_provider("fake")
-            else:
-                base_provider = build_resilient_provider()
+            # Phase 2C — Pre-AI PolicyRouter Resolution in execute_transformation_job_sync
+            from app.policy.routing import ERROR_COMPLIANT_PROVIDER_UNAVAILABLE, get_policy_router
+            from app.transformation.llm.router_factory import build_routed_llm_provider, CompliantRoutingError
+
+            sync_requested_model: str | None = None
+            if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                sync_requested_model = job_record.requested_outputs.get("model")
+
+            pre_route_decision = get_policy_router().route(
+                decision=pre_decision,
+                requested_provider=pre_provider,
+                requested_model=sync_requested_model,
+                environment=pre_env,
+            )
+
+            emit_security_event(
+                "routing_resolved",
+                outcome="routed" if pre_route_decision.allowed else "failed_unavailable",
+                project_id=str(job_record.project_id),
+                source_id=str(job_record.source_id) if job_record.source_id else None,
+                job_id=str(job_record.id),
+                reason=pre_route_decision.reason,
+                details={
+                    "provider": pre_route_decision.provider_id,
+                    "model": pre_route_decision.model_id,
+                    "route": pre_route_decision.processing_route.value,
+                    "classification": pre_route_decision.classification.value,
+                    "error_code": pre_route_decision.error_code,
+                    "denial_context": "sync_worker_gate",
+                },
+            )
+
+            if not pre_route_decision.allowed:
+                job_record.status = "failed"
+                job_record.error_message = f"Processing blocked by routing policy: {pre_route_decision.reason}"
+                session.commit()
+                return {
+                    "job_id": str(job_id),
+                    "status": "failed",
+                    "routing_failed": True,
+                    "error_code": pre_route_decision.error_code,
+                    "reason": pre_route_decision.reason,
+                    "error": pre_route_decision.reason,
+                }
+
+            try:
+                base_provider = build_routed_llm_provider(pre_route_decision, resilient=True)
+            except CompliantRoutingError as exc:
+                job_record.status = "failed"
+                job_record.error_message = f"Processing blocked by routing policy: {str(exc)}"
+                session.commit()
+                return {
+                    "job_id": str(job_id),
+                    "status": "failed",
+                    "routing_failed": True,
+                    "error_code": ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
+                    "reason": str(exc),
+                    "error": str(exc),
+                }
 
             if job_record.source_id:
                 from app.db.models.canonical_content import CanonicalContent

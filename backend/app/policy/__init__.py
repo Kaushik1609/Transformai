@@ -15,11 +15,27 @@ from app.policy.engine import (
     categorize_provider,
     get_policy_engine,
 )
+from app.policy.registry import (
+    ModelDescriptor,
+    ProviderDescriptor,
+    ProviderRegistry,
+    get_provider_registry,
+)
+from app.policy.routing import (
+    ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
+    ERROR_POLICY_DENIED,
+    ERROR_PRODUCTION_TEST_PROVIDER,
+    ERROR_UNKNOWN_PROVIDER,
+    ERROR_UNSUPPORTED_MODEL,
+    PolicyRouter,
+    get_policy_router,
+)
 from app.policy.schemas import (
     PolicyDecision,
     PolicyEvaluationContext,
     ProcessingRoute,
     ProviderCategory,
+    RouteDecision,
 )
 
 __all__ = [
@@ -35,4 +51,16 @@ __all__ = [
     "PolicyEngine",
     "get_policy_engine",
     "categorize_provider",
+    "ModelDescriptor",
+    "ProviderDescriptor",
+    "ProviderRegistry",
+    "get_provider_registry",
+    "PolicyRouter",
+    "get_policy_router",
+    "RouteDecision",
+    "ERROR_UNKNOWN_PROVIDER",
+    "ERROR_UNSUPPORTED_MODEL",
+    "ERROR_POLICY_DENIED",
+    "ERROR_COMPLIANT_PROVIDER_UNAVAILABLE",
+    "ERROR_PRODUCTION_TEST_PROVIDER",
 ]

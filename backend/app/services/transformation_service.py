@@ -33,6 +33,7 @@ async def create_job(
     output_types: list[str],
     prompt: str | None = None,
     llm_provider: str | None = None,
+    model: str | None = None,
 ) -> TransformationJob:
     """
     Create a new transformation job record.
@@ -46,6 +47,8 @@ async def create_job(
     requested_data: dict = {"output_types": output_types}
     if llm_provider:
         requested_data["llm_provider"] = llm_provider
+    if model:
+        requested_data["model"] = model
 
     job = TransformationJob(
         id=uuid.uuid4(),

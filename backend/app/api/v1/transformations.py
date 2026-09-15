@@ -48,6 +48,11 @@ from app.api.v1.schemas.transformation import (
     TrustStatusResponse,
     VerificationListResponse,
     VerificationResultResponse,
+    DisseminateRequest,
+    DisseminateResponse,
+    DisseminationDecisionResponse,
+    DisseminationEvaluateRequest,
+    DisseminationReportResponse,
 )
 from app.core.ratelimit import rate_limit_bucket
 from app.core.config import settings
@@ -313,6 +318,102 @@ async def get_transformation(
     )
 
 
+# ---------------------------------------------------------------------------
+# Helpers for Job & Dissemination Resolution
+# ---------------------------------------------------------------------------
+
+async def _load_job(db: AsyncSession, job_id: uuid.UUID) -> Any:
+    """Load a transformation job row (used to resolve scope/source)."""
+    from app.db.models.transformation_job import TransformationJob
+    from sqlalchemy import select
+
+    result = await db.execute(select(TransformationJob).where(TransformationJob.id == job_id))
+    return result.scalar_one_or_none()
+
+
+async def _resolve_output_classification(db: AsyncSession, output: Any) -> Any:
+    """Resolve the source/job classification for a given Output row."""
+    from app.policy import DEFAULT_CLASSIFICATION, resolve_source_classification, normalize_classification
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        dissem = output.output_metadata.get("dissemination")
+        if isinstance(dissem, dict) and dissem.get("classification"):
+            try:
+                return normalize_classification(dissem["classification"])
+            except Exception:
+                pass
+    job = await _load_job(db, output.job_id)
+    if job is not None:
+        if job.source_id is not None:
+            src = await source_service.get_source(db, source_id=job.source_id)
+            if src is not None:
+                return resolve_source_classification(src.source_metadata)
+        if hasattr(job, "parameters") and isinstance(getattr(job, "parameters"), dict):
+            raw = getattr(job, "parameters").get("classification")
+            if raw:
+                try:
+                    return normalize_classification(raw)
+                except Exception:
+                    pass
+        if job.requested_outputs and isinstance(job.requested_outputs, dict):
+            raw = job.requested_outputs.get("classification")
+            if raw:
+                try:
+                    return normalize_classification(raw)
+                except Exception:
+                    pass
+    return DEFAULT_CLASSIFICATION
+
+
+async def _ensure_output_dissemination(db: AsyncSession, output: Any) -> None:
+    """Ensure output.output_metadata contains deterministic dissemination metadata."""
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        if "dissemination" in output.output_metadata:
+            return
+    try:
+        classification = await _resolve_output_classification(db, output)
+        from app.policy.dissemination import get_dissemination_engine
+        engine = get_dissemination_engine()
+        artifact_hash = None
+        if output.output_metadata and isinstance(output.output_metadata, dict):
+            integrity = output.output_metadata.get("integrity")
+            if isinstance(integrity, dict):
+                artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+        decisions = engine.evaluate_all(
+            classification,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        primary = engine.evaluate_output(
+            classification,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        payload = {
+            "classification": classification.value,
+            "policy_id": engine.POLICY_ID,
+            "primary_destination": primary.destination,
+            "primary_decision": primary.decision.value,
+            "primary_allowed": primary.allowed,
+            "primary_reason": primary.reason,
+            "destinations": {
+                k: {
+                    "allowed": v.allowed,
+                    "decision": v.decision.value,
+                    "destination": v.destination,
+                    "reason": v.reason,
+                    "policy_id": v.policy_id,
+                    "artifact_hash": v.artifact_hash,
+                }
+                for k, v in decisions.items()
+            },
+        }
+        existing = dict(output.output_metadata or {})
+        existing["dissemination"] = payload
+        output.output_metadata = existing
+    except Exception:
+        pass
+
+
 @transformations_router.get(
     "/{job_id}/outputs",
     response_model=OutputListResponse,
@@ -332,6 +433,8 @@ async def list_job_outputs(
             detail=f"Job {job_id} not found.",
         )
     outputs = await transformation_service.list_job_outputs(db, job_id=job_id)
+    for o in outputs:
+        await _ensure_output_dissemination(db, o)
     return OutputListResponse(
         data=[OutputResponse.model_validate(o) for o in outputs],
         count=len(outputs),
@@ -412,6 +515,7 @@ async def get_output(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} not found.",
         )
+    await _ensure_output_dissemination(db, output)
     return OutputDetailResponse(data=OutputResponse.model_validate(output))
 
 
@@ -701,16 +805,6 @@ def _run_fact_verification_sync(
     return report, record.id
 
 
-async def _load_job(db: AsyncSession, job_id: uuid.UUID) -> Any:
-    """Load a transformation job row (used to resolve scope/source)."""
-    from app.db.models.transformation_job import TransformationJob
-
-    from sqlalchemy import select
-
-    result = await db.execute(select(TransformationJob).where(TransformationJob.id == job_id))
-    return result.scalar_one_or_none()
-
-
 # ---------------------------------------------------------------------------
 # Trust Status + Cross-Output Consistency (Phase 12B)
 # ---------------------------------------------------------------------------
@@ -886,6 +980,41 @@ async def export_output_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} has no exportable content.",
         )
+
+    # Phase 2D: Dissemination Policy Enforcement for DOWNLOAD destination
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import DisseminationDestination, get_dissemination_engine
+    engine = get_dissemination_engine()
+    dissem_decision = engine.evaluate(
+        classification=classification,
+        destination=DisseminationDestination.DOWNLOAD,
+        output_type=output.output_type,
+    )
+    if not dissem_decision.allowed:
+        from app.core.audit import emit_security_event
+        emit_security_event(
+            "dissemination_blocked",
+            outcome="blocked",
+            user_id=str(current_user.id),
+            reason=dissem_decision.reason,
+            details={
+                "output_id": str(output.id),
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "output_type": output.output_type,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by policy.",
+                "reason": dissem_decision.reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "decision": dissem_decision.decision.value,
+            },
+        )
+
     structured = output.structured_content
     if not structured:
         raise HTTPException(
@@ -960,6 +1089,41 @@ async def download_output_artifact(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} has no downloadable artifact.",
         )
+
+    # Phase 2D: Dissemination Policy Enforcement for DOWNLOAD destination
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import DisseminationDestination, get_dissemination_engine
+    engine = get_dissemination_engine()
+    dissem_decision = engine.evaluate(
+        classification=classification,
+        destination=DisseminationDestination.DOWNLOAD,
+        output_type=output.output_type,
+    )
+    if not dissem_decision.allowed:
+        from app.core.audit import emit_security_event
+        emit_security_event(
+            "dissemination_blocked",
+            outcome="blocked",
+            user_id=str(current_user.id),
+            reason=dissem_decision.reason,
+            details={
+                "output_id": str(output.id),
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "output_type": output.output_type,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by policy.",
+                "reason": dissem_decision.reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "decision": dissem_decision.decision.value,
+            },
+        )
+
     resolved = artifact_file(output, artifact)
     if resolved is None:
         raise HTTPException(
@@ -978,3 +1142,210 @@ async def download_output_artifact(
         media_type=resolved.mime_type,
         headers={"Content-Disposition": f'attachment; filename="{resolved.filename}"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# Dissemination Endpoints (Phase 2D)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/dissemination",
+    response_model=DisseminationReportResponse,
+    summary="Get dissemination policy evaluation for an output across destinations",
+)
+async def get_output_dissemination_endpoint(
+    output_id: uuid.UUID,
+    destination: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> DisseminationReportResponse:
+    """Return deterministic dissemination decisions for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import get_dissemination_engine
+    engine = get_dissemination_engine()
+
+    artifact_hash = None
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        integrity = output.output_metadata.get("integrity")
+        if isinstance(integrity, dict):
+            artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+
+    if destination:
+        dec = engine.evaluate(
+            classification=classification,
+            destination=destination,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        dest_dict = {
+            dec.destination: DisseminationDecisionResponse(
+                allowed=dec.allowed,
+                decision=dec.decision.value,
+                classification=dec.classification.value,
+                destination=dec.destination,
+                reason=dec.reason,
+                policy_id=dec.policy_id,
+                artifact_hash=dec.artifact_hash,
+                signature=dec.signature,
+                provenance_id=dec.provenance_id,
+                approval_id=dec.approval_id,
+                details=dec.details,
+            )
+        }
+    else:
+        all_decs = engine.evaluate_all(
+            classification=classification,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        dest_dict = {
+            d_name: DisseminationDecisionResponse(
+                allowed=d.allowed,
+                decision=d.decision.value,
+                classification=d.classification.value,
+                destination=d.destination,
+                reason=d.reason,
+                policy_id=d.policy_id,
+                artifact_hash=d.artifact_hash,
+                signature=d.signature,
+                provenance_id=d.provenance_id,
+                approval_id=d.approval_id,
+                details=d.details,
+            )
+            for d_name, d in all_decs.items()
+        }
+
+    return DisseminationReportResponse(
+        success=True,
+        output_id=output.id,
+        output_type=output.output_type,
+        classification=classification.value,
+        destinations=dest_dict,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/disseminate",
+    response_model=DisseminateResponse,
+    summary="Attempt dissemination of an output to a target destination",
+)
+async def disseminate_output_endpoint(
+    output_id: uuid.UUID,
+    body: DisseminateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> DisseminateResponse:
+    """Authoritatively evaluate dissemination to a destination and enforce policy."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    if output.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Output {output_id} is not in completed state (cannot disseminate).",
+        )
+
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import get_dissemination_engine
+    engine = get_dissemination_engine()
+
+    artifact_hash = None
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        integrity = output.output_metadata.get("integrity")
+        if isinstance(integrity, dict):
+            artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+
+    decision = engine.evaluate(
+        classification=classification,
+        destination=body.destination,
+        output_type=output.output_type,
+        artifact_hash=artifact_hash,
+    )
+
+    from app.core.audit import emit_security_event
+    emit_security_event(
+        "dissemination_requested",
+        outcome="allowed" if decision.allowed else "blocked",
+        user_id=str(current_user.id),
+        reason=decision.reason,
+        details={
+            "output_id": str(output.id),
+            "destination": decision.destination,
+            "classification": decision.classification.value,
+            "output_type": output.output_type,
+            "decision": decision.decision.value,
+        },
+    )
+
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by policy.",
+                "reason": decision.reason,
+                "destination": decision.destination,
+                "classification": decision.classification.value,
+                "decision": decision.decision.value,
+            },
+        )
+
+    resp_data = DisseminationDecisionResponse(
+        allowed=decision.allowed,
+        decision=decision.decision.value,
+        classification=decision.classification.value,
+        destination=decision.destination,
+        reason=decision.reason,
+        policy_id=decision.policy_id,
+        artifact_hash=decision.artifact_hash,
+        signature=decision.signature,
+        provenance_id=decision.provenance_id,
+        approval_id=decision.approval_id,
+        details=decision.details,
+    )
+    return DisseminateResponse(success=True, data=resp_data)
+
+
+@transformations_router.post(
+    "/dissemination/evaluate",
+    response_model=DisseminateResponse,
+    summary="Evaluate dissemination policy without an existing output",
+)
+async def evaluate_dissemination_policy_endpoint(
+    body: DisseminationEvaluateRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> DisseminateResponse:
+    """Pre-evaluate dissemination policy for a classification and destination."""
+    from app.policy.dissemination import get_dissemination_engine
+    engine = get_dissemination_engine()
+    decision = engine.evaluate(
+        classification=body.classification,
+        destination=body.destination,
+        output_type=body.output_type,
+    )
+    resp_data = DisseminationDecisionResponse(
+        allowed=decision.allowed,
+        decision=decision.decision.value,
+        classification=decision.classification.value,
+        destination=decision.destination,
+        reason=decision.reason,
+        policy_id=decision.policy_id,
+        artifact_hash=decision.artifact_hash,
+        signature=decision.signature,
+        provenance_id=decision.provenance_id,
+        approval_id=decision.approval_id,
+        details=decision.details,
+    )
+    return DisseminateResponse(success=True, data=resp_data)

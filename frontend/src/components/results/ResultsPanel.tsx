@@ -61,6 +61,33 @@ function OutputCard({ output }: { output: OutputResponse }) {
   const isBinary = BINARY_OUTPUT_TYPES.has(output.output_type);
   const hasArtifact = artifactOptions(output).length > 0;
   const failure = outputFailureDetails(output);
+  const dissemination = output.output_metadata?.dissemination as
+    | {
+        primary_decision?: "ALLOW" | "BLOCK" | "REVIEW";
+        primary_reason?: string;
+      }
+    | undefined;
+
+  let dissemBadge: { label: string; className: string; reason?: string } | null = null;
+  if (dissemination?.primary_decision === "ALLOW") {
+    dissemBadge = {
+      label: "Allowed",
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      reason: dissemination.primary_reason,
+    };
+  } else if (dissemination?.primary_decision === "REVIEW") {
+    dissemBadge = {
+      label: "Requires review",
+      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      reason: dissemination.primary_reason,
+    };
+  } else if (dissemination?.primary_decision === "BLOCK") {
+    dissemBadge = {
+      label: "Blocked by policy",
+      className: "bg-destructive/10 text-destructive",
+      reason: dissemination.primary_reason,
+    };
+  }
 
   return (
     <article className="rounded-lg border border-border">
@@ -71,12 +98,33 @@ function OutputCard({ output }: { output: OutputResponse }) {
           </h3>
           <ArtifactIntegrity output={output} compact />
         </div>
-        <StatusBadge variant={outputStatusVariant(output.status)}>
-          {output.status}
-        </StatusBadge>
+        <div className="flex items-center gap-2">
+          {dissemBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${dissemBadge.className}`}
+              title={dissemBadge.reason || dissemBadge.label}
+              data-testid={`dissemination-badge-${output.id}`}
+            >
+              {dissemBadge.label}
+            </span>
+          )}
+          <StatusBadge variant={outputStatusVariant(output.status)}>
+            {output.status}
+          </StatusBadge>
+        </div>
       </header>
 
       <div className="space-y-3 px-4 py-3">
+        {dissemBadge && dissemBadge.label === "Blocked by policy" && (
+          <p className="text-xs text-destructive font-medium" role="alert">
+            Dissemination blocked by policy: {dissemBadge.reason}
+          </p>
+        )}
+        {dissemBadge && dissemBadge.label === "Requires review" && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+            Dissemination requires review: {dissemBadge.reason}
+          </p>
+        )}
         {generating && (
           <p className="text-xs text-muted-foreground">
             This output is still being generated…

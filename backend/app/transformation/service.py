@@ -385,6 +385,8 @@ def run_transformation_job(
     # provenance failure never blocks or aborts the artifact or the job result.
     if settings.INTEGRITY_RECORD_ENABLED:
         _record_job_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
+    # Phase 2D — POST-GENERATION dissemination control evaluation.
+    _record_job_dissemination(db, job_id, classification=worker_classification, project_id=str(job.project_id))
     db.commit()
     metrics.observe(
         "transformation_job_duration_seconds", time.monotonic() - started
@@ -440,6 +442,95 @@ def _record_job_integrity(
             metrics.inc(
                 "integrity_hashes_total", {"result": "error", "provider": "n/a"}
             )
+
+
+def _record_job_dissemination(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    classification: Any,
+    project_id: str | None = None,
+) -> None:
+    """Record deterministic dissemination control decisions for completed outputs.
+
+    Called from post-generation hook in run_transformation_job.
+    Attaches dissemination evaluation across all destinations to each completed output's
+    output_metadata['dissemination'].
+    """
+    from app.core.audit import emit_security_event
+    from app.db.models.output import Output
+    from app.policy.dissemination import get_dissemination_engine
+
+    engine = get_dissemination_engine()
+    try:
+        outputs = db.execute(
+            select(Output).where(
+                Output.job_id == job_id,
+                Output.status == "completed",
+            )
+        ).scalars().all()
+    except Exception:
+        return
+
+    for output in outputs:
+        try:
+            artifact_hash = None
+            if output.output_metadata and isinstance(output.output_metadata, dict):
+                integrity = output.output_metadata.get("integrity")
+                if isinstance(integrity, dict):
+                    artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+
+            decisions = engine.evaluate_all(
+                classification,
+                output_type=output.output_type,
+                artifact_hash=artifact_hash,
+            )
+            primary = engine.evaluate_output(
+                classification,
+                output_type=output.output_type,
+                artifact_hash=artifact_hash,
+            )
+
+            dissemination_payload = {
+                "classification": str(classification),
+                "policy_id": engine.POLICY_ID,
+                "primary_destination": primary.destination,
+                "primary_decision": primary.decision.value,
+                "primary_allowed": primary.allowed,
+                "primary_reason": primary.reason,
+                "destinations": {
+                    dest_name: {
+                        "allowed": d.allowed,
+                        "decision": d.decision.value,
+                        "destination": d.destination,
+                        "reason": d.reason,
+                        "policy_id": d.policy_id,
+                        "artifact_hash": d.artifact_hash,
+                    }
+                    for dest_name, d in decisions.items()
+                },
+            }
+
+            existing_meta = dict(output.output_metadata or {})
+            existing_meta["dissemination"] = dissemination_payload
+            output.output_metadata = existing_meta
+
+            emit_security_event(
+                "dissemination_evaluated",
+                outcome="allowed" if primary.allowed else "blocked",
+                project_id=project_id,
+                job_id=str(job_id),
+                reason=primary.reason,
+                details={
+                    "output_id": str(output.id),
+                    "output_type": output.output_type,
+                    "classification": str(classification),
+                    "primary_destination": primary.destination,
+                    "primary_decision": primary.decision.value,
+                },
+            )
+        except Exception:
+            pass
 
 
 def execute_transformation_job_sync(

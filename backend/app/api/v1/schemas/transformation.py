@@ -329,3 +329,57 @@ class ConsistencyResultResponse(BaseModel):
 class ConsistencyResponse(BaseModel):
     success: bool = True
     data: ConsistencyResultResponse
+
+
+# ---------------------------------------------------------------------------
+# Dissemination Control schemas (Phase 2D)
+# ---------------------------------------------------------------------------
+
+class DisseminateRequest(BaseModel):
+    """Request payload for attempting dissemination of an output."""
+
+    destination: str = Field(
+        ...,
+        description="Target destination (e.g. 'INTERNAL', 'DOWNLOAD', 'LINKEDIN', 'X', 'PUBLIC_WEB').",
+    )
+
+
+class DisseminationDecisionResponse(BaseModel):
+    """Deterministic dissemination decision outcome."""
+
+    allowed: bool
+    decision: str  # ALLOW | BLOCK | REVIEW
+    classification: str
+    destination: str
+    reason: str
+    policy_id: str = "karyasetu-dissemination-v1"
+    artifact_hash: str | None = None
+    signature: str | None = None
+    provenance_id: str | None = None
+    approval_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class DisseminateResponse(BaseModel):
+    """Authoritative server response for a dissemination attempt."""
+
+    success: bool = True
+    data: DisseminationDecisionResponse
+
+
+class DisseminationReportResponse(BaseModel):
+    """Comprehensive dissemination policy report for an output across destinations."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    output_type: str
+    classification: str
+    destinations: dict[str, DisseminationDecisionResponse]
+
+
+class DisseminationEvaluateRequest(BaseModel):
+    """Request to evaluate dissemination policy without an existing output."""
+
+    classification: str = Field(..., description="Information classification label.")
+    destination: str = Field(..., description="Target dissemination destination.")
+    output_type: str | None = Field(default=None, description="Optional output type context.")

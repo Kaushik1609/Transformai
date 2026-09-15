@@ -1,7 +1,8 @@
 """
-TransformIQ / KaryaSetu AI — Policy Control Layer (Phase 2A + 2B)
+TransformIQ / KaryaSetu AI — Policy Control Layer (Phase 2A + 2B + 2C + 2D)
 
-Exports classification labels and the deterministic policy engine.
+Exports classification labels, deterministic policy engine, AI routing,
+and dissemination control.
 """
 from app.policy.classification import (
     DEFAULT_CLASSIFICATION,
@@ -9,6 +10,17 @@ from app.policy.classification import (
     InvalidClassificationError,
     normalize_classification,
     resolve_source_classification,
+)
+from app.policy.dissemination import (
+    DISSEMINATION_POLICY_ID,
+    DisseminationDecision,
+    DisseminationDecisionOutcome,
+    DisseminationDestination,
+    DisseminationEngine,
+    InvalidDestinationError,
+    VALID_DESTINATIONS,
+    get_dissemination_engine,
+    normalize_destination,
 )
 from app.policy.engine import (
     PolicyEngine,
@@ -63,4 +75,13 @@ __all__ = [
     "ERROR_POLICY_DENIED",
     "ERROR_COMPLIANT_PROVIDER_UNAVAILABLE",
     "ERROR_PRODUCTION_TEST_PROVIDER",
+    "DisseminationDestination",
+    "DisseminationDecisionOutcome",
+    "InvalidDestinationError",
+    "VALID_DESTINATIONS",
+    "DISSEMINATION_POLICY_ID",
+    "DisseminationDecision",
+    "DisseminationEngine",
+    "get_dissemination_engine",
+    "normalize_destination",
 ]

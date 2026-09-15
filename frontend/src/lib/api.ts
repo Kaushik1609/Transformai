@@ -364,6 +364,49 @@ export interface OutputDetailResponse {
   data: OutputResponse;
 }
 
+// ---------------------------------------------------------------------------
+// Dissemination Control (Phase 2D)
+// ---------------------------------------------------------------------------
+
+export type DisseminationDestination =
+  | "INTERNAL"
+  | "REVIEW"
+  | "DOWNLOAD"
+  | "PRESENTATION"
+  | "PUBLIC_WEB"
+  | "LINKEDIN"
+  | "X";
+
+export type DisseminationDecisionOutcome = "ALLOW" | "BLOCK" | "REVIEW";
+
+export interface DisseminationDecision {
+  allowed: boolean;
+  decision: DisseminationDecisionOutcome;
+  classification: string;
+  destination: string;
+  reason: string;
+  policy_id: string;
+  artifact_hash?: string | null;
+  signature?: string | null;
+  provenance_id?: string | null;
+  approval_id?: string | null;
+  details?: Record<string, unknown>;
+}
+
+export interface DisseminationReportResponse {
+  success: boolean;
+  output_id: string;
+  output_type: string;
+  classification: string;
+  destinations: Record<string, DisseminationDecision>;
+}
+
+export interface DisseminateResponse {
+  success: boolean;
+  data: DisseminationDecision;
+}
+
+
 export interface VerificationResultResponse {
   id: string;
   output_id: string;
@@ -1095,6 +1138,24 @@ export const outputsApi = {
       `/api/v1/outputs/${outputId}/export`,
       { format },
       { method: "POST" },
+    ),
+
+  /**
+   * Get dissemination policy evaluation for an output across destinations (Phase 2D).
+   */
+  dissemination: (outputId: string, destination?: string) =>
+    apiFetch<DisseminationReportResponse>(
+      `/api/v1/outputs/${outputId}/dissemination${destination ? `?destination=${encodeURIComponent(destination)}` : ""}`,
+    ),
+
+  /**
+   * Request dissemination of an output to a target destination (Phase 2D).
+   * Authoritatively evaluated by backend policy.
+   */
+  disseminate: (outputId: string, destination: string) =>
+    apiFetch<DisseminateResponse>(
+      `/api/v1/outputs/${outputId}/disseminate`,
+      { method: "POST", body: JSON.stringify({ destination }) },
     ),
 };
 

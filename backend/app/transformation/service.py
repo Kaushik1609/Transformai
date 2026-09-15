@@ -387,6 +387,8 @@ def run_transformation_job(
         _record_job_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
     # Phase 2D — POST-GENERATION dissemination control evaluation.
     _record_job_dissemination(db, job_id, classification=worker_classification, project_id=str(job.project_id))
+    # Phase 2E — POST-GENERATION provenance record assembly.
+    _record_job_provenance(db, job_id, classification=worker_classification, project_id=str(job.project_id))
     db.commit()
     metrics.observe(
         "transformation_job_duration_seconds", time.monotonic() - started
@@ -527,6 +529,107 @@ def _record_job_dissemination(
                     "classification": str(classification),
                     "primary_destination": primary.destination,
                     "primary_decision": primary.decision.value,
+                },
+            )
+        except Exception:
+            pass
+
+
+def _record_job_provenance(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    classification: Any,
+    project_id: str | None = None,
+) -> None:
+    """Record canonical provenance records for completed outputs.
+
+    Called from post-generation hook in run_transformation_job.
+    Attaches a validated ProvenanceRecord to each completed output's
+    output_metadata['provenance'].
+    Emits a 'provenance_recorded' security audit event.
+    """
+    from app.core.audit import emit_security_event
+    from app.db.models.output import Output
+    from app.db.models.source import Source
+    from app.db.models.transformation_job import TransformationJob
+    from app.db.models.verification_result import VerificationResult
+    from app.policy.provenance import ProvenanceBuilder
+
+    try:
+        job = db.execute(
+            select(TransformationJob).where(TransformationJob.id == job_id)
+        ).scalar_one_or_none()
+        if job is None:
+            return
+
+        source = None
+        if job.source_id:
+            source = db.execute(
+                select(Source).where(Source.id == job.source_id)
+            ).scalar_one_or_none()
+
+        outputs = db.execute(
+            select(Output).where(
+                Output.job_id == job_id,
+                Output.status == "completed",
+            )
+        ).scalars().all()
+    except Exception:
+        return
+
+    # Extract citations captured at generation time on job.requested_outputs if available
+    job_req_meta = dict(job.requested_outputs or {})
+    citations = job_req_meta.get("evidence_citations")
+    requested_types = list(job_req_meta.get("outputs", [])) or [o.output_type for o in outputs]
+
+    for output in outputs:
+        try:
+            # Query verification result if available
+            vr = db.execute(
+                select(VerificationResult)
+                .where(VerificationResult.output_id == output.id)
+                .order_by(VerificationResult.created_at.desc())
+            ).scalars().first()
+
+            out_meta = dict(output.output_metadata or {})
+            dissem_meta = out_meta.get("dissemination")
+            integrity_meta = out_meta.get("integrity")
+            resilience_meta = out_meta.get("resilience") or {}
+
+            record = ProvenanceBuilder.build_record(
+                output_id=output.id,
+                job_id=job_id,
+                project_id=project_id or str(job.project_id),
+                output_type=output.output_type,
+                source=source,
+                classification=str(classification),
+                requested_outputs=requested_types,
+                prompt_provided=bool(job.prompt),
+                citations=citations,
+                routing_metadata=resilience_meta,
+                generator_class=out_meta.get("generator"),
+                verification_result=vr,
+                dissemination_metadata=dissem_meta,
+                integrity_metadata=integrity_meta,
+            )
+
+            out_meta["provenance"] = record.model_dump(mode="json")
+            output.output_metadata = out_meta
+
+            emit_security_event(
+                "provenance_recorded",
+                outcome="allowed",
+                project_id=project_id or str(job.project_id),
+                job_id=str(job_id),
+                source_id=str(source.id) if source else None,
+                reason="provenance_record_attached",
+                details={
+                    "output_id": str(output.id),
+                    "output_type": output.output_type,
+                    "provenance_id": record.provenance_id,
+                    "classification": str(classification),
+                    "evidence_count": record.evidence.chunks_count,
                 },
             )
         except Exception:

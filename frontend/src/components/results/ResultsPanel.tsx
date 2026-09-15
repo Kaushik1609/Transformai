@@ -18,7 +18,7 @@ import {
 import { StatusBadge } from "@/components/common";
 import { DownloadButton, CopyButton, ExportButton } from "@/components/export";
 import { artifactOptions } from "@/components/export/DownloadButton";
-import { VerificationPanel, FactVerificationPanel, ArtifactIntegrity } from "@/components/verification";
+import { VerificationPanel, FactVerificationPanel, ArtifactIntegrity, ProvenancePanel } from "@/components/verification";
 
 interface ResultsPanelProps {
   outputs: OutputResponse[];
@@ -179,6 +179,9 @@ function OutputCard({ output }: { output: OutputResponse }) {
 
         {output.status === "completed" && (
           <FactVerificationPanel outputId={output.id} />
+        )}
+        {!failed && output.status === "completed" && (
+          <ProvenancePanel outputId={output.id} />
         )}
       </div>
     </article>

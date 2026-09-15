@@ -383,3 +383,15 @@ class DisseminationEvaluateRequest(BaseModel):
     classification: str = Field(..., description="Information classification label.")
     destination: str = Field(..., description="Target dissemination destination.")
     output_type: str | None = Field(default=None, description="Optional output type context.")
+
+
+# ---------------------------------------------------------------------------
+# Evidence & Provenance schemas (Phase 2E)
+# ---------------------------------------------------------------------------
+
+class ProvenanceDetailResponse(BaseModel):
+    """Authoritative provenance record response for an output."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: dict[str, Any]

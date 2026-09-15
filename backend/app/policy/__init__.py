@@ -27,6 +27,21 @@ from app.policy.engine import (
     categorize_provider,
     get_policy_engine,
 )
+from app.policy.provenance import (
+    EvidenceCitationLineage,
+    EvidenceLineage,
+    GeneratorLineage,
+    IntegrityLineage,
+    PolicyRoutingLineage,
+    ProvenanceBuilder,
+    ProvenanceExtensions,
+    ProvenanceRecord,
+    SourceLineage,
+    TransformationLineage,
+    VerificationLineage,
+    create_provenance_id,
+    get_provenance_builder,
+)
 from app.policy.registry import (
     ModelDescriptor,
     ProviderDescriptor,
@@ -43,6 +58,7 @@ from app.policy.routing import (
     get_policy_router,
 )
 from app.policy.schemas import (
+    InformationClassification,
     PolicyDecision,
     PolicyEvaluationContext,
     ProcessingRoute,
@@ -51,11 +67,11 @@ from app.policy.schemas import (
 )
 
 __all__ = [
+    "DEFAULT_CLASSIFICATION",
     "InformationClassification",
     "InvalidClassificationError",
     "normalize_classification",
     "resolve_source_classification",
-    "DEFAULT_CLASSIFICATION",
     "ProviderCategory",
     "ProcessingRoute",
     "PolicyEvaluationContext",
@@ -84,4 +100,17 @@ __all__ = [
     "DisseminationEngine",
     "get_dissemination_engine",
     "normalize_destination",
+    "ProvenanceRecord",
+    "ProvenanceBuilder",
+    "get_provenance_builder",
+    "create_provenance_id",
+    "SourceLineage",
+    "EvidenceLineage",
+    "EvidenceCitationLineage",
+    "TransformationLineage",
+    "PolicyRoutingLineage",
+    "GeneratorLineage",
+    "VerificationLineage",
+    "IntegrityLineage",
+    "ProvenanceExtensions",
 ]

@@ -407,6 +407,102 @@ export interface DisseminateResponse {
 }
 
 
+// ---------------------------------------------------------------------------
+// Evidence & Provenance (Phase 2E)
+// ---------------------------------------------------------------------------
+
+export interface EvidenceCitationLineage {
+  chunk_id?: string | null;
+  source_id?: string | null;
+  chunk_index: number;
+  content_hash?: string | null;
+  relevance_score?: number | null;
+  excerpt: string;
+}
+
+export interface ProvenanceRecord {
+  provenance_id: string;
+  version: string;
+  created_at: string;
+  source: {
+    source_id?: string | null;
+    source_type?: string | null;
+    original_filename?: string | null;
+    source_content_hash?: string | null;
+    classification: string;
+    created_at?: string | null;
+    source_version?: string | null;
+  };
+  evidence: {
+    retrieval_method: string;
+    chunks_count: number;
+    citations: EvidenceCitationLineage[];
+  };
+  transformation: {
+    transformation_id?: string | null;
+    job_id: string;
+    project_id: string;
+    requested_outputs: string[];
+    prompt_provided: boolean;
+  };
+  policy_routing: {
+    classification: string;
+    processing_route: string;
+    provider_id: string;
+    model_id: string;
+    provider_category: string;
+    policy_id: string;
+    routing_reason: string;
+  };
+  generator: {
+    output_type: string;
+    generator_class: string;
+    generator_version?: string | null;
+    schema_name?: string | null;
+    schema_version?: string | null;
+    prompt_identifier?: string | null;
+  };
+  verification: {
+    verification_result_id?: string | null;
+    has_verification: boolean;
+    overall_status?: string | null;
+    grounding_score?: number | null;
+    consistency_score?: number | null;
+    claims_checked?: number | null;
+    claims_supported?: number | null;
+  };
+  dissemination: {
+    policy_id: string;
+    primary_destination: string;
+    primary_decision: string;
+    primary_allowed: boolean;
+  };
+  integrity: {
+    algorithm: string;
+    content_digest?: string | null;
+    representation?: string | null;
+    ledger_status?: string | null;
+    ledger_reference?: string | null;
+  };
+  audit: {
+    provenance_event_type: string;
+    recorded_at: string;
+  };
+  extensions?: {
+    approval_id?: string | null;
+    signature?: string | null;
+    signature_algorithm?: string | null;
+    airgap_bundle_id?: string | null;
+  };
+}
+
+export interface ProvenanceResponse {
+  success: boolean;
+  output_id: string;
+  data: ProvenanceRecord;
+}
+
+
 export interface VerificationResultResponse {
   id: string;
   output_id: string;
@@ -1156,6 +1252,14 @@ export const outputsApi = {
     apiFetch<DisseminateResponse>(
       `/api/v1/outputs/${outputId}/disseminate`,
       { method: "POST", body: JSON.stringify({ destination }) },
+    ),
+
+  /**
+   * Get canonical provenance record for an output (Phase 2E).
+   */
+  provenance: (outputId: string) =>
+    apiFetch<ProvenanceResponse>(
+      `/api/v1/outputs/${outputId}/provenance`,
     ),
 };
 

@@ -53,6 +53,7 @@ from app.api.v1.schemas.transformation import (
     DisseminationDecisionResponse,
     DisseminationEvaluateRequest,
     DisseminationReportResponse,
+    ProvenanceDetailResponse,
 )
 from app.core.ratelimit import rate_limit_bucket
 from app.core.config import settings
@@ -414,6 +415,64 @@ async def _ensure_output_dissemination(db: AsyncSession, output: Any) -> None:
         pass
 
 
+async def _ensure_output_provenance(db: AsyncSession, output: Any) -> None:
+    """Ensure output.output_metadata contains canonical provenance metadata."""
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        if "provenance" in output.output_metadata:
+            return
+    try:
+        from app.policy.provenance import ProvenanceBuilder
+        from app.db.models.verification_result import VerificationResult
+        from app.db.models.source import Source
+        from sqlalchemy import select
+
+        classification = await _resolve_output_classification(db, output)
+        job = await _load_job(db, output.job_id)
+        source = None
+        if job and job.source_id:
+            src_res = await db.execute(select(Source).where(Source.id == job.source_id))
+            source = src_res.scalar_one_or_none()
+
+        vr_res = await db.execute(
+            select(VerificationResult)
+            .where(VerificationResult.output_id == output.id)
+            .order_by(VerificationResult.created_at.desc())
+        )
+        vr = vr_res.scalars().first()
+
+        out_meta = dict(output.output_metadata or {})
+        dissem_meta = out_meta.get("dissemination")
+        integrity_meta = out_meta.get("integrity")
+        resilience_meta = out_meta.get("resilience") or {}
+        job_req_meta = dict(job.requested_outputs or {}) if job else {}
+        citations = job_req_meta.get("evidence_citations")
+        requested_types = list(job_req_meta.get("outputs", [])) or [output.output_type]
+
+        record = ProvenanceBuilder.build_record(
+            output_id=output.id,
+            job_id=output.job_id,
+            project_id=job.project_id if job else uuid.uuid4(),
+            output_type=output.output_type,
+            source=source,
+            classification=str(classification.value if hasattr(classification, "value") else classification),
+            requested_outputs=requested_types,
+            prompt_provided=bool(job.prompt) if job else False,
+            citations=citations,
+            routing_metadata=resilience_meta,
+            generator_class=out_meta.get("generator"),
+            verification_result=vr,
+            dissemination_metadata=dissem_meta,
+            integrity_metadata=integrity_meta,
+            is_backfill=(citations is None),
+            audit_event_type="provenance_backfilled" if citations is None else "provenance_recorded",
+        )
+
+        out_meta["provenance"] = record.model_dump(mode="json")
+        output.output_metadata = out_meta
+    except Exception:
+        pass
+
+
 @transformations_router.get(
     "/{job_id}/outputs",
     response_model=OutputListResponse,
@@ -435,6 +494,7 @@ async def list_job_outputs(
     outputs = await transformation_service.list_job_outputs(db, job_id=job_id)
     for o in outputs:
         await _ensure_output_dissemination(db, o)
+        await _ensure_output_provenance(db, o)
     return OutputListResponse(
         data=[OutputResponse.model_validate(o) for o in outputs],
         count=len(outputs),
@@ -516,6 +576,7 @@ async def get_output(
             detail=f"Output {output_id} not found.",
         )
     await _ensure_output_dissemination(db, output)
+    await _ensure_output_provenance(db, output)
     return OutputDetailResponse(data=OutputResponse.model_validate(output))
 
 
@@ -1349,3 +1410,43 @@ async def evaluate_dissemination_policy_endpoint(
         details=decision.details,
     )
     return DisseminateResponse(success=True, data=resp_data)
+
+
+# ---------------------------------------------------------------------------
+# Provenance Endpoints (Phase 2E)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/provenance",
+    response_model=ProvenanceDetailResponse,
+    summary="Get canonical provenance record for an output",
+)
+async def get_output_provenance_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ProvenanceDetailResponse:
+    """Return deterministic, auditable provenance lineage for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    await _ensure_output_dissemination(db, output)
+    await _ensure_output_provenance(db, output)
+
+    prov_data = (output.output_metadata or {}).get("provenance")
+    if not prov_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Provenance record for output {output_id} is unavailable.",
+        )
+
+    return ProvenanceDetailResponse(
+        success=True,
+        output_id=output.id,
+        data=prov_data,
+    )

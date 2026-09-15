@@ -9,7 +9,8 @@
  */
 "use client";
 
-import type { OutputResponse } from "@/lib/api";
+import { useState } from "react";
+import { type OutputResponse, outputsApi } from "@/lib/api";
 import {
   outputTypeLabel,
   outputStatusVariant,
@@ -89,6 +90,77 @@ function OutputCard({ output }: { output: OutputResponse }) {
     };
   }
 
+  const [acting, setActing] = useState(false);
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
+
+  const approvalMeta = output.output_metadata?.approval as
+    | {
+        destinations?: Record<
+          string,
+          {
+            approval_status?: string;
+            approval_id?: string;
+            rejection_reason?: string;
+          }
+        >;
+      }
+    | undefined;
+
+  const downloadApproval = approvalMeta?.destinations?.["DOWNLOAD"];
+  const effectiveStatus = localStatus || downloadApproval?.approval_status;
+
+  let approvalBadge: { label: string; className: string } | null = null;
+  if (effectiveStatus === "PENDING_APPROVAL") {
+    approvalBadge = {
+      label: "Pending Approval",
+      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+    };
+  } else if (effectiveStatus === "APPROVED") {
+    approvalBadge = {
+      label: "Approved",
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+    };
+  } else if (effectiveStatus === "REJECTED") {
+    approvalBadge = {
+      label: "Rejected",
+      className: "bg-destructive/10 text-destructive border border-destructive/20",
+    };
+  }
+
+  const handleApprove = async () => {
+    try {
+      setActing(true);
+      await outputsApi.submitApproval(output.id, {
+        destination: "DOWNLOAD",
+        action: "approve",
+        comments: "Approved via workspace interface",
+      });
+      setLocalStatus("APPROVED");
+    } catch {
+      // Keep state fail-closed on error
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    const reason = window.prompt("Enter reason for rejecting this output artifact:");
+    if (!reason || !reason.trim()) return;
+    try {
+      setActing(true);
+      await outputsApi.submitApproval(output.id, {
+        destination: "DOWNLOAD",
+        action: "reject",
+        rejection_reason: reason.trim(),
+      });
+      setLocalStatus("REJECTED");
+    } catch {
+      // Keep state fail-closed on error
+    } finally {
+      setActing(false);
+    }
+  };
+
   return (
     <article className="rounded-lg border border-border">
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
@@ -99,6 +171,14 @@ function OutputCard({ output }: { output: OutputResponse }) {
           <ArtifactIntegrity output={output} compact />
         </div>
         <div className="flex items-center gap-2">
+          {approvalBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${approvalBadge.className}`}
+              data-testid={`approval-badge-${output.id}`}
+            >
+              {approvalBadge.label}
+            </span>
+          )}
           {dissemBadge && (
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${dissemBadge.className}`}
@@ -115,6 +195,16 @@ function OutputCard({ output }: { output: OutputResponse }) {
       </header>
 
       <div className="space-y-3 px-4 py-3">
+        {effectiveStatus === "PENDING_APPROVAL" && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium" role="alert">
+            Controlled release: Human approval required before downloading or exporting this artifact.
+          </p>
+        )}
+        {effectiveStatus === "REJECTED" && (
+          <p className="text-xs text-destructive font-medium" role="alert">
+            Release blocked: Artifact was rejected by reviewer{downloadApproval?.rejection_reason ? `: ${downloadApproval.rejection_reason}` : "."}
+          </p>
+        )}
         {dissemBadge && dissemBadge.label === "Blocked by policy" && (
           <p className="text-xs text-destructive font-medium" role="alert">
             Dissemination blocked by policy: {dissemBadge.reason}
@@ -137,6 +227,29 @@ function OutputCard({ output }: { output: OutputResponse }) {
 
         {!failed && (
           <OutputContent output={output} />
+        )}
+
+        {!failed && effectiveStatus === "PENDING_APPROVAL" && (
+          <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => void handleApprove()}
+              className="inline-flex items-center rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              data-testid={`approve-btn-${output.id}`}
+            >
+              {acting ? "Approving…" : "Approve Release"}
+            </button>
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => void handleReject()}
+              className="inline-flex items-center rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/20 disabled:opacity-50"
+              data-testid={`reject-btn-${output.id}`}
+            >
+              Reject
+            </button>
+          </div>
         )}
 
         {!failed && (

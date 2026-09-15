@@ -203,6 +203,12 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
                 <span className="text-foreground">Integrity Digest: </span>
                 <span className="font-mono">{provenance.integrity.content_digest ? provenance.integrity.content_digest.slice(0, 12) + "…" : "n/a"}</span>
               </div>
+              {provenance.extensions?.approval_id && (
+                <div>
+                  <span className="text-foreground">Approval ID: </span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400">{provenance.extensions.approval_id}</span>
+                </div>
+              )}
             </dl>
           </div>
         </div>

@@ -6,9 +6,9 @@ Phase 2: persistence model only. No actual job enqueueing.
 """
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.transformation.generators import KNOWN_OUTPUT_TYPES
 
@@ -395,3 +395,54 @@ class ProvenanceDetailResponse(BaseModel):
     success: bool = True
     output_id: uuid.UUID
     data: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Human Approval & Controlled Release schemas (Phase 2F)
+# ---------------------------------------------------------------------------
+
+class ApprovalActionRequest(BaseModel):
+    """Operator action to approve or reject output dissemination to a destination."""
+
+    destination: str = Field(..., description="Target DisseminationDestination (e.g. DOWNLOAD, LINKEDIN).")
+    action: Literal["approve", "reject"] = Field(..., description="Action: 'approve' or 'reject'.")
+    comments: str | None = Field(default=None, max_length=1000, description="Optional reviewer remarks.")
+    rejection_reason: str | None = Field(default=None, max_length=1000, description="Mandatory justification if action is 'reject'.")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class DestinationApprovalDetail(BaseModel):
+    """Destination-scoped approval state detail."""
+
+    destination: str
+    approval_status: str  # HARD_BLOCKED | NOT_REQUIRED | PENDING_APPROVAL | APPROVED | REJECTED | REVOKED
+    approval_id: str | None = None
+    decision: str | None = None
+    approver_id: str | None = None
+    approver_email: str | None = None
+    approver_role: str | None = None
+    approved_at: str | None = None
+    rejection_reason: str | None = None
+    comments: str | None = None
+    self_approved: bool = False
+    policy_reason: str | None = None
+    classification_snapshot: str | None = None
+    verification_status_snapshot: str | None = None
+
+
+class ApprovalStatusResponse(BaseModel):
+    """Aggregated approval report for an output across destinations."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    classification: str
+    destinations: dict[str, DestinationApprovalDetail]
+    latest_approval_id: str | None = None
+
+
+class ApprovalActionResponse(BaseModel):
+    """Response returned upon submitting an approval or rejection action."""
+
+    success: bool = True
+    data: DestinationApprovalDetail

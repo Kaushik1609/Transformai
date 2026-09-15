@@ -408,6 +408,56 @@ export interface DisseminateResponse {
 
 
 // ---------------------------------------------------------------------------
+// Human Approval & Controlled Release (Phase 2F)
+// ---------------------------------------------------------------------------
+
+export type ApprovalStatus =
+  | "HARD_BLOCKED"
+  | "NOT_REQUIRED"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "REJECTED"
+  | "REVOKED";
+
+export interface DestinationApprovalDetail {
+  destination: string;
+  approval_status: ApprovalStatus;
+  approval_id?: string | null;
+  decision?: string | null;
+  approver_id?: string | null;
+  approver_email?: string | null;
+  approver_role?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
+  comments?: string | null;
+  self_approved: boolean;
+  policy_reason?: string | null;
+  classification_snapshot?: string | null;
+  verification_status_snapshot?: string | null;
+}
+
+export interface ApprovalStatusResponse {
+  success: boolean;
+  output_id: string;
+  classification: string;
+  destinations: Record<string, DestinationApprovalDetail>;
+  latest_approval_id?: string | null;
+}
+
+export interface ApprovalActionRequest {
+  destination: string;
+  action: "approve" | "reject";
+  comments?: string;
+  rejection_reason?: string;
+}
+
+export interface ApprovalActionResponse {
+  success: boolean;
+  data: DestinationApprovalDetail;
+}
+
+
+// ---------------------------------------------------------------------------
 // Evidence & Provenance (Phase 2E)
 // ---------------------------------------------------------------------------
 
@@ -1260,6 +1310,26 @@ export const outputsApi = {
   provenance: (outputId: string) =>
     apiFetch<ProvenanceResponse>(
       `/api/v1/outputs/${outputId}/provenance`,
+    ),
+
+  /**
+   * Get human approval status for an output across destinations (Phase 2F).
+   */
+  approval: (outputId: string, destination?: string) =>
+    apiFetch<ApprovalStatusResponse>(
+      `/api/v1/outputs/${outputId}/approval${destination ? `?destination=${encodeURIComponent(destination)}` : ""}`,
+    ),
+
+  /**
+   * Submit an approval or rejection decision for a destination (Phase 2F).
+   */
+  submitApproval: (outputId: string, body: ApprovalActionRequest) =>
+    apiFetch<ApprovalActionResponse>(
+      `/api/v1/outputs/${outputId}/approval`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
     ),
 };
 

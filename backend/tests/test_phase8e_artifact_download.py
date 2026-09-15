@@ -98,6 +98,7 @@ async def seed_output(
     metadata: dict[str, Any] | None = None,
     owner_id: uuid.UUID | None = None,
     derive_key: bool = True,
+    classification: str = "PUBLIC",
 ) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
     """Seed a project/source/config/job/output chain and commit it.
 
@@ -117,6 +118,7 @@ async def seed_output(
     source = Source(
         id=uuid.uuid4(), project_id=project.id, source_type="text", status="ready",
         extracted_text="Source line one.\nSource line two.",
+        source_metadata={"classification": classification},
     )
     config = GenerationConfiguration(id=uuid.uuid4(), project_id=project.id, language="English")
     db.add_all([source, config])

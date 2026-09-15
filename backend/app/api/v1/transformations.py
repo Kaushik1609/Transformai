@@ -54,12 +54,16 @@ from app.api.v1.schemas.transformation import (
     DisseminationEvaluateRequest,
     DisseminationReportResponse,
     ProvenanceDetailResponse,
+    ApprovalActionRequest,
+    ApprovalActionResponse,
+    ApprovalStatusResponse,
+    DestinationApprovalDetail,
 )
 from app.core.ratelimit import rate_limit_bucket
 from app.core.config import settings
 from app.db.session import get_db
 from app.core.metrics import metrics
-from app.services import project_service, source_service, configuration_service, transformation_service
+from app.services import project_service, source_service, configuration_service, transformation_service, approval_service
 from app.transformation.artifacts import artifact_file, get_storage
 from app.transformation.output_schemas import Advisory, ExecutiveSummary
 from app.transformation.queue import (
@@ -466,6 +470,12 @@ async def _ensure_output_provenance(db: AsyncSession, output: Any) -> None:
             is_backfill=(citations is None),
             audit_event_type="provenance_backfilled" if citations is None else "provenance_recorded",
         )
+
+        approval_meta = out_meta.get("approval")
+        if isinstance(approval_meta, dict):
+            latest_aid = approval_meta.get("latest_approval_id")
+            if latest_aid:
+                record.extensions.approval_id = latest_aid
 
         out_meta["provenance"] = record.model_dump(mode="json")
         output.output_metadata = out_meta
@@ -1076,6 +1086,23 @@ async def export_output_document(
             },
         )
 
+    # Phase 2F: Approval Verification for DOWNLOAD destination
+    eligible, release_reason = await approval_service.verify_release_eligibility(
+        db,
+        output=output,
+        destination=DisseminationDestination.DOWNLOAD,
+        user_id=current_user.id,
+    )
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Export blocked by approval policy.",
+                "reason": release_reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
+            },
+        )
+
     structured = output.structured_content
     if not structured:
         raise HTTPException(
@@ -1182,6 +1209,23 @@ async def download_output_artifact(
                 "destination": DisseminationDestination.DOWNLOAD.value,
                 "classification": dissem_decision.classification.value,
                 "decision": dissem_decision.decision.value,
+            },
+        )
+
+    # Phase 2F: Approval Verification for DOWNLOAD destination
+    eligible, release_reason = await approval_service.verify_release_eligibility(
+        db,
+        output=output,
+        destination=DisseminationDestination.DOWNLOAD,
+        user_id=current_user.id,
+    )
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Download blocked by approval policy.",
+                "reason": release_reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
             },
         )
 
@@ -1363,6 +1407,30 @@ async def disseminate_output_endpoint(
             },
         )
 
+    # Phase 2F: Approval Verification for requested destination
+    eligible, release_reason = await approval_service.verify_release_eligibility(
+        db,
+        output=output,
+        destination=body.destination,
+        user_id=current_user.id,
+    )
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by approval policy.",
+                "reason": release_reason,
+                "destination": decision.destination,
+                "classification": decision.classification.value,
+                "decision": decision.decision.value,
+            },
+        )
+
+    # Fetch approval_id if present for this destination
+    appr_meta = (output.output_metadata or {}).get("approval", {})
+    dest_appr = appr_meta.get("destinations", {}).get(decision.destination, {})
+    resolved_approval_id = dest_appr.get("approval_id") or appr_meta.get("latest_approval_id") or decision.approval_id
+
     resp_data = DisseminationDecisionResponse(
         allowed=decision.allowed,
         decision=decision.decision.value,
@@ -1373,7 +1441,7 @@ async def disseminate_output_endpoint(
         artifact_hash=decision.artifact_hash,
         signature=decision.signature,
         provenance_id=decision.provenance_id,
-        approval_id=decision.approval_id,
+        approval_id=resolved_approval_id,
         details=decision.details,
     )
     return DisseminateResponse(success=True, data=resp_data)
@@ -1449,4 +1517,123 @@ async def get_output_provenance_endpoint(
         success=True,
         output_id=output.id,
         data=prov_data,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Human Approval & Controlled Release Endpoints (Phase 2F)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/approval",
+    response_model=ApprovalStatusResponse,
+    summary="Get approval status for an output across destinations (Phase 2F)",
+)
+async def get_output_approval_endpoint(
+    output_id: uuid.UUID,
+    destination: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ApprovalStatusResponse:
+    """Return destination-scoped human approval status for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    classification = await approval_service.resolve_output_classification(db, output)
+    meta = await approval_service.get_or_initialize_output_approval(db, output)
+
+    if destination:
+        from app.policy.dissemination import normalize_destination
+        try:
+            norm_dest = normalize_destination(destination).value
+            dests = {norm_dest: meta.destinations[norm_dest]} if norm_dest in meta.destinations else {}
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from None
+    else:
+        dests = meta.destinations
+
+    return ApprovalStatusResponse(
+        success=True,
+        output_id=output.id,
+        classification=classification.value,
+        destinations={
+            k: DestinationApprovalDetail(
+                destination=v.destination,
+                approval_status=v.approval_status,
+                approval_id=v.approval_id,
+                decision=v.decision,
+                approver_id=v.approver_id,
+                approver_email=v.approver_email,
+                approver_role=v.approver_role,
+                approved_at=v.approved_at,
+                rejection_reason=v.rejection_reason,
+                comments=v.comments,
+                self_approved=v.self_approved,
+                policy_reason=v.policy_reason,
+                classification_snapshot=v.classification_snapshot,
+                verification_status_snapshot=v.verification_status_snapshot,
+            )
+            for k, v in dests.items()
+        },
+        latest_approval_id=meta.latest_approval_id,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/approval",
+    response_model=ApprovalActionResponse,
+    summary="Submit an approval or rejection decision for a destination (Phase 2F)",
+)
+async def submit_output_approval_endpoint(
+    output_id: uuid.UUID,
+    body: ApprovalActionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ApprovalActionResponse:
+    """Authoritatively record a human approval or rejection decision for an output destination."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    rec = await approval_service.submit_output_approval(
+        db,
+        output=output,
+        current_user=current_user,
+        destination=body.destination,
+        action=body.action,
+        comments=body.comments,
+        rejection_reason=body.rejection_reason,
+    )
+
+    return ApprovalActionResponse(
+        success=True,
+        data=DestinationApprovalDetail(
+            destination=rec.destination,
+            approval_status=rec.approval_status,
+            approval_id=rec.approval_id,
+            decision=rec.decision,
+            approver_id=rec.approver_id,
+            approver_email=rec.approver_email,
+            approver_role=rec.approver_role,
+            approved_at=rec.approved_at,
+            rejection_reason=rec.rejection_reason,
+            comments=rec.comments,
+            self_approved=rec.self_approved,
+            policy_reason=rec.policy_reason,
+            classification_snapshot=rec.classification_snapshot,
+            verification_status_snapshot=rec.verification_status_snapshot,
+        ),
     )

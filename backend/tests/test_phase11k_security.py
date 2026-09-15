@@ -160,6 +160,7 @@ async def seed_chain(db, *, owner_id=P11K_USER, language="English"):
         language="en",
         storage_key=f"projects/{project.id}/sources/{uuid.uuid4()}/original.txt",
         status="completed",
+        source_metadata={"classification": "PUBLIC"},
     )
     db.add(source)
     await db.flush()

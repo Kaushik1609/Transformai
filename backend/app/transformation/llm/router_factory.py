@@ -16,6 +16,7 @@ from app.policy.classification import InformationClassification
 from app.policy.schemas import ProcessingRoute, ProviderCategory, RouteDecision
 from app.transformation.llm.fake import FakeLLMProvider
 from app.transformation.llm.gemini_provider import GeminiLLMProvider
+from app.transformation.llm.local_provider import LocalLLMProvider
 from app.transformation.llm.openai_provider import OpenAILLMProvider
 from app.transformation.llm.provider import LLMProvider
 from app.transformation.llm.resilience import ProviderManager, RetryPolicy
@@ -44,6 +45,14 @@ def build_routed_llm_provider(
     provider_id = route_decision.provider_id.strip().lower()
     model_id = route_decision.model_id
     classification = route_decision.classification
+    execution_mode = getattr(settings, "LLM_EXECUTION_MODE", "auto")
+
+    # Offline mode enforcement: cloud providers are prohibited
+    if execution_mode == "offline":
+        if route_decision.provider_category == ProviderCategory.EXTERNAL_CLOUD or provider_id in ("openai", "gemini"):
+            raise CompliantRoutingError(
+                f"COMPLIANT_PROVIDER_UNAVAILABLE: External cloud provider '{provider_id}' is prohibited when LLM_EXECUTION_MODE='offline'."
+            )
 
     # Strict sensitive data safety check
     if classification in (InformationClassification.CONFIDENTIAL, InformationClassification.RESTRICTED):
@@ -57,13 +66,17 @@ def build_routed_llm_provider(
     if provider_id == "fake":
         base_provider = FakeLLMProvider()
     elif provider_id in ("local", "ollama", "vllm"):
-        base_url = (settings.LLM_BASE_URL or "").strip()
+        base_url = (
+            getattr(settings, "LOCAL_LLM_BASE_URL", "")
+            or getattr(settings, "LLM_BASE_URL", "")
+            or ""
+        ).strip()
         if not base_url:
             raise CompliantRoutingError(
-                "COMPLIANT_PROVIDER_UNAVAILABLE: Local provider requires LLM_BASE_URL to be configured."
+                "COMPLIANT_PROVIDER_UNAVAILABLE: Local provider requires LOCAL_LLM_BASE_URL or LLM_BASE_URL to be configured."
             )
         dummy_or_local_key = (settings.LLM_API_KEY or "").strip() or "local-no-key-required"
-        base_provider = OpenAILLMProvider(
+        base_provider = LocalLLMProvider(
             model=model_id,
             api_key=dummy_or_local_key,
             base_url=base_url,
@@ -92,19 +105,27 @@ def build_routed_llm_provider(
 
     # 2. Wrap in ProviderManager with Compliant Fallback Checking
     # Sensitive data (CONFIDENTIAL / RESTRICTED) must NEVER have cloud fallbacks!
+    # In offline mode, cloud fallbacks are also strictly forbidden!
     fallback: LLMProvider | None = None
-    if classification not in (InformationClassification.CONFIDENTIAL, InformationClassification.RESTRICTED):
-        fallback_name = (settings.LLM_FALLBACK_PROVIDER or "").strip().lower()
-        if fallback_name and fallback_name != provider_id:
-            try:
-                if fallback_name == "fake":
-                    fallback = FakeLLMProvider()
-                elif fallback_name == "openai" and (settings.LLM_API_KEY or "").strip():
+    is_sensitive = classification in (InformationClassification.CONFIDENTIAL, InformationClassification.RESTRICTED)
+    is_offline = execution_mode == "offline"
+
+    fallback_name = (settings.LLM_FALLBACK_PROVIDER or "").strip().lower()
+    if fallback_name and fallback_name != provider_id:
+        try:
+            if fallback_name == "fake":
+                fallback = FakeLLMProvider()
+            elif fallback_name in ("local", "ollama", "vllm"):
+                loc_base = (getattr(settings, "LOCAL_LLM_BASE_URL", "") or getattr(settings, "LLM_BASE_URL", "") or "").strip()
+                if loc_base:
+                    fallback = LocalLLMProvider(base_url=loc_base)
+            elif not is_sensitive and not is_offline:
+                if fallback_name == "openai" and (settings.LLM_API_KEY or "").strip():
                     fallback = OpenAILLMProvider(api_key=settings.LLM_API_KEY)
                 elif fallback_name == "gemini" and (settings.LLM_API_KEY or "").strip():
                     fallback = GeminiLLMProvider(api_key=settings.LLM_API_KEY)
-            except Exception:
-                fallback = None
+        except Exception:
+            fallback = None
 
     return ProviderManager(
         base_provider,

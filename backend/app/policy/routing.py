@@ -40,7 +40,7 @@ ERROR_UNSUPPORTED_MODEL = "UNSUPPORTED_MODEL"
 _PRODUCTION_ENVIRONMENTS = frozenset({"production", "prod", "live"})
 
 
-def _is_provider_configured(descriptor: ProviderDescriptor) -> bool:
+def _is_provider_configured(descriptor: ProviderDescriptor, execution_mode: str = "auto") -> bool:
     """Check if the necessary environment variables are set for this provider without exposing values."""
     if descriptor.requires_credentials:
         if descriptor.env_key_variable:
@@ -48,11 +48,15 @@ def _is_provider_configured(descriptor: ProviderDescriptor) -> bool:
             if not val or not str(val).strip():
                 return False
 
-    # For local/private providers, if a specific base URL is required/configured
-    if descriptor.provider_category == ProviderCategory.PRIVATE_LOCAL:
-        # local providers are considered configured if LLM_BASE_URL is set or if provider is 'local'
-        # In local execution, local provider is available
-        return True
+    # In offline mode, private/local providers require LOCAL_LLM_BASE_URL or LLM_BASE_URL
+    if descriptor.provider_category == ProviderCategory.PRIVATE_LOCAL and execution_mode == "offline":
+        base_url = (
+            getattr(settings, "LOCAL_LLM_BASE_URL", "")
+            or getattr(settings, "LLM_BASE_URL", "")
+            or ""
+        ).strip()
+        if not base_url:
+            return False
 
     return True
 
@@ -80,9 +84,15 @@ class PolicyRouter:
         if decision is None:
             from app.policy.schemas import PolicyEvaluationContext
             engine = get_policy_engine()
+            req_p = requested_provider
+            if not req_p:
+                if (environment == "offline") or getattr(settings, "LLM_EXECUTION_MODE", "auto") == "offline":
+                    req_p = "local"
+                else:
+                    req_p = settings.LLM_PROVIDER or "openai"
             ctx = PolicyEvaluationContext(
                 classification=norm_class,
-                requested_provider=requested_provider,
+                requested_provider=req_p,
                 environment=environment or "cloud",
             )
             decision = engine.evaluate(ctx)
@@ -110,10 +120,14 @@ class PolicyRouter:
         - The provider is incompatible with the policy decision's route.
         - A test/mock provider is requested in production.
         - The compliant provider is missing mandatory configuration/credentials.
+        - External cloud provider is requested in offline execution mode.
         """
         env = (environment or settings.ENVIRONMENT or "development").strip().lower()
         is_production = env in _PRODUCTION_ENVIRONMENTS
         classification = decision.classification
+        execution_mode = (getattr(settings, "LLM_EXECUTION_MODE", "auto") or "auto").strip().lower()
+        if env == "offline":
+            execution_mode = "offline"
 
         # 1. Respect PolicyEngine Authority: If PolicyEngine denied, router never overrides.
         if not decision.allowed:
@@ -133,7 +147,7 @@ class PolicyRouter:
                 classification=classification,
                 reason=f"Routing rejected by policy: {decision.reason}",
                 error_code=err_code,
-                details={"policy_reason": decision.reason},
+                details={"policy_reason": decision.reason, "execution_mode": execution_mode},
             )
 
         # Parse authoritative route string into Enum
@@ -152,7 +166,7 @@ class PolicyRouter:
                 classification=classification,
                 reason="Routing blocked: processing route is BLOCKED.",
                 error_code=ERROR_POLICY_DENIED,
-                details={"target_route": "blocked"},
+                details={"target_route": "blocked", "execution_mode": execution_mode},
             )
 
         # 2. Candidate Resolution: Determine requested or resolve compliant default
@@ -172,30 +186,69 @@ class PolicyRouter:
                     error_code=ERROR_UNKNOWN_PROVIDER,
                     details={"requested_provider": candidate_name},
                 )
-        else:
-            # 7. If no provider was explicitly requested, resolve a compliant configured
-            # provider according to deterministic priority:
-            candidates: list[str] = []
-            if settings.LLM_PROVIDER:
-                candidates.append(settings.LLM_PROVIDER)
 
-            if target_route in (ProcessingRoute.CLOUD, ProcessingRoute.CONTROLLED_INTERNAL):
-                candidates.extend(["openai", "gemini"])
-            if target_route in (ProcessingRoute.PRIVATE_LOCAL, ProcessingRoute.CONTROLLED_INTERNAL):
-                candidates.append("local")
-            if not is_production:
-                candidates.append("fake")
+            # Offline mode enforcement: reject external cloud providers
+            if execution_mode == "offline" and (
+                descriptor.is_external
+                or not descriptor.supports_offline
+                or descriptor.provider_category == ProviderCategory.EXTERNAL_CLOUD
+            ):
+                return RouteDecision(
+                    allowed=False,
+                    provider_id=descriptor.provider_id,
+                    model_id=requested_model or descriptor.get_default_model(),
+                    provider_category=descriptor.provider_category,
+                    processing_route=ProcessingRoute.BLOCKED,
+                    classification=classification,
+                    reason=f"Routing failure: Cloud provider '{descriptor.provider_id}' cannot be used in offline execution mode.",
+                    error_code=ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
+                    details={
+                        "requested_provider": descriptor.provider_id,
+                        "execution_mode": execution_mode,
+                        "is_external": descriptor.is_external,
+                        "is_offline": True,
+                    },
+                )
+        else:
+            # If no provider was explicitly requested, resolve a compliant configured
+            # provider according to deterministic priority and execution mode:
+            candidates: list[str] = []
+            configured_llm = (settings.LLM_PROVIDER or "").strip().lower()
+
+            if execution_mode == "offline":
+                if configured_llm and configured_llm not in ("openai", "gemini"):
+                    candidates.append(configured_llm)
+                candidates.extend(["local", "ollama", "vllm"])
+                if not is_production:
+                    candidates.append("fake")
+            elif execution_mode == "local":
+                if configured_llm and configured_llm not in ("openai", "gemini"):
+                    candidates.append(configured_llm)
+                candidates.extend(["local", "ollama", "vllm"])
+                if not is_production:
+                    candidates.append("fake")
+            else:
+                if configured_llm:
+                    candidates.append(configured_llm)
+                if target_route in (ProcessingRoute.CLOUD, ProcessingRoute.CONTROLLED_INTERNAL):
+                    candidates.extend(["openai", "gemini"])
+                if target_route in (ProcessingRoute.PRIVATE_LOCAL, ProcessingRoute.CONTROLLED_INTERNAL):
+                    candidates.append("local")
+                if not is_production:
+                    candidates.append("fake")
 
             for c in candidates:
                 desc = self._registry.get_provider(c)
-                if desc and _is_provider_configured(desc):
+                if desc and _is_provider_configured(desc, execution_mode=execution_mode):
+                    if execution_mode == "offline" and (desc.is_external or not desc.supports_offline):
+                        continue
                     if target_route == ProcessingRoute.PRIVATE_LOCAL and desc.provider_category not in (
                         ProviderCategory.PRIVATE_LOCAL,
                         ProviderCategory.TEST_DEVELOPMENT,
                     ):
                         continue
                     if classification in (InformationClassification.CONFIDENTIAL, InformationClassification.RESTRICTED):
-                        if desc.provider_category == ProviderCategory.EXTERNAL_CLOUD:
+                        if desc.provider_category == ProviderCategory.EXTERNAL_CLOUD or desc.is_external:
                             continue
                     descriptor = desc
                     break
@@ -210,7 +263,12 @@ class PolicyRouter:
                     classification=classification,
                     reason="Routing failure: No compliant, configured provider is available for this route.",
                     error_code=ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
-                    details={"target_route": target_route.value, "classification": classification.value},
+                    details={
+                        "target_route": target_route.value,
+                        "classification": classification.value,
+                        "execution_mode": execution_mode,
+                        "is_offline": (execution_mode == "offline"),
+                    },
                 )
 
         # 3. Production Test Provider Guardrail
@@ -312,7 +370,10 @@ class PolicyRouter:
             )
 
         # 7. Credential / Configuration Availability Check
-        if not _is_provider_configured(descriptor):
+        if not _is_provider_configured(descriptor, execution_mode=execution_mode):
+            missing_var = descriptor.env_key_variable
+            if descriptor.provider_category == ProviderCategory.PRIVATE_LOCAL and execution_mode == "offline":
+                missing_var = "LOCAL_LLM_BASE_URL or LLM_BASE_URL"
             return RouteDecision(
                 allowed=False,
                 provider_id=descriptor.provider_id,
@@ -320,15 +381,18 @@ class PolicyRouter:
                 provider_category=descriptor.provider_category,
                 processing_route=ProcessingRoute.BLOCKED,
                 classification=classification,
-                reason=f"Routing failure: Compliant provider '{descriptor.provider_id}' is missing required configuration ({descriptor.env_key_variable or 'configuration'}).",
+                reason=f"Routing failure: Compliant provider '{descriptor.provider_id}' is missing required configuration ({missing_var or 'configuration'}).",
                 error_code=ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
                 details={
-                    "missing_configuration": descriptor.env_key_variable,
+                    "missing_configuration": missing_var,
                     "provider_id": descriptor.provider_id,
+                    "execution_mode": execution_mode,
+                    "is_offline": (execution_mode == "offline"),
                 },
             )
 
         # 8. Successful Compliant Route Resolution
+        is_offline_flag = execution_mode == "offline"
         return RouteDecision(
             allowed=True,
             provider_id=descriptor.provider_id,
@@ -342,6 +406,10 @@ class PolicyRouter:
                 "provider_id": descriptor.provider_id,
                 "model_id": resolved_model,
                 "route": descriptor.processing_route.value,
+                "execution_mode": execution_mode,
+                "is_external": descriptor.is_external,
+                "is_offline": is_offline_flag,
+                "provider_type": descriptor.provider_category.value,
             },
         )
 

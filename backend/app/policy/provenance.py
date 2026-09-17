@@ -102,6 +102,10 @@ class PolicyRoutingLineage(BaseModel):
     provider_category: str = Field(..., description="Provider category ('commercial_cloud', 'private_local', 'test_mock').")
     policy_id: str = Field(default="karyasetu-policy-v1", description="Policy engine version identifier.")
     routing_reason: str = Field(default="", description="Justification for the routing decision.")
+    provider_type: str | None = Field(default=None, description="Provider category or type.")
+    execution_mode: str = Field(default="cloud", description="Execution mode ('cloud', 'local', 'offline', 'auto').")
+    is_external: bool = Field(default=True, description="Whether provider requires external network access.")
+    is_offline: bool = Field(default=False, description="Whether execution was performed in offline/air-gapped mode.")
 
 
 class GeneratorLineage(BaseModel):
@@ -172,6 +176,8 @@ class ProvenanceExtensions(BaseModel):
     signature: str | None = Field(default=None, description="Reserved for Phase 2H Digital Signatures.")
     signature_algorithm: str | None = Field(default=None, description="Reserved for Phase 2H Signature Algorithm.")
     airgap_bundle_id: str | None = Field(default=None, description="Reserved for Phase 2I Air-Gapped Deployment.")
+    execution_mode: str | None = Field(default=None, description="Execution mode for Phase 2I.")
+    is_offline: bool | None = Field(default=None, description="Offline execution flag for Phase 2I.")
 
 
 class ProvenanceRecord(BaseModel):
@@ -349,11 +355,17 @@ class ProvenanceBuilder:
 
         norm_class = normalize_classification(classification)
         # Attempt to resolve compliant route info deterministically if not explicitly supplied
+        from app.core.config import settings
+
         p_id = rmeta.get("provider") or rmeta.get("provider_id")
         m_id = rmeta.get("model") or rmeta.get("model_id")
         p_cat = rmeta.get("provider_category")
         p_route = rmeta.get("processing_route")
         p_reason = rmeta.get("reason") or rmeta.get("routing_reason") or ""
+        p_exec_mode = rmeta.get("execution_mode") or getattr(settings, "LLM_EXECUTION_MODE", "auto")
+        p_is_ext = rmeta.get("is_external")
+        p_is_off = rmeta.get("is_offline")
+        p_type = rmeta.get("provider_type") or p_cat
 
         if not (p_id and m_id and p_cat and p_route):
             try:
@@ -361,11 +373,11 @@ class ProvenanceBuilder:
                 from app.policy.routing import get_policy_router
 
                 target_env = (
-                    "local"
-                    if norm_class in (InformationClassification.CONFIDENTIAL, InformationClassification.RESTRICTED)
-                    else "cloud"
+                    "offline"
+                    if p_exec_mode == "offline"
+                    else ("local" if norm_class in (InformationClassification.CONFIDENTIAL, InformationClassification.RESTRICTED) else "cloud")
                 )
-                req_p = p_id or ("local" if target_env == "local" else None)
+                req_p = p_id or ("local" if target_env in ("local", "offline") else None)
                 router = get_policy_router()
                 rd = router.resolve_route(norm_class, requested_provider=req_p, requested_model=m_id, environment=target_env)
                 p_id = rd.provider_id
@@ -373,12 +385,22 @@ class ProvenanceBuilder:
                 p_cat = rd.provider_category.value
                 p_route = rd.processing_route.value
                 p_reason = rd.reason
+                p_exec_mode = rd.details.get("execution_mode", p_exec_mode)
+                p_is_ext = rd.details.get("is_external", p_is_ext)
+                p_is_off = rd.details.get("is_offline", p_is_off)
+                p_type = rd.details.get("provider_type", p_type or p_cat)
             except Exception:
                 p_id = p_id or "local"
                 m_id = m_id or "default"
                 p_cat = p_cat or ("commercial_cloud" if p_route == "cloud" else "private_local")
                 p_route = p_route or "private_local"
                 p_reason = p_reason or "default policy resolution"
+                p_type = p_type or p_cat
+
+        if p_is_ext is None:
+            p_is_ext = p_route == "cloud"
+        if p_is_off is None:
+            p_is_off = p_exec_mode == "offline"
 
         routing_lineage = PolicyRoutingLineage(
             classification=norm_class.value,
@@ -388,6 +410,10 @@ class ProvenanceBuilder:
             provider_category=str(p_cat),
             policy_id="karyasetu-policy-v1",
             routing_reason=str(p_reason),
+            provider_type=str(p_type) if p_type else None,
+            execution_mode=str(p_exec_mode),
+            is_external=bool(p_is_ext),
+            is_offline=bool(p_is_off),
         )
 
         # 5. Generator Lineage
@@ -462,7 +488,10 @@ class ProvenanceBuilder:
             dissemination=dissemination_lineage,
             integrity=integrity_lineage,
             audit=audit_lineage,
-            extensions=ProvenanceExtensions(),
+            extensions=ProvenanceExtensions(
+                execution_mode=str(p_exec_mode),
+                is_offline=bool(p_is_off),
+            ),
         )
 
 

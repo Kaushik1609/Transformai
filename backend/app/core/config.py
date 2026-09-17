@@ -198,6 +198,15 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: int = 60
 
     # -------------------------------------------------------------------------
+    # Offline / Local LLM Execution & Deployment Readiness (Phase 2I)
+    # -------------------------------------------------------------------------
+    LOCAL_LLM_ENABLED: bool = False
+    LOCAL_LLM_BASE_URL: str = ""
+    LOCAL_LLM_MODEL: str = "llama-3-8b"
+    LOCAL_LLM_TIMEOUT: int = 60
+    LLM_EXECUTION_MODE: Literal["cloud", "local", "offline", "auto"] = "auto"
+
+    # -------------------------------------------------------------------------
     # LLM resilience (Phase 11D)
     # -------------------------------------------------------------------------
     # Disable SDK-internal automatic retries so the application ProviderManager
@@ -359,6 +368,21 @@ class Settings(BaseSettings):
         if value < 0.0:
             raise ValueError("LLM_RETRY_MAX_429_WAIT must be a non-negative number.")
         return value
+
+    @field_validator("LOCAL_LLM_TIMEOUT")
+    @classmethod
+    def validate_local_llm_timeout(cls, v: int) -> int:
+        return _positive_bounded(v, "LOCAL_LLM_TIMEOUT", 3600)
+
+    @field_validator("LLM_EXECUTION_MODE")
+    @classmethod
+    def validate_llm_execution_mode(cls, v: str) -> str:
+        norm = str(v).strip().lower()
+        if norm not in ("cloud", "local", "offline", "auto"):
+            raise ValueError(
+                f"LLM_EXECUTION_MODE must be one of 'cloud', 'local', 'offline', 'auto'; got {v!r}."
+            )
+        return norm
 
     # -------------------------------------------------------------------------
     # L5 Output Security (Phase 11H)

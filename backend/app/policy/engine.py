@@ -105,6 +105,8 @@ _VALID_ENVIRONMENTS = frozenset(
         "production",
         "prod",
         "live",
+        "offline",
+        "auto",
     }
 )
 

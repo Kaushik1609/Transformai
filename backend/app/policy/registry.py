@@ -37,6 +37,10 @@ class ProviderDescriptor:
     env_key_variable: str | None = None
     env_base_url_variable: str | None = None
     env_model_variable: str | None = "LLM_MODEL"
+    is_external: bool = False
+    is_local: bool = False
+    requires_network: bool = False
+    supports_offline: bool = False
 
     def has_model(self, model_id: str | None) -> bool:
         """Check if a specific model ID is recognized for this provider."""
@@ -97,6 +101,10 @@ _PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         requires_credentials=True,
         env_key_variable="LLM_API_KEY",
         env_base_url_variable="LLM_BASE_URL",
+        is_external=True,
+        is_local=False,
+        requires_network=True,
+        supports_offline=False,
     ),
     "gemini": ProviderDescriptor(
         provider_id="gemini",
@@ -107,6 +115,10 @@ _PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         requires_credentials=True,
         env_key_variable="LLM_API_KEY",
         env_base_url_variable="LLM_BASE_URL",
+        is_external=True,
+        is_local=False,
+        requires_network=True,
+        supports_offline=False,
     ),
     "local": ProviderDescriptor(
         provider_id="local",
@@ -116,7 +128,11 @@ _PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         is_production_ready=True,
         requires_credentials=False,
         env_key_variable=None,
-        env_base_url_variable="LLM_BASE_URL",
+        env_base_url_variable="LOCAL_LLM_BASE_URL",
+        is_external=False,
+        is_local=True,
+        requires_network=False,
+        supports_offline=True,
     ),
     "ollama": ProviderDescriptor(
         provider_id="ollama",
@@ -126,7 +142,11 @@ _PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         is_production_ready=True,
         requires_credentials=False,
         env_key_variable=None,
-        env_base_url_variable="LLM_BASE_URL",
+        env_base_url_variable="LOCAL_LLM_BASE_URL",
+        is_external=False,
+        is_local=True,
+        requires_network=False,
+        supports_offline=True,
     ),
     "vllm": ProviderDescriptor(
         provider_id="vllm",
@@ -136,7 +156,11 @@ _PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         is_production_ready=True,
         requires_credentials=False,
         env_key_variable=None,
-        env_base_url_variable="LLM_BASE_URL",
+        env_base_url_variable="LOCAL_LLM_BASE_URL",
+        is_external=False,
+        is_local=True,
+        requires_network=False,
+        supports_offline=True,
     ),
     "fake": ProviderDescriptor(
         provider_id="fake",
@@ -147,6 +171,10 @@ _PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         requires_credentials=False,
         env_key_variable=None,
         env_base_url_variable=None,
+        is_external=False,
+        is_local=False,
+        requires_network=False,
+        supports_offline=True,
     ),
 }
 

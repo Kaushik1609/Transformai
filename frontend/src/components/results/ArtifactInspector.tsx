@@ -59,6 +59,10 @@ export function ArtifactInspector({ output }: ArtifactInspectorProps) {
   const isBinary = BINARY_OUTPUT_TYPES.has(output.output_type);
   const hasArtifact = artifactOptions(output).length > 0;
   const failure = outputFailureDetails(output);
+  const provRouting = (output.output_metadata as Record<string, any> | undefined)?.provenance?.policy_routing;
+  const isOffline = provRouting?.is_offline;
+  const execMode = provRouting?.execution_mode;
+  const executionLabel = isOffline || execMode === "offline" ? "Local / Offline" : (provRouting ? "Cloud" : null);
 
   return (
     <article
@@ -86,6 +90,11 @@ export function ArtifactInspector({ output }: ArtifactInspectorProps) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {executionLabel && (
+            <span className="inline-flex items-center rounded border border-border bg-surface px-2 py-0.5 font-mono text-[10px] font-medium tracking-wide text-foreground">
+              {executionLabel}
+            </span>
+          )}
           <ArtifactIntegrity output={output} compact />
           <StatusBadge variant={outputStatusVariant(output.status)}>
             {output.status}

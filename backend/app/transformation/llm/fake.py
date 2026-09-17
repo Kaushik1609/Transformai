@@ -50,6 +50,11 @@ _LIST_HINTS: dict[str, str] = {
 class FakeLLMProvider(LLMProvider):
     """Return a deterministic, source-grounded JSON object for the requested fields."""
 
+    is_external: bool = False
+    is_local: bool = False
+    requires_network: bool = False
+    supports_offline: bool = True
+
     def generate_text(self, *, system_prompt: str, user_content: str) -> str:
         fields = self._extract_fields(system_prompt)
         source = self._parse_user_content(user_content)

@@ -30,7 +30,7 @@ class TransformationError(Exception):
 
 def _verify_job_ownership(db: Session, job: TransformationJob) -> TransformationJob:
     """
-    Phase 9A â€” worker-side ownership integrity guard.
+    Phase 9A — worker-side ownership integrity guard.
 
     The worker never receives an HTTP request context; it trusts only the
     authoritative job_id enqueued after the project was authorized at request
@@ -87,7 +87,7 @@ def run_transformation_job(
     if job is None:
         raise TransformationError(f"Transformation job {job_id} was not found.")
 
-    # Phase 9A â€” verify owner/project/source relationship integrity before
+    # Phase 9A — verify owner/project/source relationship integrity before
     # the worker touches any job state.
     _verify_job_ownership(db, job)
 
@@ -110,7 +110,7 @@ def run_transformation_job(
             "errors": [],
         }
 
-    # Phase 11L-D â€” atomic worker claim.  A single UPDATE...WHERE on the status
+    # Phase 11L-D — atomic worker claim.  A single UPDATE...WHERE on the status
     # transition (queued/failed -> running) is the worker's lease on the job.
     # Only ONE worker can get rowcount == 1 for a given job, so concurrent
     # workers / accidental re-enqueues can never execute the same script twice
@@ -135,7 +135,7 @@ def run_transformation_job(
     # work begins (a crash mid-run is surfaced by the RQ failure handler).
     db.commit()
 
-    # Phase 2A/2B â€” Worker-side policy defense-in-depth re-evaluation.
+    # Phase 2A/2B — Worker-side policy defense-in-depth re-evaluation.
     from app.core.audit import emit_security_event
     from app.policy import (
         DEFAULT_CLASSIFICATION,
@@ -280,7 +280,7 @@ def run_transformation_job(
             "errors": [worker_decision.reason],
         }
 
-    # Phase 2C â€” PolicyRouter resolution. Map PolicyDecision to compliant provider & model.
+    # Phase 2C — PolicyRouter resolution. Map PolicyDecision to compliant provider & model.
     from app.policy.routing import ERROR_COMPLIANT_PROVIDER_UNAVAILABLE, get_policy_router
     worker_requested_model: str | None = None
     if job.requested_outputs and isinstance(job.requested_outputs, dict):
@@ -344,7 +344,7 @@ def run_transformation_job(
                 "errors": [str(exc)],
             }
 
-    # Phase 11L-A â€” cache wiring.  When enabled, successful LLM generations are
+    # Phase 11L-A — cache wiring.  When enabled, successful LLM generations are
     # cached per project (scope = job.project_id) so repeated transformations of
     # the same source never pay the provider cost twice.  Default off: historical
     # behavior is preserved and tests stay deterministic.
@@ -379,18 +379,20 @@ def run_transformation_job(
     )
     started = time.monotonic()
     result = orchestrator.execute(job_id)
-    # Phase 11M â€” POST-GENERATION integrity/provenance. Once generation has
+    # Phase 11M — POST-GENERATION integrity/provenance. Once generation has
     # completed (and without touching the AI pipeline), record the content
     # digest of every successfully persisted artifact. This is fail-open:
     # provenance failure never blocks or aborts the artifact or the job result.
     if settings.INTEGRITY_RECORD_ENABLED:
         _record_job_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
-    # Phase 2D â€” POST-GENERATION dissemination control evaluation.
+    # Phase 2D — POST-GENERATION dissemination control evaluation.
     _record_job_dissemination(db, job_id, classification=worker_classification, project_id=str(job.project_id))
-    # Phase 2E â€” POST-GENERATION provenance record assembly.
+    # Phase 2E — POST-GENERATION provenance record assembly.
     _record_job_provenance(db, job_id, classification=worker_classification, project_id=str(job.project_id))
     # Phase 2G — POST-GENERATION cryptographic integrity sealing.
     _record_job_cryptographic_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
+    # Phase 2H — POST-GENERATION digital signature signing.
+    _record_job_digital_signatures(db, job_id, project_id=str(job.project_id))
     db.commit()
     metrics.observe(
         "transformation_job_duration_seconds", time.monotonic() - started
@@ -666,6 +668,32 @@ def _record_job_cryptographic_integrity(
         pass
 
 
+def _record_job_digital_signatures(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    project_id: str | None = None,
+) -> None:
+    """Record digital signatures for a job's completed outputs after integrity sealing.
+
+    Called from post-generation hook in run_transformation_job after integrity sealing.
+    Attaches a validated DigitalSignatureRecord to each completed output's
+    output_metadata['digital_signature'].
+    Emits a 'signature_recorded' security audit event.
+    Fail-open: never raises or blocks execution on failure.
+    """
+    try:
+        from app.services.signature_service import record_job_digital_signatures
+
+        record_job_digital_signatures(
+            db,
+            job_id,
+            project_id=project_id,
+        )
+    except Exception:
+        pass
+
+
 def execute_transformation_job_sync(
     job_id: str | uuid.UUID,
     engine: Any | None = None,
@@ -775,7 +803,7 @@ def execute_transformation_job_sync(
                     "error": pre_decision.reason,
                 }
 
-            # Phase 2C â€” Pre-AI PolicyRouter Resolution in execute_transformation_job_sync
+            # Phase 2C — Pre-AI PolicyRouter Resolution in execute_transformation_job_sync
             from app.policy.routing import ERROR_COMPLIANT_PROVIDER_UNAVAILABLE, get_policy_router
             from app.transformation.llm.router_factory import build_routed_llm_provider, CompliantRoutingError
 

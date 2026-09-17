@@ -1,9 +1,9 @@
 /**
- * TransformIQ â€” API Client
+ * TransformIQ — API Client
  *
  * Centralizes all backend communication.
  * The backend base URL is read from the NEXT_PUBLIC_API_URL environment variable.
- * Never put secrets or API keys here â€” all AI/LLM keys live on the backend only.
+ * Never put secrets or API keys here — all AI/LLM keys live on the backend only.
  *
  * Covers the Phase 2+ domain surface:
  *   projects, sources, configurations, content-intelligence,
@@ -23,7 +23,7 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // ---------------------------------------------------------------------------
-// Response types â€” health
+// Response types — health
 // ---------------------------------------------------------------------------
 
 export interface ApiErrorResponse {
@@ -50,7 +50,7 @@ export interface ReadyResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” auth (Phase 11F)
+// Response types — auth (Phase 11F)
 // ---------------------------------------------------------------------------
 
 export type OtpChannel = "email" | "mobile";
@@ -119,7 +119,7 @@ export interface AdminUserListResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” projects
+// Response types — projects
 // ---------------------------------------------------------------------------
 
 export interface ProjectResponse {
@@ -148,7 +148,7 @@ export interface DeleteResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” sources
+// Response types — sources
 // ---------------------------------------------------------------------------
 
 export type InformationClassification =
@@ -224,7 +224,7 @@ export interface SourceDetailResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” configurations
+// Response types — configurations
 // ---------------------------------------------------------------------------
 
 export interface ConfigurationResponse {
@@ -262,7 +262,7 @@ export interface ConfigurationPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” content intelligence
+// Response types — content intelligence
 // ---------------------------------------------------------------------------
 
 export interface CanonicalContentResponse {
@@ -293,7 +293,7 @@ export interface ContentIntelligenceResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” transformations / outputs / verification
+// Response types — transformations / outputs / verification
 // ---------------------------------------------------------------------------
 
 export type OutputTypeId =
@@ -583,6 +583,38 @@ export interface IntegrityVerifyResponse {
   data: OutputIntegrityDetail;
 }
 
+// ---------------------------------------------------------------------------
+// Digital Signatures & Trusted Artifact Signing (Phase 2H)
+// ---------------------------------------------------------------------------
+
+export type SignatureStatus = "VALID" | "INVALID" | "UNAVAILABLE";
+
+export interface OutputSignatureDetail {
+  status: SignatureStatus;
+  algorithm?: string | null;
+  key_id?: string | null;
+  signature?: string | null;
+  signed_payload_hash?: string | null;
+  signed_integrity_hash?: string | null;
+  signed_provenance_hash?: string | null;
+  provider?: string | null;
+  signed_at?: string | null;
+  details?: Record<string, unknown>;
+}
+
+export interface OutputSignatureResponse {
+  success: boolean;
+  output_id: string;
+  data: OutputSignatureDetail;
+}
+
+export interface SignatureVerifyResponse {
+  success: boolean;
+  output_id: string;
+  data: OutputSignatureDetail;
+}
+
+
 
 export interface VerificationResultResponse {
   id: string;
@@ -642,7 +674,7 @@ export interface FactVerificationResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” trust status + cross-output consistency (Phase 12B)
+// Response types — trust status + cross-output consistency (Phase 12B)
 // ---------------------------------------------------------------------------
 
 export interface TrustSignalResponse {
@@ -692,7 +724,7 @@ export interface ConsistencyResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Response types â€” security operations (Phase 12D-G)
+// Response types — security operations (Phase 12D-G)
 // ---------------------------------------------------------------------------
 
 export interface SecurityEventResponse {
@@ -787,7 +819,7 @@ async function throwApiError(response: Response): Promise<never> {
       }
     }
   } catch {
-    // ignore JSON parse failure â€” use status text
+    // ignore JSON parse failure — use status text
   }
   throw new ApiError(response.status, detail);
 }
@@ -995,10 +1027,10 @@ async function apiFetchBlob(
 // ---------------------------------------------------------------------------
 
 export const healthApi = {
-  /** Liveness check â€” returns 200 when the backend process is alive. */
+  /** Liveness check — returns 200 when the backend process is alive. */
   health: () => apiFetch<HealthResponse>("/health"),
 
-  /** Readiness check â€” returns 200 when all dependencies are connected. */
+  /** Readiness check — returns 200 when all dependencies are connected. */
   ready: () => apiFetch<ReadyResponse>("/ready"),
 };
 
@@ -1093,7 +1125,7 @@ export const authApi = {
 };
 
 // ---------------------------------------------------------------------------
-// Admin API (Phase 11F â€” admin-only)
+// Admin API (Phase 11F — admin-only)
 // ---------------------------------------------------------------------------
 
 export const adminApi = {
@@ -1234,24 +1266,6 @@ export const contentIntelligenceApi = {
     apiFetch<ContentIntelligenceResponse>(
       `/api/v1/sources/${sourceId}/content-intelligence`,
     ),
-
-
-  /**
-   * Get cryptographic integrity record for an output (Phase 2G).
-   */
-  integrity: (outputId: string) =>
-    apiFetch<OutputIntegrityResponse>(
-      `/api/v1/outputs/${outputId}/integrity`,
-    ),
-
-  /**
-   * Verify cryptographic integrity of output artifacts and provenance (Phase 2G).
-   */
-  verifyIntegrity: (outputId: string) =>
-    apiFetch<IntegrityVerifyResponse>(
-      `/api/v1/outputs/${outputId}/integrity/verify`,
-      { method: "POST" },
-    ),
 };
 
 // ---------------------------------------------------------------------------
@@ -1380,10 +1394,44 @@ export const outputsApi = {
         body: JSON.stringify(body),
       },
     ),
+
+  /**
+   * Get cryptographic integrity record for an output (Phase 2G).
+   */
+  integrity: (outputId: string) =>
+    apiFetch<OutputIntegrityResponse>(
+      `/api/v1/outputs/${outputId}/integrity`,
+    ),
+
+  /**
+   * Verify cryptographic integrity of output artifacts and provenance (Phase 2G).
+   */
+  verifyIntegrity: (outputId: string) =>
+    apiFetch<IntegrityVerifyResponse>(
+      `/api/v1/outputs/${outputId}/integrity/verify`,
+      { method: "POST" },
+    ),
+
+  /**
+   * Get digital signature record for an output (Phase 2H).
+   */
+  signature: (outputId: string) =>
+    apiFetch<OutputSignatureResponse>(
+      `/api/v1/outputs/${outputId}/signature`,
+    ),
+
+  /**
+   * Verify digital signature and underlying integrity (Phase 2H).
+   */
+  verifySignature: (outputId: string) =>
+    apiFetch<SignatureVerifyResponse>(
+      `/api/v1/outputs/${outputId}/signature/verify`,
+      { method: "POST" },
+    ),
 };
 
 // ---------------------------------------------------------------------------
-// Security operations API (Phase 12D-G â€” read-only)
+// Security operations API (Phase 12D-G — read-only)
 // ---------------------------------------------------------------------------
 
 export interface SecurityEventsQuery {

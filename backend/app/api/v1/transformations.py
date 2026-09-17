@@ -1,12 +1,12 @@
 """
-TransformIQ Backend â€” Transformation Job API Router
+TransformIQ Backend — Transformation Job API Router
 
 Endpoints:
     GET    /api/v1/projects/{project_id}/transformations  (job history)
     POST   /api/v1/transformations
     GET    /api/v1/transformations/{job_id}
     GET    /api/v1/transformations/{job_id}/outputs
-    POST   /api/v1/transformations/{job_id}/cancel  (stub â€” Phase 6)
+    POST   /api/v1/transformations/{job_id}/cancel  (stub — Phase 6)
 
     GET    /api/v1/outputs/{output_id}
     GET    /api/v1/outputs/{output_id}/verification
@@ -61,12 +61,23 @@ from app.api.v1.schemas.transformation import (
     OutputIntegrityDetail,
     OutputIntegrityResponse,
     IntegrityVerifyResponse,
+    OutputSignatureDetail,
+    OutputSignatureResponse,
+    SignatureVerifyResponse,
 )
 from app.core.ratelimit import rate_limit_bucket
 from app.core.config import settings
 from app.db.session import get_db
 from app.core.metrics import metrics
-from app.services import project_service, source_service, configuration_service, transformation_service, approval_service
+from app.services import (
+    project_service,
+    source_service,
+    configuration_service,
+    transformation_service,
+    approval_service,
+    integrity_service,
+    signature_service,
+)
 from app.transformation.artifacts import artifact_file, get_storage
 from app.transformation.output_schemas import Advisory, ExecutiveSummary
 from app.transformation.queue import (
@@ -231,7 +242,7 @@ async def create_transformation(
             },
         )
 
-    # 6. Phase 2C â€” Pre-Job PolicyRouter Validation
+    # 6. Phase 2C — Pre-Job PolicyRouter Validation
     from app.policy.routing import get_policy_router
     router = get_policy_router()
     route_decision = router.route(
@@ -579,7 +590,7 @@ async def get_output(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> OutputDetailResponse:
     # Authorization resolved at the database level:
-    # Output â†’ job â†’ project â†’ user.
+    # Output → job → project → user.
     output = await transformation_service.get_output_owned(
         db, output_id=output_id, user_id=current_user.id
     )
@@ -706,7 +717,7 @@ async def verify_output_facts_endpoint(
     Extracts factual claims from the output, retrieves project-scoped source
     evidence via the provenance-carrying RAG path, and assigns a deterministic
     SUPPORTED / CONTRADICTED / UNVERIFIED verdict per claim. The report is
-    persisted into the existing ``VerificationResult`` table. Purely additive â€”
+    persisted into the existing ``VerificationResult`` table. Purely additive —
     it never runs inside the generation workflow.
     """
     from app.services.transformation_service import (
@@ -750,7 +761,7 @@ async def verify_output_facts_endpoint(
 
     from app.transformation.verification_engine import fact_verifier
 
-    # Phase 11K audit lifecycle (started â†’ completed | failed). These events are
+    # Phase 11K audit lifecycle (started → completed | failed). These events are
     # fail-safe: an audit-sink failure can never change the verification outcome.
     fact_verifier.emit_audit_event(
         "fact_verification_started",
@@ -770,7 +781,7 @@ async def verify_output_facts_endpoint(
             project_id=job.project_id,
             source_id=job.source_id,
         )
-    except Exception:  # retrieval/persistence failure â€” surface without leaking details
+    except Exception:  # retrieval/persistence failure — surface without leaking details
         fact_verifier.emit_audit_event(
             "fact_verification_failed",
             outcome="failed",
@@ -898,7 +909,7 @@ async def get_job_consistency(
     Aggregates existing verification, security, integrity, and fact-verification
     signals into a per-output trust status (TRUSTED / CAUTION / UNVERIFIED) and
     checks completed outputs for numeric, percentage, and date conflicts.
-    No LLM calls, no arbitrary scores â€” only explicit reason codes.
+    No LLM calls, no arbitrary scores — only explicit reason codes.
     """
     from app.transformation.verification_engine.cross_output import (
         check_cross_output_consistency,
@@ -1023,7 +1034,7 @@ async def export_output_document(
     PDF and stream it to the owning user.
 
     The export is generated statelessly from the output's stored structured
-    content â€” no storage write and no new secrets.  Binary outputs
+    content — no storage write and no new secrets.  Binary outputs
     (presentation / infographic / video) keep their existing artifact download
     path via GET /outputs/{id}/download.
     """
@@ -1159,7 +1170,7 @@ async def download_output_artifact(
     The artifact role is limited to ``primary`` (the output's own file) plus the
     companion roles persisted in ``output_metadata`` (``pdf`` for the
     infographic's PDF sibling, ``srt`` for the video package's subtitles).  The
-    storage key is resolved server-side from the authorized Output record â€” the
+    storage key is resolved server-side from the authorized Output record — the
     client never supplies a storage key.
     """
     output = await transformation_service.get_output_owned(
@@ -1733,6 +1744,105 @@ async def verify_output_integrity_endpoint(
             provenance_hash=res.get("provenance_hash"),
             approval_id=res.get("approval_id"),
             recorded_at=res.get("recorded_at"),
+            details=res.get("details", {}),
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Digital Signature Endpoints (Phase 2H)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/signature",
+    response_model=OutputSignatureResponse,
+    summary="Get digital signature status and verification metadata for an output (Phase 2H)",
+)
+async def get_output_signature_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> OutputSignatureResponse:
+    """Return authoritative digital signature record for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    meta = output.output_metadata if isinstance(output.output_metadata, dict) else {}
+    stored = meta.get("digital_signature")
+    if not isinstance(stored, dict):
+        detail = OutputSignatureDetail(
+            status="UNAVAILABLE",
+            algorithm=None,
+            key_id=None,
+            signature=None,
+            signed_payload_hash=None,
+            signed_integrity_hash=None,
+            signed_provenance_hash=None,
+            signed_at=None,
+            provider=None,
+            details={"reason": "Digital signature record not found (legacy or unsigned output)."},
+        )
+    else:
+        detail = OutputSignatureDetail(
+            status=stored.get("status", "VALID"),
+            algorithm=stored.get("algorithm"),
+            key_id=stored.get("key_id"),
+            signature=stored.get("signature"),
+            signed_payload_hash=stored.get("signed_payload_hash"),
+            signed_integrity_hash=stored.get("signed_integrity_hash"),
+            signed_provenance_hash=stored.get("signed_provenance_hash"),
+            signed_at=stored.get("signed_at"),
+            provider=stored.get("provider"),
+            details={},
+        )
+
+    return OutputSignatureResponse(
+        success=True,
+        output_id=output.id,
+        data=detail,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/signature/verify",
+    response_model=SignatureVerifyResponse,
+    summary="Verify digital signature and underlying cryptographic integrity for an output (Phase 2H)",
+)
+async def verify_output_signature_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> SignatureVerifyResponse:
+    """Verify cryptographic signature and underlying integrity against authoritative output state."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    res = signature_service.verify_output_signature(output)
+    return SignatureVerifyResponse(
+        success=True,
+        output_id=output.id,
+        data=OutputSignatureDetail(
+            status=res["status"],
+            algorithm=res.get("algorithm"),
+            key_id=res.get("key_id"),
+            signature=res.get("signature"),
+            signed_payload_hash=res.get("signed_payload_hash"),
+            signed_integrity_hash=res.get("signed_integrity_hash"),
+            signed_provenance_hash=res.get("signed_provenance_hash"),
+            signed_at=res.get("signed_at"),
+            provider=res.get("provider"),
             details=res.get("details", {}),
         ),
     )

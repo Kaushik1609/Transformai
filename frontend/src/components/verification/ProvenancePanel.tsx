@@ -1,62 +1,55 @@
 /**
- * TransformIQ / KaryaSetu AI â€” Canonical Provenance Panel (Phase 2E).
+ * TransformIQ / KaryaSetu AI — Canonical Provenance & Cryptographic Integrity Panel (Phases 2E–2G).
  *
  * Renders the end-to-end lineage chain for an output:
  *   SOURCE -> EVIDENCE -> TRANSFORMATION -> POLICY & ROUTING -> GENERATOR -> VERIFICATION -> DISSEMINATION -> INTEGRITY
  *
- * Queries GET /api/v1/outputs/{output_id}/provenance.
+ * Queries:
+ *   - GET /api/v1/outputs/{output_id}/provenance
+ *   - GET /api/v1/outputs/{output_id}/integrity
+ *   - POST /api/v1/outputs/{output_id}/integrity/verify
  */
 "use client";
 
 import { useState } from "react";
 import {
   type ProvenanceRecord,
+  type OutputIntegrityDetail,
+  type OutputSignatureDetail,
   outputsApi,
   ApiError,
 } from "@/lib/api";
-import { GitCommit, ChevronDown, ChevronUp, FileText, CheckCircle2, XCircle, AlertCircle, Database, Shield, Lock } from "lucide-react";
+import {
+  GitCommit,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Database,
+  Shield,
+  Lock,
+  KeyRound,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
 
 interface ProvenancePanelProps {
   outputId: string;
 }
 
 export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
-  const [integrity, setIntegrity] = useState<OutputIntegrityDetail | null>(null);
-  const [verifying, setVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!outputId || !isOpen) return;
-    let cancelled = false;
-    outputsApi
-      .integrity(outputId)
-      .then((res) => {
-        if (!cancelled && res.data) setIntegrity(res.data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [outputId, isOpen]);
-
-  const handleVerifyNow = async () => {
-    if (!outputId || verifying) return;
-    setVerifying(true);
-    setVerifyError(null);
-    try {
-      const res = await outputsApi.verifyIntegrity(outputId);
-      if (res.data) setIntegrity(res.data);
-    } catch (err) {
-      setVerifyError(errorMessage(err));
-    } finally {
-      setVerifying(false);
-    }
-  };
-
   const [provenance, setProvenance] = useState<ProvenanceRecord | null>(null);
+  const [integrity, setIntegrity] = useState<OutputIntegrityDetail | null>(null);
+  const [signature, setSignature] = useState<OutputSignatureDetail | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyingSignature, setVerifyingSignature] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [signatureVerifyError, setSignatureVerifyError] = useState<string | null>(null);
 
   async function loadProvenance() {
     if (provenance) {
@@ -66,8 +59,18 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
     setLoading(true);
     setError(null);
     try {
-      const resp = await outputsApi.provenance(outputId);
-      setProvenance(resp.data);
+      const [provResp, integResp, sigResp] = await Promise.all([
+        outputsApi.provenance(outputId),
+        outputsApi.integrity(outputId).catch(() => null),
+        outputsApi.signature(outputId).catch(() => null),
+      ]);
+      setProvenance(provResp.data);
+      if (integResp?.data) {
+        setIntegrity(integResp.data);
+      }
+      if (sigResp?.data) {
+        setSignature(sigResp.data);
+      }
       setExpanded(true);
     } catch (err: unknown) {
       setError(
@@ -77,6 +80,40 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleVerifyNow() {
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      const resp = await outputsApi.verifyIntegrity(outputId);
+      setIntegrity(resp.data);
+    } catch (err: unknown) {
+      setVerifyError(
+        err instanceof ApiError
+          ? err.detail
+          : "Cryptographic integrity verification failed.",
+      );
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function handleVerifySignature() {
+    setVerifyingSignature(true);
+    setSignatureVerifyError(null);
+    try {
+      const resp = await outputsApi.verifySignature(outputId);
+      setSignature(resp.data);
+    } catch (err: unknown) {
+      setSignatureVerifyError(
+        err instanceof ApiError
+          ? err.detail
+          : "Signature verification failed.",
+      );
+    } finally {
+      setVerifyingSignature(false);
     }
   }
 
@@ -91,7 +128,7 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
           data-testid={`provenance-toggle-${outputId}`}
         >
           <GitCommit className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-          {loading ? "Loading provenanceâ€¦" : expanded ? "Hide Lineage & Provenance" : "View Lineage & Provenance"}
+          {loading ? "Loading provenance…" : expanded ? "Hide Lineage & Provenance" : "View Lineage & Provenance"}
           {expanded ? (
             <ChevronUp className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
           ) : (
@@ -133,7 +170,7 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
               </div>
               <div>
                 <span className="text-foreground">Source ID: </span>
-                <span className="font-mono">{provenance.source.source_id ? provenance.source.source_id.slice(0, 8) + "â€¦" : "n/a"}</span>
+                <span className="font-mono">{provenance.source.source_id ? provenance.source.source_id.slice(0, 8) + "…" : "n/a"}</span>
               </div>
               <div>
                 <span className="text-foreground">Content Digest: </span>
@@ -218,11 +255,11 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
             </dl>
           </div>
 
-          {/* Step 5: Dissemination & Integrity */}
+          {/* Step 5: Dissemination Policy */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 font-semibold text-foreground">
               <Lock className="h-3.5 w-3.5 text-amber-500" />
-              <span>5. Dissemination & Integrity</span>
+              <span>5. Dissemination Policy</span>
             </div>
             <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground pl-5">
               <div>
@@ -230,10 +267,6 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
                 <span className={provenance.dissemination.primary_allowed ? "text-emerald-600 font-medium" : "text-destructive font-medium"}>
                   {provenance.dissemination.primary_decision} ({provenance.dissemination.primary_destination})
                 </span>
-              </div>
-              <div>
-                <span className="text-foreground">Integrity Digest: </span>
-                <span className="font-mono">{provenance.integrity.content_digest ? provenance.integrity.content_digest.slice(0, 12) + "â€¦" : "n/a"}</span>
               </div>
               {provenance.extensions?.approval_id && (
                 <div>
@@ -249,7 +282,7 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
                 <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                <span>6. Cryptographic Integrity (Phase 2G)</span>
+                <span>6. Cryptographic Integrity (SHA-256)</span>
               </div>
               {integrity && (
                 <span
@@ -321,6 +354,86 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
               </button>
               {verifyError && (
                 <span className="ml-2 text-[11px] text-destructive">{verifyError}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Step 7: Digital Signature & Trusted Artifact Signing (Phase 2H) */}
+          <div className="space-y-2 pt-2 border-t border-border/50" data-testid={`signature-section-${outputId}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                <Lock className="h-3.5 w-3.5 text-primary" />
+                <span>7. Digital Signature (Phase 2H)</span>
+              </div>
+              {signature && (
+                <span
+                  data-testid={`signature-status-badge-${outputId}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                    signature.status === "VALID"
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400"
+                      : signature.status === "INVALID"
+                      ? "bg-destructive/10 text-destructive border-destructive/30"
+                      : "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400"
+                  }`}
+                >
+                  {signature.status === "VALID" && <CheckCircle2 className="h-3 w-3" />}
+                  {signature.status === "INVALID" && <XCircle className="h-3 w-3" />}
+                  {signature.status === "UNAVAILABLE" && <AlertCircle className="h-3 w-3" />}
+                  {signature.status}
+                </span>
+              )}
+            </div>
+
+            <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-muted-foreground pl-5">
+              <div>
+                <span className="text-foreground">Algorithm: </span>
+                <span className="font-mono">{signature?.algorithm || "Unavailable"}</span>
+              </div>
+              <div>
+                <span className="text-foreground">Key ID: </span>
+                <span className="font-mono">{signature?.key_id || "Unavailable"}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-foreground">Signed Payload Digest: </span>
+                <span className="font-mono break-all" data-testid={`signature-payload-hash-${outputId}`}>
+                  {signature?.signed_payload_hash || "Unavailable"}
+                </span>
+              </div>
+              {signature?.signature && (
+                <div className="col-span-2">
+                  <span className="text-foreground">Signature: </span>
+                  <span className="font-mono break-all text-[10px] text-muted-foreground/80">
+                    {signature.signature.length > 48
+                      ? `${signature.signature.slice(0, 48)}...`
+                      : signature.signature}
+                  </span>
+                </div>
+              )}
+              <div>
+                <span className="text-foreground">Signed At: </span>
+                <span>
+                  {signature?.signed_at ? new Date(signature.signed_at).toLocaleString() : "Not recorded"}
+                </span>
+              </div>
+              <div>
+                <span className="text-foreground">Provider: </span>
+                <span className="font-mono">{signature?.provider || "Unavailable"}</span>
+              </div>
+            </dl>
+
+            <div className="pl-5 pt-1">
+              <button
+                type="button"
+                onClick={() => void handleVerifySignature()}
+                disabled={verifyingSignature}
+                className="inline-flex items-center gap-1.5 rounded border border-border bg-secondary/60 px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                data-testid={`signature-verify-btn-${outputId}`}
+              >
+                <RefreshCw className={`h-3 w-3 ${verifyingSignature ? "animate-spin text-primary" : ""}`} />
+                {verifyingSignature ? "Verifying signature…" : "Verify Signature"}
+              </button>
+              {signatureVerifyError && (
+                <span className="ml-2 text-[11px] text-destructive">{signatureVerifyError}</span>
               )}
             </div>
           </div>

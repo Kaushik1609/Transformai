@@ -1,5 +1,5 @@
 """
-TransformIQ Backend â€” Transformation Job, Output, VerificationResult Schemas
+TransformIQ Backend — Transformation Job, Output, VerificationResult Schemas
 
 Request and response schemas for transformation jobs.
 Phase 2: persistence model only. No actual job enqueueing.
@@ -480,3 +480,38 @@ class IntegrityVerifyResponse(BaseModel):
     success: bool = True
     output_id: uuid.UUID
     data: OutputIntegrityDetail
+
+
+# ---------------------------------------------------------------------------
+# Digital Signature schemas (Phase 2H)
+# ---------------------------------------------------------------------------
+
+class OutputSignatureDetail(BaseModel):
+    """Authoritative digital signature status and verification metadata for an output artifact."""
+
+    status: str = Field(..., description="Signature status ('VALID', 'INVALID', 'UNAVAILABLE').")
+    algorithm: str | None = Field(default=None, description="Signing algorithm ('ed25519', 'fake-sig-v1', 'hmac-sha256').")
+    key_id: str | None = Field(default=None, description="Public key or key reference identifier.")
+    signature: str | None = Field(default=None, description="Cryptographic signature string.")
+    signed_payload_hash: str | None = Field(default=None, description="SHA-256 digest of the canonical signed payload.")
+    signed_integrity_hash: str | None = Field(default=None, description="Primary artifact hash bound into signature.")
+    signed_provenance_hash: str | None = Field(default=None, description="Provenance hash bound into signature.")
+    signed_at: str | None = Field(default=None, description="ISO timestamp when signature was recorded.")
+    provider: str | None = Field(default=None, description="Signer provider category or name.")
+    details: dict[str, Any] = Field(default_factory=dict, description="Verification details and diagnostics.")
+
+
+class OutputSignatureResponse(BaseModel):
+    """Response model for GET /api/v1/outputs/{output_id}/signature."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputSignatureDetail
+
+
+class SignatureVerifyResponse(BaseModel):
+    """Response model for POST /api/v1/outputs/{output_id}/signature/verify."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputSignatureDetail

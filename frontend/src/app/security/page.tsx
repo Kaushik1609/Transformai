@@ -62,13 +62,13 @@ export default function SecurityPage() {
           <div className="rounded-xl border border-border bg-surface-container p-4 shadow-sm">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="label-mono-xs uppercase">Malware & Threat Scan</span>
-              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <ShieldCheck className="h-4 w-4 text-secondary-fixed-dim" />
             </div>
             <div className="mt-2 text-xl font-semibold text-foreground">
-              ClamAV & YARA
+              Deployment Dependent
             </div>
-            <p className="mt-1 text-xs text-emerald-400 font-label-mono-sm">
-              In-Memory Stream Verification
+            <p className="mt-1 text-xs text-muted-foreground font-label-mono-sm">
+              Active when ClamAV daemon is provisioned; reports unavailable when absent
             </p>
           </div>
 
@@ -87,14 +87,14 @@ export default function SecurityPage() {
 
           <div className="rounded-xl border border-border bg-surface-container p-4 shadow-sm">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="label-mono-xs uppercase">Integrity Seals</span>
+              <span className="label-mono-xs uppercase">Integrity & Signatures</span>
               <ShieldAlert className="h-4 w-4 text-primary" />
             </div>
             <div className="mt-2 text-xl font-semibold text-foreground">
-              SHA-256 Validated
+              SHA-256 & Ed25519
             </div>
             <p className="mt-1 text-xs text-primary font-label-mono-sm">
-              Digest recorded at generation
+              Cryptographic integrity seal and digital signature verification
             </p>
           </div>
         </div>

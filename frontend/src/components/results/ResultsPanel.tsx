@@ -127,6 +127,86 @@ function OutputCard({ output }: { output: OutputResponse }) {
     };
   }
 
+  // Classification badge
+  const classification = (
+    output.output_metadata?.classification ||
+    (output.output_metadata?.provenance as any)?.source?.classification ||
+    (output.output_metadata?.provenance as any)?.policy_routing?.classification
+  ) as string | undefined;
+
+  let classificationBadge: { label: string; className: string } | null = null;
+  if (classification) {
+    const uc = classification.toUpperCase();
+    if (uc === "RESTRICTED") {
+      classificationBadge = {
+        label: uc,
+        className: "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20",
+      };
+    } else if (uc === "CONFIDENTIAL") {
+      classificationBadge = {
+        label: uc,
+        className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+      };
+    } else if (uc === "INTERNAL") {
+      classificationBadge = {
+        label: uc,
+        className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
+      };
+    } else {
+      classificationBadge = {
+        label: uc,
+        className: "bg-muted/70 text-muted-foreground border border-border/50",
+      };
+    }
+  }
+
+  // Execution route badge (Local / Offline / Cloud)
+  const routing = (
+    output.output_metadata?.policy_routing ||
+    (output.output_metadata?.provenance as any)?.policy_routing
+  ) as {
+    processing_route?: string;
+    provider_category?: string;
+    provider_id?: string;
+    model_id?: string;
+  } | undefined;
+
+  const routeVal = (routing?.processing_route || routing?.provider_category)?.toUpperCase();
+  let routeBadge: { label: string; className: string; tooltip?: string } | null = null;
+  if (routeVal === "LOCAL" || routeVal === "OFFLINE" || routeVal === "AIR_GAPPED") {
+    routeBadge = {
+      label: routeVal === "AIR_GAPPED" ? "Air-Gapped" : routeVal === "OFFLINE" ? "Offline" : "Local",
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+      tooltip: routing?.model_id ? `${routing.provider_id || "local"}: ${routing.model_id}` : "Local/offline execution",
+    };
+  } else if (routeVal === "CLOUD") {
+    routeBadge = {
+      label: "Cloud",
+      className: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20",
+      tooltip: routing?.model_id ? `${routing.provider_id || "cloud"}: ${routing.model_id}` : "Cloud execution",
+    };
+  }
+
+  // Digital signature badge
+  const digitalSig = output.output_metadata?.digital_signature as
+    | { status?: string; algorithm?: string; key_id?: string }
+    | undefined;
+
+  let sigBadge: { label: string; className: string; tooltip?: string } | null = null;
+  if (digitalSig?.status === "VALID") {
+    sigBadge = {
+      label: `Signed · ${digitalSig.algorithm || "Ed25519"}`,
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+      tooltip: `Key ID: ${digitalSig.key_id || "authoritative"}`,
+    };
+  } else if (digitalSig?.status === "INVALID") {
+    sigBadge = {
+      label: "Signature Invalid",
+      className: "bg-destructive/10 text-destructive border border-destructive/20",
+      tooltip: "Signature verification failed",
+    };
+  }
+
   const handleApprove = async () => {
     try {
       setActing(true);
@@ -163,14 +243,40 @@ function OutputCard({ output }: { output: OutputResponse }) {
 
   return (
     <article className="rounded-lg border border-border">
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground">
             {outputTypeLabel(output.output_type)}
           </h3>
+          {classificationBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${classificationBadge.className}`}
+              data-testid={`classification-badge-${output.id}`}
+            >
+              {classificationBadge.label}
+            </span>
+          )}
+          {routeBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${routeBadge.className}`}
+              title={routeBadge.tooltip}
+              data-testid={`route-badge-${output.id}`}
+            >
+              {routeBadge.label}
+            </span>
+          )}
           <ArtifactIntegrity output={output} compact />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {sigBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${sigBadge.className}`}
+              title={sigBadge.tooltip}
+              data-testid={`signature-badge-${output.id}`}
+            >
+              {sigBadge.label}
+            </span>
+          )}
           {approvalBadge && (
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${approvalBadge.className}`}

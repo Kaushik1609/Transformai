@@ -1,12 +1,12 @@
 """
-TransformIQ Backend — Transformation Job API Router
+TransformIQ Backend â€” Transformation Job API Router
 
 Endpoints:
     GET    /api/v1/projects/{project_id}/transformations  (job history)
     POST   /api/v1/transformations
     GET    /api/v1/transformations/{job_id}
     GET    /api/v1/transformations/{job_id}/outputs
-    POST   /api/v1/transformations/{job_id}/cancel  (stub — Phase 6)
+    POST   /api/v1/transformations/{job_id}/cancel  (stub â€” Phase 6)
 
     GET    /api/v1/outputs/{output_id}
     GET    /api/v1/outputs/{output_id}/verification
@@ -58,6 +58,9 @@ from app.api.v1.schemas.transformation import (
     ApprovalActionResponse,
     ApprovalStatusResponse,
     DestinationApprovalDetail,
+    OutputIntegrityDetail,
+    OutputIntegrityResponse,
+    IntegrityVerifyResponse,
 )
 from app.core.ratelimit import rate_limit_bucket
 from app.core.config import settings
@@ -228,7 +231,7 @@ async def create_transformation(
             },
         )
 
-    # 6. Phase 2C — Pre-Job PolicyRouter Validation
+    # 6. Phase 2C â€” Pre-Job PolicyRouter Validation
     from app.policy.routing import get_policy_router
     router = get_policy_router()
     route_decision = router.route(
@@ -576,7 +579,7 @@ async def get_output(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> OutputDetailResponse:
     # Authorization resolved at the database level:
-    # Output → job → project → user.
+    # Output â†’ job â†’ project â†’ user.
     output = await transformation_service.get_output_owned(
         db, output_id=output_id, user_id=current_user.id
     )
@@ -703,7 +706,7 @@ async def verify_output_facts_endpoint(
     Extracts factual claims from the output, retrieves project-scoped source
     evidence via the provenance-carrying RAG path, and assigns a deterministic
     SUPPORTED / CONTRADICTED / UNVERIFIED verdict per claim. The report is
-    persisted into the existing ``VerificationResult`` table. Purely additive —
+    persisted into the existing ``VerificationResult`` table. Purely additive â€”
     it never runs inside the generation workflow.
     """
     from app.services.transformation_service import (
@@ -747,7 +750,7 @@ async def verify_output_facts_endpoint(
 
     from app.transformation.verification_engine import fact_verifier
 
-    # Phase 11K audit lifecycle (started → completed | failed). These events are
+    # Phase 11K audit lifecycle (started â†’ completed | failed). These events are
     # fail-safe: an audit-sink failure can never change the verification outcome.
     fact_verifier.emit_audit_event(
         "fact_verification_started",
@@ -767,7 +770,7 @@ async def verify_output_facts_endpoint(
             project_id=job.project_id,
             source_id=job.source_id,
         )
-    except Exception:  # retrieval/persistence failure — surface without leaking details
+    except Exception:  # retrieval/persistence failure â€” surface without leaking details
         fact_verifier.emit_audit_event(
             "fact_verification_failed",
             outcome="failed",
@@ -895,7 +898,7 @@ async def get_job_consistency(
     Aggregates existing verification, security, integrity, and fact-verification
     signals into a per-output trust status (TRUSTED / CAUTION / UNVERIFIED) and
     checks completed outputs for numeric, percentage, and date conflicts.
-    No LLM calls, no arbitrary scores — only explicit reason codes.
+    No LLM calls, no arbitrary scores â€” only explicit reason codes.
     """
     from app.transformation.verification_engine.cross_output import (
         check_cross_output_consistency,
@@ -1020,7 +1023,7 @@ async def export_output_document(
     PDF and stream it to the owning user.
 
     The export is generated statelessly from the output's stored structured
-    content — no storage write and no new secrets.  Binary outputs
+    content â€” no storage write and no new secrets.  Binary outputs
     (presentation / infographic / video) keep their existing artifact download
     path via GET /outputs/{id}/download.
     """
@@ -1156,7 +1159,7 @@ async def download_output_artifact(
     The artifact role is limited to ``primary`` (the output's own file) plus the
     companion roles persisted in ``output_metadata`` (``pdf`` for the
     infographic's PDF sibling, ``srt`` for the video package's subtitles).  The
-    storage key is resolved server-side from the authorized Output record — the
+    storage key is resolved server-side from the authorized Output record â€” the
     client never supplies a storage key.
     """
     output = await transformation_service.get_output_owned(
@@ -1635,5 +1638,101 @@ async def submit_output_approval_endpoint(
             policy_reason=rec.policy_reason,
             classification_snapshot=rec.classification_snapshot,
             verification_status_snapshot=rec.verification_status_snapshot,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Cryptographic Integrity Endpoints (Phase 2G)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/integrity",
+    response_model=OutputIntegrityResponse,
+    summary="Get cryptographic integrity status and digests for an output (Phase 2G)",
+)
+async def get_output_integrity_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> OutputIntegrityResponse:
+    """Return authoritative cryptographic integrity record for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    meta = output.output_metadata if isinstance(output.output_metadata, dict) else {}
+    stored = meta.get("cryptographic_integrity")
+    if not isinstance(stored, dict):
+        detail = OutputIntegrityDetail(
+            status="UNAVAILABLE",
+            algorithm="sha256",
+            artifact_hash=None,
+            companion_hashes={},
+            provenance_id=None,
+            provenance_hash=None,
+            approval_id=None,
+            recorded_at=None,
+            details={"reason": "Cryptographic integrity record not found (legacy or unsealed output)."},
+        )
+    else:
+        detail = OutputIntegrityDetail(
+            status=stored.get("status", "VERIFIED"),
+            algorithm=stored.get("algorithm", "sha256"),
+            artifact_hash=stored.get("artifact_hash"),
+            companion_hashes=stored.get("companion_hashes", {}),
+            provenance_id=stored.get("provenance_id"),
+            provenance_hash=stored.get("provenance_hash"),
+            approval_id=stored.get("approval_id"),
+            recorded_at=stored.get("recorded_at"),
+            details={},
+        )
+
+    return OutputIntegrityResponse(
+        success=True,
+        output_id=output.id,
+        data=detail,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/integrity/verify",
+    response_model=IntegrityVerifyResponse,
+    summary="Verify cryptographic integrity of output artifacts and provenance (Phase 2G)",
+)
+async def verify_output_integrity_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> IntegrityVerifyResponse:
+    """Verify current output artifact bytes and provenance against the stored cryptographic integrity record."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    res = integrity_service.verify_output_integrity(output)
+    return IntegrityVerifyResponse(
+        success=True,
+        output_id=output.id,
+        data=OutputIntegrityDetail(
+            status=res["status"],
+            algorithm=res.get("algorithm", "sha256"),
+            artifact_hash=res.get("artifact_hash"),
+            companion_hashes=res.get("companion_hashes", {}),
+            provenance_id=res.get("provenance_id"),
+            provenance_hash=res.get("provenance_hash"),
+            approval_id=res.get("approval_id"),
+            recorded_at=res.get("recorded_at"),
+            details=res.get("details", {}),
         ),
     )

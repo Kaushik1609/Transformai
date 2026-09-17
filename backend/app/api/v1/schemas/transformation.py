@@ -1,5 +1,5 @@
 """
-TransformIQ Backend — Transformation Job, Output, VerificationResult Schemas
+TransformIQ Backend â€” Transformation Job, Output, VerificationResult Schemas
 
 Request and response schemas for transformation jobs.
 Phase 2: persistence model only. No actual job enqueueing.
@@ -446,3 +446,37 @@ class ApprovalActionResponse(BaseModel):
 
     success: bool = True
     data: DestinationApprovalDetail
+
+
+# ---------------------------------------------------------------------------
+# Cryptographic Integrity schemas (Phase 2G)
+# ---------------------------------------------------------------------------
+
+class OutputIntegrityDetail(BaseModel):
+    """Authoritative cryptographic integrity status and digests for an output artifact."""
+
+    status: str = Field(..., description="Integrity status ('VERIFIED', 'INVALID', 'UNAVAILABLE').")
+    algorithm: str = Field(default="sha256", description="Hash algorithm used ('sha256').")
+    artifact_hash: str | None = Field(default=None, description="Primary artifact SHA-256 digest.")
+    companion_hashes: dict[str, str] = Field(default_factory=dict, description="Named companion artifact digests.")
+    provenance_id: str | None = Field(default=None, description="Canonical provenance record identifier.")
+    provenance_hash: str | None = Field(default=None, description="Deterministic canonical provenance projection digest.")
+    approval_id: str | None = Field(default=None, description="Latest approval identifier snapshot bound at sealing.")
+    recorded_at: str | None = Field(default=None, description="ISO timestamp when integrity was sealed.")
+    details: dict[str, Any] = Field(default_factory=dict, description="Verification details and comparison results.")
+
+
+class OutputIntegrityResponse(BaseModel):
+    """Response model for GET /api/v1/outputs/{output_id}/integrity."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputIntegrityDetail
+
+
+class IntegrityVerifyResponse(BaseModel):
+    """Response model for POST /api/v1/outputs/{output_id}/integrity/verify."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputIntegrityDetail

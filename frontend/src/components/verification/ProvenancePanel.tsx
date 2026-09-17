@@ -1,5 +1,5 @@
 /**
- * TransformIQ / KaryaSetu AI — Canonical Provenance Panel (Phase 2E).
+ * TransformIQ / KaryaSetu AI â€” Canonical Provenance Panel (Phase 2E).
  *
  * Renders the end-to-end lineage chain for an output:
  *   SOURCE -> EVIDENCE -> TRANSFORMATION -> POLICY & ROUTING -> GENERATOR -> VERIFICATION -> DISSEMINATION -> INTEGRITY
@@ -21,6 +21,38 @@ interface ProvenancePanelProps {
 }
 
 export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
+  const [integrity, setIntegrity] = useState<OutputIntegrityDetail | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!outputId || !isOpen) return;
+    let cancelled = false;
+    outputsApi
+      .integrity(outputId)
+      .then((res) => {
+        if (!cancelled && res.data) setIntegrity(res.data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [outputId, isOpen]);
+
+  const handleVerifyNow = async () => {
+    if (!outputId || verifying) return;
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      const res = await outputsApi.verifyIntegrity(outputId);
+      if (res.data) setIntegrity(res.data);
+    } catch (err) {
+      setVerifyError(errorMessage(err));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const [provenance, setProvenance] = useState<ProvenanceRecord | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -59,7 +91,7 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
           data-testid={`provenance-toggle-${outputId}`}
         >
           <GitCommit className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-          {loading ? "Loading provenance…" : expanded ? "Hide Lineage & Provenance" : "View Lineage & Provenance"}
+          {loading ? "Loading provenanceâ€¦" : expanded ? "Hide Lineage & Provenance" : "View Lineage & Provenance"}
           {expanded ? (
             <ChevronUp className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
           ) : (
@@ -101,7 +133,7 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
               </div>
               <div>
                 <span className="text-foreground">Source ID: </span>
-                <span className="font-mono">{provenance.source.source_id ? provenance.source.source_id.slice(0, 8) + "…" : "n/a"}</span>
+                <span className="font-mono">{provenance.source.source_id ? provenance.source.source_id.slice(0, 8) + "â€¦" : "n/a"}</span>
               </div>
               <div>
                 <span className="text-foreground">Content Digest: </span>
@@ -201,7 +233,7 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
               </div>
               <div>
                 <span className="text-foreground">Integrity Digest: </span>
-                <span className="font-mono">{provenance.integrity.content_digest ? provenance.integrity.content_digest.slice(0, 12) + "…" : "n/a"}</span>
+                <span className="font-mono">{provenance.integrity.content_digest ? provenance.integrity.content_digest.slice(0, 12) + "â€¦" : "n/a"}</span>
               </div>
               {provenance.extensions?.approval_id && (
                 <div>
@@ -210,6 +242,87 @@ export function ProvenancePanel({ outputId }: ProvenancePanelProps) {
                 </div>
               )}
             </dl>
+          </div>
+
+          {/* Step 6: Cryptographic Integrity & Artifact Hashing (Phase 2G) */}
+          <div className="space-y-2 pt-2 border-t border-border/50" data-testid={`integrity-section-${outputId}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                <span>6. Cryptographic Integrity (Phase 2G)</span>
+              </div>
+              {integrity && (
+                <span
+                  data-testid={`integrity-status-badge-${outputId}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                    integrity.status === "VERIFIED"
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400"
+                      : integrity.status === "INVALID"
+                      ? "bg-destructive/10 text-destructive border-destructive/30"
+                      : "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400"
+                  }`}
+                >
+                  {integrity.status === "VERIFIED" && <CheckCircle2 className="h-3 w-3" />}
+                  {integrity.status === "INVALID" && <XCircle className="h-3 w-3" />}
+                  {integrity.status === "UNAVAILABLE" && <AlertCircle className="h-3 w-3" />}
+                  {integrity.status}
+                </span>
+              )}
+            </div>
+
+            <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-muted-foreground pl-5">
+              <div>
+                <span className="text-foreground">Artifact Digest: </span>
+                <span className="font-mono break-all" data-testid={`integrity-artifact-hash-${outputId}`}>
+                  {integrity?.artifact_hash || "Unavailable"}
+                </span>
+              </div>
+              <div>
+                <span className="text-foreground">Provenance Digest: </span>
+                <span className="font-mono break-all" data-testid={`integrity-provenance-hash-${outputId}`}>
+                  {integrity?.provenance_hash || "Unavailable"}
+                </span>
+              </div>
+              {integrity?.companion_hashes && Object.keys(integrity.companion_hashes).length > 0 && (
+                <div className="col-span-2 space-y-0.5">
+                  <span className="text-foreground">Companion Artifacts: </span>
+                  <div className="grid grid-cols-1 gap-0.5 pl-2 font-mono text-[10px]">
+                    {Object.entries(integrity.companion_hashes).map(([role, hash]) => (
+                      <div key={role}>
+                        <span className="uppercase text-foreground">{role}: </span>
+                        <span>{hash}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <span className="text-foreground">Recorded At: </span>
+                <span>
+                  {integrity?.recorded_at ? new Date(integrity.recorded_at).toLocaleString() : "Not recorded"}
+                </span>
+              </div>
+              <div>
+                <span className="text-foreground">Algorithm: </span>
+                <span className="font-mono">{integrity?.algorithm || "sha256"}</span>
+              </div>
+            </dl>
+
+            <div className="pl-5 pt-1">
+              <button
+                type="button"
+                onClick={() => void handleVerifyNow()}
+                disabled={verifying}
+                className="inline-flex items-center gap-1.5 rounded border border-border bg-secondary/60 px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                data-testid={`integrity-verify-btn-${outputId}`}
+              >
+                <RefreshCw className={`h-3 w-3 ${verifying ? "animate-spin text-primary" : ""}`} />
+                {verifying ? "Verifying integrity…" : "Verify Now"}
+              </button>
+              {verifyError && (
+                <span className="ml-2 text-[11px] text-destructive">{verifyError}</span>
+              )}
+            </div>
           </div>
         </div>
       )}

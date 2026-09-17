@@ -631,53 +631,12 @@ async def list_output_verifications(
     )
 
 
-@outputs_router.get(
-    "/{output_id}/integrity",
-    response_model=IntegrityDetailResponse,
-    summary="Get the integrity/provenance record for an output artifact",
-)
-async def get_output_integrity(
-    output_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-) -> IntegrityDetailResponse:
-    # Authorization is resolved at the database level (Output -> job -> project
-    # -> user); a non-owned output is indistinguishable from a missing one.
-    output = await transformation_service.get_output_owned(
-        db, output_id=output_id, user_id=current_user.id
-    )
-    if output is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} not found.",
-        )
-    meta = (output.output_metadata or {}).get("integrity")
-    if not isinstance(meta, dict) or not meta:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} has no integrity record.",
-        )
-    return IntegrityDetailResponse(
-        data=IntegrityRecordResponse(
-            output_id=output.id,
-            digest=meta.get("digest"),
-            algorithm=meta.get("algorithm"),
-            representation=meta.get("representation"),
-            provider=meta.get("provider"),
-            reference=meta.get("reference"),
-            status=meta.get("status", "unavailable"),
-            recorded=bool(meta.get("recorded", False)),
-            verified_at=meta.get("verified_at"),
-        )
-    )
-
-
 @outputs_router.post(
     "/{output_id}/verify",
     response_model=IntegrityVerifyResponse,
-    summary="Verify the current artifact against its recorded SHA-256 digest",
+    summary="Verify the current artifact against its recorded SHA-256 digest (legacy route)",
 )
-async def verify_output_integrity_endpoint(
+async def verify_legacy_output_integrity_endpoint(
     output_id: uuid.UUID,
     role: Literal["primary", "pdf", "srt"] = Query(default="primary"),
     db: AsyncSession = Depends(get_db),

@@ -12,6 +12,7 @@ Rules:
 """
 from __future__ import annotations
 
+import inspect
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -184,7 +185,9 @@ async def get_or_initialize_output_approval(
     if modified and persist:
         existing_meta["approval"] = approval_metadata.model_dump(mode="json")
         output.output_metadata = existing_meta
-        db.add(output)
+        res = db.add(output)
+        if inspect.isawaitable(res):
+            await res
         await db.flush()
 
     return approval_metadata
@@ -220,8 +223,22 @@ async def submit_output_approval(
             ),
         )
 
-    norm_dest = normalize_destination(destination)
-    norm_action = ApprovalAction(str(action).lower())
+    try:
+        norm_dest = normalize_destination(destination)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid destination: {exc}",
+        ) from None
+
+    try:
+        norm_action = ApprovalAction(str(action).lower())
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid approval action: {action!r}. Allowed actions: 'approve', 'reject'.",
+        ) from None
+
     classification = await resolve_output_classification(db, output)
     engine = get_dissemination_engine()
 
@@ -370,7 +387,9 @@ async def submit_output_approval(
         out_meta["provenance"] = prov
 
     output.output_metadata = out_meta
-    db.add(output)
+    res = db.add(output)
+    if inspect.isawaitable(res):
+        await res
     await db.flush()
 
     # Step 7: Emit Audit Event
@@ -428,7 +447,10 @@ async def verify_release_eligibility(
     if output.status != "completed":
         return False, f"Output is not completed (current status: '{output.status}')."
 
-    norm_dest = normalize_destination(destination)
+    try:
+        norm_dest = normalize_destination(destination)
+    except Exception as exc:
+        return False, f"Invalid destination: {exc}"
     classification = await resolve_output_classification(db, output)
     engine = get_dissemination_engine()
 
@@ -530,7 +552,9 @@ async def verify_release_eligibility(
             out_meta = dict(output.output_metadata or {})
             out_meta["approval"] = approval_meta.model_dump(mode="json")
             output.output_metadata = out_meta
-            db.add(output)
+            res = db.add(output)
+            if inspect.isawaitable(res):
+                await res
             await db.flush()
 
         emit_security_event(

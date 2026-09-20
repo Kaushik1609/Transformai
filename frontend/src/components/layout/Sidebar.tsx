@@ -30,7 +30,6 @@ import {
   Plus,
   X,
   LogOut,
-  Sparkles,
 } from "lucide-react";
 import {
   getDevSession,
@@ -185,7 +184,7 @@ export default function SidebarNav({
             <Link
               href="/create"
               className={cn(
-                "flex items-center justify-center gap-2.5 rounded-lg bg-primary py-2.5 px-3 text-primary-foreground headline-sm shadow-[0_0_16px_rgba(37,99,235,0.4)] transition-all hover:bg-primary/90 active:scale-[0.98]",
+                "flex items-center justify-center gap-2.5 rounded-lg bg-primary py-2.5 px-3 text-primary-foreground headline-sm shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.98]",
                 collapsed && "px-0 py-2.5",
               )}
               title={collapsed ? "+ Create Transformation" : undefined}
@@ -476,7 +475,7 @@ function MobileDrawer({
             <Link
               href="/create"
               onClick={onClose}
-              className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary py-2.5 px-3 text-primary-foreground headline-sm shadow-[0_0_16px_rgba(37,99,235,0.4)] transition-all hover:bg-primary/90 active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary py-2.5 px-3 text-primary-foreground headline-sm shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.98]"
             >
               <Plus className="h-4 w-4 stroke-[3] shrink-0" aria-hidden="true" />
               <span>+ Create Transformation</span>

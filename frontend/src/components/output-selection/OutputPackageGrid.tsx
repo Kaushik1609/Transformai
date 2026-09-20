@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { Check, Sparkles, Package } from "lucide-react";
+import { Check, Sliders, Package } from "lucide-react";
 import { OUTPUT_TYPES, type OutputTypeId } from "@/lib/outputTypes";
 import { cn } from "@/lib/utils";
 
@@ -118,7 +118,7 @@ export function OutputPackageGrid({
             onClick={applyCSuitePreset}
             className="inline-flex items-center gap-1 rounded bg-secondary/15 px-3 py-1 label-mono-sm text-secondary-fixed-dim transition-colors hover:bg-secondary/25"
           >
-            <Sparkles className="h-3 w-3" />
+            <Sliders className="h-3 w-3" />
             <span>Preset: C-Suite</span>
           </button>
         </div>
@@ -146,7 +146,7 @@ export function OutputPackageGrid({
                 className={cn(
                   "group flex flex-col justify-between rounded-xl border p-4 text-left transition-all",
                   active
-                    ? "border-primary/60 bg-surface-container-high ring-1 ring-primary shadow-[0_0_12px_rgba(37,99,235,0.2)]"
+                    ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
                     : "border-border-subtle bg-surface-container-low hover:border-border-default hover:bg-surface-container",
                   disabled && "cursor-not-allowed opacity-60",
                 )}

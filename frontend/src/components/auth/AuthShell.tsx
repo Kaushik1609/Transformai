@@ -8,17 +8,8 @@
 import Link from "next/link";
 import { ReactNode, useState } from "react";
 import { LogoMark } from "@/components/brand";
-import { Check, Eye, EyeOff } from "lucide-react";
-
-const OUTPUTS = [
-  "Summary",
-  "LinkedIn",
-  "Advisory",
-  "Presentation",
-  "X Thread",
-  "Infographic",
-  "Video Package",
-];
+import { Eye, EyeOff } from "lucide-react";
+import { WorkflowGraphAnimation } from "@/components/demo/WorkflowGraphAnimation";
 
 export function AuthShell({
   children,
@@ -27,53 +18,37 @@ export function AuthShell({
 }) {
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left — brand panel */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden border-r border-border bg-surface-elevated p-10 lg:flex">
-        <Link href="/" className="flex items-center gap-2.5">
-          <LogoMark size={34} />
-          <span className="text-lg font-semibold tracking-tight text-foreground">
-            KaryaSetu AI
-          </span>
-        </Link>
-
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground">
-              One source.
-              <br />
-              Every format.
-            </h1>
-            <p className="max-w-md text-muted-foreground">
-              Upload your source, describe what you need, choose your outputs,
-              and let KaryaSetu AI orchestrate the rest.
-            </p>
-          </div>
-
-          <ul className="grid max-w-md grid-cols-2 gap-2">
-            {OUTPUTS.map((o) => (
-              <li
-                key={o}
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Check className="h-4 w-4 text-primary" aria-hidden="true" />
-                {o}
-              </li>
-            ))}
-          </ul>
+      {/* Left — 50% window space: enterprise brand and architecture animation */}
+      <div className="relative hidden w-1/2 min-h-screen max-h-screen flex-col justify-between overflow-hidden border-r border-border bg-card text-foreground transition-colors duration-200 p-6 lg:flex lg:p-8">
+        {/* Top: Branding & clean headline */}
+        <div className="mb-3 shrink-0 space-y-1.5">
+          <Link href="/" className="flex items-center gap-2.5">
+            <LogoMark size={32} />
+            <span className="text-lg font-semibold tracking-tight text-foreground">
+              KaryaSetu AI
+            </span>
+          </Link>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            End-to-End Governed AI Pipeline
+          </h1>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          7 output formats · 1 prompt or source
-        </p>
+        {/* Down: Full workflow architecture animation */}
+        <div className="relative flex-1 w-full min-h-0 flex items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-container-lowest shadow-xs transition-colors">
+          <WorkflowGraphAnimation authMode={true} />
+        </div>
       </div>
 
-      {/* Right — form panel */}
-      <main className="flex w-full flex-1 items-center justify-center p-6">
-        <div className="w-full max-w-sm">{children}</div>
+      {/* Right — 50% window space for auth form */}
+      <main className="flex w-full flex-1 lg:w-1/2 min-h-screen items-center justify-center p-6 bg-muted/20 dark:bg-background">
+        <div className="w-full max-w-sm rounded-xl border border-border/80 bg-card p-6 sm:p-7 shadow-xs">
+          {children}
+        </div>
       </main>
     </div>
   );
 }
+
 
 export function PasswordInput({
   value,

@@ -19,8 +19,17 @@ import { authHeaders, clearAuthToken, getAuthToken } from "./auth";
 // Configuration
 // ---------------------------------------------------------------------------
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+function resolveDefaultApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "";
+  }
+  return "http://localhost:8000";
+}
+
+export const API_BASE_URL = resolveDefaultApiUrl();
 
 // ---------------------------------------------------------------------------
 // Response types — health

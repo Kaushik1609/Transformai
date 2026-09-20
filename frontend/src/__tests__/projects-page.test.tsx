@@ -85,9 +85,16 @@ describe("ProjectsPage", () => {
   });
 
   it("shows a friendly error when loading fails", async () => {
-    mockFetch.mockResolvedValueOnce(
-      jsonResponse({ detail: "Internal Server Error" }, 503),
-    );
+    mockFetch
+      .mockResolvedValueOnce(
+        jsonResponse({ detail: "Internal Server Error" }, 503),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ detail: "Internal Server Error" }, 503),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ detail: "Internal Server Error" }, 503),
+      );
     render(<ProjectsPage />);
 
     await waitFor(() =>

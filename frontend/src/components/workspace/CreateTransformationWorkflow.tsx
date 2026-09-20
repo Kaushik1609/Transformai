@@ -63,7 +63,6 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Info,
   Workflow,
   ShieldCheck,
@@ -784,7 +783,7 @@ export function CreateTransformationWorkflow({
                     }
                     className="inline-flex items-center gap-1 rounded bg-surface-container px-2.5 py-1 label-mono-sm text-foreground transition-colors hover:bg-surface-container-high"
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-secondary-fixed-dim" />
+                    <FileText className="h-3.5 w-3.5 text-secondary-fixed-dim" />
                     <span>Executive BLUF</span>
                   </button>
                   <button
@@ -1064,7 +1063,7 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => goToStage(2)}
               disabled={!inputReady || running}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Continue to Configuration
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -1075,7 +1074,7 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => void nextToOutputs()}
               disabled={running || configSaving}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {configSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1090,7 +1089,7 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => void nextToReview()}
               disabled={selectedOutputs.length === 0 || running || configSaving}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {configSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1105,12 +1104,12 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => void handleTransform()}
               disabled={!canTransform}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_16px_rgba(37,99,235,0.35)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {running ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               )}
               Dispatch Transformation
             </button>

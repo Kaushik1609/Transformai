@@ -222,10 +222,9 @@ describe("TransformationWorkspace", () => {
   it("shows a friendly load error on 5xx and recovers on retry", async () => {
     const backend = new FakeBackend(PROJECT_ID);
     const handler = backend.handler() as unknown as typeof fetch;
-    let first = true;
+    let failed = true;
     global.fetch = (async (input: RequestInfo | Request, init?: RequestInit) => {
-      if (first) {
-        first = false;
+      if (failed) {
         return jsonResponse({ detail: "Internal Server Error" }, 503);
       }
       return handler(input as globalThis.Request, init);
@@ -237,6 +236,7 @@ describe("TransformationWorkspace", () => {
       expect(screen.getByText("Failed to load the workspace.")).toBeInTheDocument(),
     );
 
+    failed = false;
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("No source yet")).toBeInTheDocument());
   });

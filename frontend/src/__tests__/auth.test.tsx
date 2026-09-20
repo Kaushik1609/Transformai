@@ -53,7 +53,7 @@ describe("LoginPage", () => {
   it("renders the sign-in form and brand", () => {
     render(<LoginPage />);
     expect(screen.getByText("Welcome back")).toBeInTheDocument();
-    expect(screen.getByText(/One source/)).toBeInTheDocument();
+    expect(screen.getByText(/End-to-End Governed AI Pipeline/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe("RegisterPage", () => {
   it("renders the registration form and brand", () => {
     render(<RegisterPage />);
     expect(screen.getByText("Create your account")).toBeInTheDocument();
-    expect(screen.getByText(/One source/)).toBeInTheDocument();
+    expect(screen.getByText(/End-to-End Governed AI Pipeline/)).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();

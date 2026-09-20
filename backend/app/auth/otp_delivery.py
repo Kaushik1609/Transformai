@@ -42,6 +42,8 @@ class OtpDeliveryResult:
     channel: str
     identifier: str
     provider_name: str
+    status: str = "delivered"  # "delivered" | "failed" | "unavailable"
+    error_message: str | None = None
     otp: str | None = None
 
 
@@ -59,9 +61,13 @@ def _mask(identifier: str) -> str:
 
 
 class OtpDeliveryProvider(ABC):
-    """Abstract OTP delivery channel."""
+    """Abstract OTP delivery channel.
+
+    Designed for extension across delivery channels (Email, future Twilio SMS).
+    """
 
     provider_name: str = "abstract"
+    delivery_channel: str = "email"
 
     @abstractmethod
     def send_otp(
@@ -75,9 +81,10 @@ class OtpDeliveryProvider(ABC):
 
 
 class ConsoleOtpProvider(OtpDeliveryProvider):
-    """Development/test provider. Logs the code only in development."""
+    """Development/test provider. Logs redacted marker and keeps offline test seam."""
 
     provider_name = "console"
+    delivery_channel = "email"
 
     def __init__(self) -> None:
         self.recent_codes: dict[tuple[str, str], str] = {}
@@ -90,30 +97,22 @@ class ConsoleOtpProvider(OtpDeliveryProvider):
         otp: str,
         reason: str = "authentication",
     ) -> OtpDeliveryResult:
-        # Test seam: always record the code so offline tests can read it.
+        # Test seam: record code in memory so offline test suites can read it via last_otp_for.
         self.recent_codes[(channel, identifier.strip().lower())] = otp
-        if settings.ENVIRONMENT == "development":
-            logger.info(
-                "otp_console_delivery",
-                channel=channel,
-                identifier=_mask(identifier),
-                reason=reason,
-                otp=otp,
-            )
-        else:
-            logger.info(
-                "otp_console_delivery_redacted",
-                channel=channel,
-                identifier=_mask(identifier),
-                reason=reason,
-                otp="[REDACTED]",
-            )
+        logger.info(
+            "otp_console_delivery",
+            channel=channel,
+            identifier=_mask(identifier),
+            reason=reason,
+            otp="[REDACTED]",
+        )
         return OtpDeliveryResult(
             delivered=True,
             channel=channel,
             identifier=identifier,
             provider_name=self.provider_name,
-            otp=otp if settings.ENVIRONMENT in ("development", "staging") else None,
+            status="delivered",
+            otp=None,
         )
 
     def last_otp_for(self, channel: Channel, identifier: str) -> str | None:
@@ -121,9 +120,10 @@ class ConsoleOtpProvider(OtpDeliveryProvider):
 
 
 class EmailOtpProvider(OtpDeliveryProvider):
-    """SMTP email delivery. Requires SMTP_HOST and SMTP_USER to be configured."""
+    """SMTP email delivery. Requires SMTP_HOST, SMTP_USER, and SMTP_FROM to be configured."""
 
     provider_name = "email"
+    delivery_channel = "email"
 
     def _require_config(self) -> None:
         missing = [
@@ -162,8 +162,6 @@ class EmailOtpProvider(OtpDeliveryProvider):
             f"It expires in {settings.OTP_EXPIRY_SECONDS} seconds. "
             "If you did not request this, you can safely ignore this email."
         )
-        delivered_via = self.provider_name
-        delivered_otp = None
         try:
             with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=5) as server:
                 server.starttls()
@@ -176,27 +174,18 @@ class EmailOtpProvider(OtpDeliveryProvider):
                 identifier=_mask(identifier),
                 error=str(exc),
             )
-            # In staging or development, cloud platforms (Render, Heroku free tiers)
-            # block outbound SMTP (ports 25, 465, 587) to prevent spam.
-            # Do not crash user registration; fallback gracefully and log the code.
-            if settings.ENVIRONMENT in ("development", "staging"):
-                logger.info(
-                    "otp_email_delivery_fallback_code",
-                    identifier=_mask(identifier),
-                    otp=otp,
-                    reason=reason,
-                )
-                delivered_via = "email_fallback"
-                delivered_otp = otp
-            else:
-                raise OtpDeliveryError(f"Failed to deliver email OTP: {exc}") from exc
+            # Never fabricate success or expose OTP when email delivery fails.
+            raise OtpDeliveryError(
+                "We couldn't send the verification email. Please try again later."
+            ) from exc
 
         return OtpDeliveryResult(
             delivered=True,
             channel="email",
             identifier=identifier,
-            provider_name=delivered_via,
-            otp=delivered_otp,
+            provider_name=self.provider_name,
+            status="delivered",
+            otp=None,
         )
 
 
@@ -211,6 +200,7 @@ class SmsOtpProvider(OtpDeliveryProvider):
     """
 
     provider_name = "sms"
+    delivery_channel = "mobile"
 
     def _require_config(self) -> None:
         missing = [

@@ -62,12 +62,18 @@ def _prod(**overrides) -> Settings:
         OTP_PROVIDER="email",
         OTP_STORE_BACKEND="redis",
         ALLOWED_ORIGINS="https://app.transformiq.example",
+        DATABASE_URL="postgresql+asyncpg://user:strongpass@db.example.com:5432/transformiq",
         LLM_API_KEY="test-llm-key",
         EMBEDDING_PROVIDER="openai",
         EMBEDDING_API_KEY="test-embedding-key",
         SECURITY_AUDIT_SINK="database",
         AUTH_TOKEN_REVOCATION_STORE="redis",
         RATE_LIMIT_BACKEND="redis",
+        STORAGE_BACKEND="s3",
+        STORAGE_BUCKET="transformiq-prod-bucket",
+        STORAGE_ACCESS_KEY="test-access-key",
+        STORAGE_SECRET_KEY="test-secret-key",
+        INTEGRITY_PROVIDER="none",
         _env_file=None,
     )
     kwargs.update(overrides)
@@ -77,6 +83,10 @@ def _prod(**overrides) -> Settings:
 class TestProductionSettingsFailClosed:
     def test_hardened_production_config_is_valid(self):
         assert _prod().ENVIRONMENT == "production"
+
+    def test_production_refuses_fake_integrity_provider(self):
+        with pytest.raises(ValidationError):
+            _prod(INTEGRITY_PROVIDER="fake")
 
     def test_production_refuses_fake_llm_provider(self):
         with pytest.raises(ValidationError):
@@ -306,7 +316,9 @@ class TestEnvTemplate:
 class TestDeployArtifacts:
     def test_frontend_uses_standalone_output(self):
         assert NEXT_CONFIG.is_file()
-        assert 'output: "standalone"' in NEXT_CONFIG.read_text(encoding="utf-8")
+        content = NEXT_CONFIG.read_text(encoding="utf-8")
+        assert "output:" in content
+        assert '"standalone"' in content
 
     def test_frontend_public_dir_exists_for_copy(self):
         assert FRONTEND_PUBLIC.is_file()

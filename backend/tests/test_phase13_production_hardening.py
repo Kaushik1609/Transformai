@@ -733,22 +733,25 @@ class TestTextInputBudgetCaps:
 
 
 def _prod(**overrides) -> Settings:
-    # Phase 14D tightened the production contract: fake/mock providers,
-    # unkeyed real providers, memory-backed shared stores, and the in-memory
-    # audit sink are refused in production. This helper encodes a fully valid
-    # production configuration so the assertions below stay green.
+    # Encodes a fully valid production configuration so hardening assertions stay green.
     kwargs = dict(
         ENVIRONMENT="production",
         AUTH_SECRET_KEY="a" * 64,
         OTP_PROVIDER="email",
         OTP_STORE_BACKEND="redis",
         ALLOWED_ORIGINS="https://app.transformiq.example",
+        DATABASE_URL="postgresql+asyncpg://user:strongpass@db.example.com:5432/transformiq",
         LLM_API_KEY="test-llm-key",
         EMBEDDING_PROVIDER="openai",
         EMBEDDING_API_KEY="test-embedding-key",
         SECURITY_AUDIT_SINK="database",
         AUTH_TOKEN_REVOCATION_STORE="redis",
         RATE_LIMIT_BACKEND="redis",
+        STORAGE_BACKEND="s3",
+        STORAGE_BUCKET="transformiq-prod-bucket",
+        STORAGE_ACCESS_KEY="test-access-key",
+        STORAGE_SECRET_KEY="test-secret-key",
+        INTEGRITY_PROVIDER="none",
         _env_file=None,
     )
     kwargs.update(overrides)
@@ -772,10 +775,32 @@ class TestProductionHardening:
         with pytest.raises(ValidationError):
             _prod(ALLOWED_ORIGINS="https://ok.example,*")
 
+    def test_refuses_fake_integrity_provider_in_production(self):
+        with pytest.raises(ValidationError):
+            _prod(INTEGRITY_PROVIDER="fake")
+
+    def test_refuses_real_integrity_without_ledger_url_in_production(self):
+        with pytest.raises(ValidationError):
+            _prod(INTEGRITY_PROVIDER="real", INTEGRITY_LEDGER_URL="")
+
+    def test_refuses_local_storage_in_production(self):
+        with pytest.raises(ValidationError):
+            _prod(STORAGE_BACKEND="local")
+
+    def test_refuses_dev_database_password_in_production(self):
+        with pytest.raises(ValidationError):
+            _prod(DATABASE_URL="postgresql+asyncpg://transformiq:changeme@localhost:5432/transformiq")
+
+    def test_refuses_fake_fallback_provider_in_production(self):
+        with pytest.raises(ValidationError):
+            _prod(LLM_FALLBACK_PROVIDER="fake")
+
     def test_hardened_production_config_is_valid(self):
         hardened = _prod()
         assert hardened.ENVIRONMENT == "production"
         assert hardened.RATE_LIMIT_MEMORY_MAX_TRACKED_KEYS == 100_000
+        assert hardened.STORAGE_BACKEND == "s3"
+        assert hardened.INTEGRITY_PROVIDER == "none"
 
     def test_staging_is_equally_hardened(self):
         with pytest.raises(ValidationError):

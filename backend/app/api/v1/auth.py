@@ -82,7 +82,7 @@ def _delivery_details(result) -> OtpDeliveryDetails:
         channel=result.channel,
         identifier=result.identifier,
         resend_after_seconds=result.resend_after_seconds,
-        dev_otp=getattr(result, "dev_otp", None),
+        delivery_status="delivered",
     )
 
 

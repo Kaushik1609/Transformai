@@ -612,14 +612,16 @@ def test_worker_loads_job_by_id(monkeypatch):
 # ---------------------------------------------------------------------------
 
 def _seed_project_sources_configuration(client: TestClient) -> tuple[str, str, str]:
-    pid = client.post("/api/v1/projects", json={"name": "Phase 6 API"}).json()["data"]["id"]
-    sid = client.post(
-        f"/api/v1/projects/{pid}/sources/async", json={"text": "api source text", "language": "en"}
-    ).json()["data"]["id"]
-    cid = client.post(
-        f"/api/v1/projects/{pid}/configurations",
-        json={"language": "English", "detail_level": "standard"},
-    ).json()["data"]["id"]
+    from unittest.mock import patch
+    with patch("app.api.v1.sources.get_ingestion_queue", return_value=FakeQueue()):
+        pid = client.post("/api/v1/projects", json={"name": "Phase 6 API"}).json()["data"]["id"]
+        sid = client.post(
+            f"/api/v1/projects/{pid}/sources/async", json={"text": "api source text", "language": "en"}
+        ).json()["data"]["id"]
+        cid = client.post(
+            f"/api/v1/projects/{pid}/configurations",
+            json={"language": "English", "detail_level": "standard"},
+        ).json()["data"]["id"]
     return pid, sid, cid
 
 

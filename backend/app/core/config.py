@@ -912,6 +912,31 @@ class Settings(BaseSettings):
                     "CACHE_BACKEND must be 'redis' in production when "
                     "CACHE_ENABLED is True."
                 )
+            if self.INTEGRITY_PROVIDER == "fake":
+                raise ValueError(
+                    "INTEGRITY_PROVIDER='fake' is not allowed in production; "
+                    "use 'real' (with INTEGRITY_LEDGER_URL) or 'none' (local integrity hashing without external ledger)."
+                )
+            if self.INTEGRITY_PROVIDER == "real" and not self.INTEGRITY_LEDGER_URL:
+                raise ValueError(
+                    "INTEGRITY_LEDGER_URL is required in production when "
+                    "INTEGRITY_PROVIDER='real'."
+                )
+            if self.STORAGE_BACKEND != "s3":
+                raise ValueError(
+                    f"STORAGE_BACKEND='{self.STORAGE_BACKEND}' is not allowed in production; "
+                    "an explicit persistent storage backend (STORAGE_BACKEND='s3') is required "
+                    "to prevent data loss on ephemeral cloud containers."
+                )
+            if "changeme" in self.DATABASE_URL:
+                raise ValueError(
+                    "DATABASE_URL must not contain default development password 'changeme' in production; "
+                    "a configured production database URL is required."
+                )
+            if self.LLM_FALLBACK_PROVIDER == "fake":
+                raise ValueError(
+                    "LLM_FALLBACK_PROVIDER='fake' is not allowed in production."
+                )
 
         if self.ENVIRONMENT in ("staging", "production"):
             if self.STORAGE_BACKEND == "s3":

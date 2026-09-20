@@ -864,14 +864,45 @@ def execute_transformation_job_sync(
                 }
 
             if job_record.source_id:
+                from app.db.models.source import Source
                 from app.db.models.canonical_content import CanonicalContent
+                from app.content_intelligence.service import ContentIntelligenceService
+                from app.content_intelligence.llm_provider import LLMContentAnalysisProvider
+
+                source_record = session.get(Source, job_record.source_id)
+                if source_record:
+                    meta = dict(source_record.source_metadata or {})
+                    emb_status = meta.get("embedding_status")
+                    # If embeddings are queued or not yet processed, trigger generation before RAG retrieval
+                    if emb_status in ("queued", "processing", None):
+                        from app.ingestion.worker_processing import process_source_embeddings_with_session
+                        from app.embeddings.factory import build_resilient_embedding_provider
+                        try:
+                            emb_provider = build_resilient_embedding_provider()
+                            process_source_embeddings_with_session(session, source_record.id, provider=emb_provider)
+                        except Exception as emb_exc:
+                            _logger.warning(
+                                "Auto-embedding generation failed prior to transformation",
+                                source_id=str(source_record.id),
+                                error=str(emb_exc),
+                            )
+                            job_meta = dict(job_record.requested_outputs or {})
+                            job_meta["evidence_status"] = "insufficient_context"
+                            job_meta["embedding_status"] = "failed"
+                            job_record.requested_outputs = job_meta
+                            session.commit()
+                    elif emb_status == "failed":
+                        job_meta = dict(job_record.requested_outputs or {})
+                        job_meta["evidence_status"] = "insufficient_context"
+                        job_meta["embedding_status"] = "failed"
+                        job_record.requested_outputs = job_meta
+                        session.commit()
+
                 canonical = session.execute(
                     select(CanonicalContent).where(CanonicalContent.source_id == job_record.source_id)
                 ).scalar_one_or_none()
                 if canonical is None or canonical.status != "completed":
-                    from app.content_intelligence.service import ContentIntelligenceService
-                    from app.content_intelligence.fake_provider import FakeContentAnalysisProvider
-                    ci = ContentIntelligenceService(provider=FakeContentAnalysisProvider())
+                    ci = ContentIntelligenceService(provider=LLMContentAnalysisProvider(base_provider))
                     ci.analyze_source(session, job_record.source_id)
                     session.commit()
 

@@ -147,13 +147,12 @@ def process_content_intelligence(source_id: str) -> dict[str, str]:
     try:
         import uuid
 
-        from app.content_intelligence.fake_provider import FakeContentAnalysisProvider
-        from app.content_intelligence.service import ContentIntelligenceService
+        from app.content_intelligence.service import execute_content_intelligence_with_session
 
         with Session(engine) as session:
-            content = ContentIntelligenceService(
-                provider=FakeContentAnalysisProvider()
-            ).analyze_source(session, uuid.UUID(source_id))
+            content = execute_content_intelligence_with_session(
+                session, uuid.UUID(source_id)
+            )
             result = {"source_id": str(content.source_id), "status": content.status}
         metrics.inc(
             "ingestion_jobs_total", {"kind": "content_intelligence", "result": "completed"}

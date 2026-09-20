@@ -13,7 +13,7 @@ import uuid
 import json
 
 import structlog
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,7 @@ from app.db.session import get_db
 from app.ingestion.documents import DocumentExtractionError
 from app.ingestion.queue import enqueue_source_ingestion, get_ingestion_queue
 from app.ingestion.validation import SourceValidationError
+from app.ingestion.worker_processing import execute_source_embeddings_sync
 from app.services import project_service, source_service
 
 logger = structlog.get_logger(__name__)
@@ -105,6 +106,7 @@ async def create_source(
 async def ingest_direct_text(
     project_id: uuid.UUID,
     body: DirectTextSourceCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
     _: None = Depends(rate_limit_bucket("source_upload")),
@@ -131,6 +133,11 @@ async def ingest_direct_text(
         )
     except ValueError as exc:
         raise _ingestion_error(exc) from exc
+
+    # Dual-dispatch: also schedule in-process background worker so embeddings
+    # are generated immediately in single-process or test/dev environments.
+    background_tasks.add_task(execute_source_embeddings_sync, str(source.id))
+
     emit_security_event(
         "source_uploaded",
         outcome="allowed",
@@ -150,6 +157,7 @@ async def ingest_direct_text(
 )
 async def ingest_txt_file(
     project_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     language: str = Form(default="en"),
     classification: str | None = Form(default=None),
@@ -180,6 +188,9 @@ async def ingest_txt_file(
         )
     except ValueError as exc:
         raise _ingestion_error(exc) from exc
+
+    background_tasks.add_task(execute_source_embeddings_sync, str(source.id))
+
     emit_security_event(
         "source_uploaded",
         outcome="allowed",
@@ -199,6 +210,7 @@ async def ingest_txt_file(
 )
 async def ingest_document_file(
     project_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     language: str = Form(default="en"),
     classification: str | None = Form(default=None),
@@ -235,6 +247,9 @@ async def ingest_document_file(
         )
     except (DocumentExtractionError, ValueError) as exc:
         raise _ingestion_error(exc) from exc
+
+    background_tasks.add_task(execute_source_embeddings_sync, str(source.id))
+
     emit_security_event(
         "source_uploaded",
         outcome="allowed",

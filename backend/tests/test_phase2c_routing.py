@@ -424,7 +424,9 @@ class TestRouterFactory:
     def test_15_sensitive_request_never_falls_back_to_cloud(self, monkeypatch):
         """CONFIDENTIAL / RESTRICTED routed provider wraps with ProviderManager having NO cloud fallbacks."""
         monkeypatch.setenv("LLM_BASE_URL", "http://localhost:11434/v1")
+        monkeypatch.setattr(settings, "LLM_BASE_URL", "http://localhost:11434/v1", raising=False)
         monkeypatch.setenv("LLM_FALLBACK_PROVIDER", "openai")  # Global fallback configured as cloud
+        monkeypatch.setattr(settings, "LLM_FALLBACK_PROVIDER", "openai", raising=False)
 
         decision = RouteDecision(
             allowed=True,
@@ -443,6 +445,7 @@ class TestRouterFactory:
     def test_16_public_internal_compliant_fallback(self, monkeypatch):
         """PUBLIC allows compliant fallback provider (e.g., fake in test environment)."""
         monkeypatch.setenv("LLM_FALLBACK_PROVIDER", "fake")
+        monkeypatch.setattr(settings, "LLM_FALLBACK_PROVIDER", "fake", raising=False)
 
         decision = RouteDecision(
             allowed=True,

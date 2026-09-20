@@ -229,9 +229,29 @@ async def ingest_text_source(
             )
         )
 
+    source_metadata = dict(source.source_metadata or {})
+    source_metadata["chunk_count"] = len(chunks)
+    source_metadata["embedding_status"] = "queued"
+    source.source_metadata = source_metadata
     source.status = "ready"
     await db.flush()
     await db.refresh(source)
+
+    try:
+        from app.ingestion.queue import enqueue_source_embedding, get_embedding_queue
+        enqueue_source_embedding(source.id, queue=get_embedding_queue())
+    except Exception as exc:  # pragma: no cover - defensive best effort
+        source_metadata = dict(source.source_metadata or {})
+        source_metadata["embedding_queue_error"] = str(exc)
+        source_metadata["embedding_status"] = "queued"
+        source.source_metadata = source_metadata
+        await db.flush()
+        logger.warning(
+            "Could not enqueue source embedding to Redis",
+            source_id=str(source.id),
+            error=str(exc),
+        )
+
     logger.info(
         "Text source ingested",
         source_id=str(source.id),
@@ -325,9 +345,29 @@ async def ingest_document_source(
             )
         )
 
+    source_metadata = dict(source.source_metadata or {})
+    source_metadata["chunk_count"] = len(chunks)
+    source_metadata["embedding_status"] = "queued"
+    source.source_metadata = source_metadata
     source.status = "ready"
     await db.flush()
     await db.refresh(source)
+
+    try:
+        from app.ingestion.queue import enqueue_source_embedding, get_embedding_queue
+        enqueue_source_embedding(source.id, queue=get_embedding_queue())
+    except Exception as exc:  # pragma: no cover - defensive best effort
+        source_metadata = dict(source.source_metadata or {})
+        source_metadata["embedding_queue_error"] = str(exc)
+        source_metadata["embedding_status"] = "queued"
+        source.source_metadata = source_metadata
+        await db.flush()
+        logger.warning(
+            "Could not enqueue source embedding to Redis",
+            source_id=str(source.id),
+            error=str(exc),
+        )
+
     logger.info(
         "Document source ingested",
         source_id=str(source.id),

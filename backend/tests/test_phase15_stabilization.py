@@ -13,6 +13,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from app.auth.otp_delivery import (
+    BrevoOtpProvider,
     OtpDeliveryProvider,
     ConsoleOtpProvider,
     EmailOtpProvider,
@@ -104,6 +105,44 @@ class TestOtpDeliverySecurity:
 
             provider_explicit = build_otp_delivery_provider("resend")
             assert isinstance(provider_explicit, ResendOtpProvider)
+
+    def test_brevo_provider_delivery_channel(self):
+        provider = BrevoOtpProvider(api_key="xkeysib-test123")
+        assert provider.delivery_channel == "email"
+        assert provider.provider_name == "brevo"
+
+    def test_brevo_provider_missing_key_raises(self):
+        provider = BrevoOtpProvider(api_key="")
+        with pytest.raises(OtpDeliveryError) as exc_info:
+            provider.send_otp(channel="email", identifier="user@example.com", otp="123456")
+        assert "BREVO_API_KEY" in str(exc_info.value)
+
+    def test_brevo_provider_success(self):
+        provider = BrevoOtpProvider(api_key="xkeysib-test123")
+        with patch("httpx.Client.post") as mock_post:
+            mock_post.return_value.status_code = 201
+            result = provider.send_otp(channel="email", identifier="user@example.com", otp="123456")
+            assert result.delivered is True
+            assert result.status == "delivered"
+            assert result.provider_name == "brevo"
+            assert result.otp is None
+
+    def test_brevo_provider_http_error_raises(self):
+        provider = BrevoOtpProvider(api_key="xkeysib-test123")
+        with patch("httpx.Client.post") as mock_post:
+            mock_post.return_value.status_code = 400
+            mock_post.return_value.text = "Bad Request"
+            with pytest.raises(OtpDeliveryError) as exc_info:
+                provider.send_otp(channel="email", identifier="user@example.com", otp="123456")
+            assert "couldn't send the verification email" in str(exc_info.value).lower()
+
+    def test_build_otp_delivery_provider_auto_brevo(self):
+        with patch("app.auth.otp_delivery.settings.BREVO_API_KEY", "xkeysib-auto123"):
+            provider = build_otp_delivery_provider("email")
+            assert isinstance(provider, BrevoOtpProvider)
+
+            provider_explicit = build_otp_delivery_provider("brevo")
+            assert isinstance(provider_explicit, BrevoOtpProvider)
 
     def test_otp_delivery_details_has_no_dev_otp_field(self):
         details = OtpDeliveryDetails(

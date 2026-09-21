@@ -133,7 +133,12 @@ class Settings(BaseSettings):
 
     # OTP storage / delivery backends (memory = offline/tests; redis = prod).
     OTP_STORE_BACKEND: Literal["memory", "redis"] = "memory"
-    OTP_PROVIDER: Literal["console", "email", "sms", "resend"] = "console"
+    OTP_PROVIDER: Literal["console", "email", "sms", "resend", "brevo"] = "console"
+
+    # Brevo (Sendinblue) HTTP API email delivery (HTTPS port 443; sends to ANY email free)
+    BREVO_API_KEY: str = ""
+    BREVO_FROM: str = "ketan.krg.ak@gmail.com"
+    BREVO_FROM_NAME: str = "KaryaSetu AI"
 
     # Resend HTTP API email delivery (HTTPS port 443; reliable on cloud environments)
     RESEND_API_KEY: str = ""

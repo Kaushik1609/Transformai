@@ -36,6 +36,7 @@ class OtpIssueResult:
     channel: str
     identifier: str
     resend_after_seconds: int
+    dev_otp: str | None = None
 
 
 def _normalize_identifier(channel: Channel, identifier: str) -> str:
@@ -92,14 +93,16 @@ def issue_otp(
     )
     store.put(channel, identifier, new_record)
 
+    dev_otp = None
     if should_deliver:
         try:
-            delivery.send_otp(
+            delivery_res = delivery.send_otp(
                 channel=channel,
                 identifier=identifier,
                 otp=otp,
                 reason=reason,
             )
+            dev_otp = getattr(delivery_res, "otp", None)
         except OtpDeliveryError:
             # Delivery failure must not leave a dangling active code behind.
             store.delete(channel, identifier)
@@ -109,6 +112,7 @@ def issue_otp(
         channel=channel,
         identifier=identifier,
         resend_after_seconds=settings.OTP_RESEND_COOLDOWN_SECONDS,
+        dev_otp=dev_otp,
     )
 
 

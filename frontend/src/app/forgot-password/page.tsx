@@ -15,6 +15,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +27,10 @@ export default function ForgotPasswordPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await authApi.forgotPassword({ email: email.trim() });
+      const res = await authApi.forgotPassword({ email: email.trim() });
+      if (res?.data?.dev_otp) {
+        setDevOtp(res.data.dev_otp);
+      }
       setSent(true);
     } catch (err) {
       setError(
@@ -53,9 +57,22 @@ export default function ForgotPasswordPage() {
 
         {sent ? (
           <div className="space-y-4">
+            {devOtp && (
+              <div className="rounded-lg border border-primary/20 bg-primary/10 p-3 text-xs text-primary">
+                Verification code auto-detected:{" "}
+                <span className="font-mono font-bold tracking-wider">{devOtp}</span>
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">
               Open the email and use the code on the{" "}
-              <Link href="/reset-password" className="font-medium text-primary hover:underline">
+              <Link
+                href={
+                  devOtp
+                    ? `/reset-password?email=${encodeURIComponent(email)}&code=${devOtp}`
+                    : `/reset-password?email=${encodeURIComponent(email)}`
+                }
+                className="font-medium text-primary hover:underline"
+              >
                 reset password
               </Link>{" "}
               page.

@@ -16,9 +16,11 @@ from app.auth.otp_delivery import (
     OtpDeliveryProvider,
     ConsoleOtpProvider,
     EmailOtpProvider,
+    ResendOtpProvider,
     SmsOtpProvider,
     OtpDeliveryResult,
     OtpDeliveryError,
+    build_otp_delivery_provider,
 )
 from app.auth.schemas import OtpDeliveryDetails
 from app.ingestion.validation import validate_source, SourceValidationError
@@ -64,6 +66,44 @@ class TestOtpDeliverySecurity:
                 with pytest.raises(OtpDeliveryError) as exc_info:
                     provider.send_otp(channel="email", identifier="user@example.com", otp="123456")
                 assert "couldn't send the verification email" in str(exc_info.value).lower()
+
+    def test_resend_provider_delivery_channel(self):
+        provider = ResendOtpProvider(api_key="re_test123")
+        assert provider.delivery_channel == "email"
+        assert provider.provider_name == "resend"
+
+    def test_resend_provider_missing_key_raises(self):
+        provider = ResendOtpProvider(api_key="")
+        with pytest.raises(OtpDeliveryError) as exc_info:
+            provider.send_otp(channel="email", identifier="user@example.com", otp="123456")
+        assert "RESEND_API_KEY" in str(exc_info.value)
+
+    def test_resend_provider_success(self):
+        provider = ResendOtpProvider(api_key="re_test123")
+        with patch("httpx.Client.post") as mock_post:
+            mock_post.return_value.status_code = 200
+            result = provider.send_otp(channel="email", identifier="user@example.com", otp="123456")
+            assert result.delivered is True
+            assert result.status == "delivered"
+            assert result.provider_name == "resend"
+            assert result.otp is None  # Never exposed! Real inbox proof
+
+    def test_resend_provider_http_error_raises(self):
+        provider = ResendOtpProvider(api_key="re_test123")
+        with patch("httpx.Client.post") as mock_post:
+            mock_post.return_value.status_code = 403
+            mock_post.return_value.text = "Forbidden"
+            with pytest.raises(OtpDeliveryError) as exc_info:
+                provider.send_otp(channel="email", identifier="user@example.com", otp="123456")
+            assert "couldn't send the verification email" in str(exc_info.value).lower()
+
+    def test_build_otp_delivery_provider_auto_resend(self):
+        with patch("app.auth.otp_delivery.settings.RESEND_API_KEY", "re_auto123"):
+            provider = build_otp_delivery_provider("email")
+            assert isinstance(provider, ResendOtpProvider)
+
+            provider_explicit = build_otp_delivery_provider("resend")
+            assert isinstance(provider_explicit, ResendOtpProvider)
 
     def test_otp_delivery_details_has_no_dev_otp_field(self):
         details = OtpDeliveryDetails(

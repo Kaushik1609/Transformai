@@ -133,7 +133,11 @@ class Settings(BaseSettings):
 
     # OTP storage / delivery backends (memory = offline/tests; redis = prod).
     OTP_STORE_BACKEND: Literal["memory", "redis"] = "memory"
-    OTP_PROVIDER: Literal["console", "email", "sms"] = "console"
+    OTP_PROVIDER: Literal["console", "email", "sms", "resend"] = "console"
+
+    # Resend HTTP API email delivery (HTTPS port 443; reliable on cloud environments)
+    RESEND_API_KEY: str = ""
+    RESEND_FROM: str = "TransformIQ <onboarding@resend.dev>"
 
     # Email delivery (OTP_PROVIDER=email). Never hard-code credentials.
     SMTP_HOST: str = ""

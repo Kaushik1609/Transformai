@@ -176,6 +176,20 @@ async def get_or_initialize_output_approval(
                 dest_records[dest_key].approval_status = ApprovalStatus.HARD_BLOCKED.value
                 dest_records[dest_key].policy_reason = dissem_decision.reason
                 modified = True
+            elif dest_records[dest_key].approval_status == ApprovalStatus.PENDING_APPROVAL.value:
+                # Dynamic policy healing: If a destination was stamped PENDING_APPROVAL under an older policy
+                # but current deterministic policy evaluates to NOT_REQUIRED, align safely with current policy.
+                current_policy_status = evaluate_initial_approval_status(
+                    classification=classification,
+                    destination=dest,
+                    dissemination_decision=dissem_decision,
+                )
+                if current_policy_status == ApprovalStatus.NOT_REQUIRED:
+                    dest_records[dest_key].approval_status = ApprovalStatus.NOT_REQUIRED.value
+                    dest_records[dest_key].policy_reason = dissem_decision.reason
+                    dest_records[dest_key].classification_snapshot = classification.value
+                    dest_records[dest_key].policy_id_snapshot = engine.POLICY_ID
+                    modified = True
 
     approval_metadata = OutputApprovalMetadata(
         destinations=dest_records,

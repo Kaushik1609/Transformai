@@ -110,7 +110,20 @@ def evaluate_initial_approval_status(
         ):
             return ApprovalStatus.PENDING_APPROVAL
 
-    # For INTERNAL, CONFIDENTIAL, RESTRICTED:
+    # For INTERNAL:
+    # In-app preview and authenticated user download do not require human sign-off.
+    if norm_class == InformationClassification.INTERNAL:
+        if norm_dest in (
+            DisseminationDestination.INTERNAL,
+            DisseminationDestination.REVIEW,
+            DisseminationDestination.DOWNLOAD,
+        ):
+            return ApprovalStatus.NOT_REQUIRED
+        if norm_dest == DisseminationDestination.PRESENTATION:
+            return ApprovalStatus.PENDING_APPROVAL
+
+    # For CONFIDENTIAL and RESTRICTED:
+    # In-app preview is permitted, but file export/download/presentation requires sign-off.
     if norm_dest in (
         DisseminationDestination.INTERNAL,
         DisseminationDestination.REVIEW,

@@ -107,6 +107,36 @@ class TestApprovalDomainLogic:
         dec_li = engine.evaluate(InformationClassification.CONFIDENTIAL, DisseminationDestination.LINKEDIN)
         assert evaluate_initial_approval_status(InformationClassification.CONFIDENTIAL, DisseminationDestination.LINKEDIN, dec_li) == ApprovalStatus.HARD_BLOCKED
 
+    def test_02b_evaluate_initial_status_internal(self):
+        engine = get_dissemination_engine()
+        # INTERNAL to INTERNAL, REVIEW, DOWNLOAD -> NOT_REQUIRED
+        dec_int = engine.evaluate(InformationClassification.INTERNAL, DisseminationDestination.INTERNAL)
+        assert evaluate_initial_approval_status(InformationClassification.INTERNAL, DisseminationDestination.INTERNAL, dec_int) == ApprovalStatus.NOT_REQUIRED
+
+        dec_rev = engine.evaluate(InformationClassification.INTERNAL, DisseminationDestination.REVIEW)
+        assert evaluate_initial_approval_status(InformationClassification.INTERNAL, DisseminationDestination.REVIEW, dec_rev) == ApprovalStatus.NOT_REQUIRED
+
+        dec_dl = engine.evaluate(InformationClassification.INTERNAL, DisseminationDestination.DOWNLOAD)
+        assert evaluate_initial_approval_status(InformationClassification.INTERNAL, DisseminationDestination.DOWNLOAD, dec_dl) == ApprovalStatus.NOT_REQUIRED
+
+        # INTERNAL to PRESENTATION -> PENDING_APPROVAL
+        dec_pres = engine.evaluate(InformationClassification.INTERNAL, DisseminationDestination.PRESENTATION)
+        assert evaluate_initial_approval_status(InformationClassification.INTERNAL, DisseminationDestination.PRESENTATION, dec_pres) == ApprovalStatus.PENDING_APPROVAL
+
+        # INTERNAL to external destinations -> HARD_BLOCKED
+        dec_li = engine.evaluate(InformationClassification.INTERNAL, DisseminationDestination.LINKEDIN)
+        assert evaluate_initial_approval_status(InformationClassification.INTERNAL, DisseminationDestination.LINKEDIN, dec_li) == ApprovalStatus.HARD_BLOCKED
+
+    def test_02c_evaluate_initial_status_restricted(self):
+        engine = get_dissemination_engine()
+        # RESTRICTED to INTERNAL, REVIEW -> NOT_REQUIRED
+        dec_int = engine.evaluate(InformationClassification.RESTRICTED, DisseminationDestination.INTERNAL)
+        assert evaluate_initial_approval_status(InformationClassification.RESTRICTED, DisseminationDestination.INTERNAL, dec_int) == ApprovalStatus.NOT_REQUIRED
+
+        # RESTRICTED to DOWNLOAD -> PENDING_APPROVAL
+        dec_dl = engine.evaluate(InformationClassification.RESTRICTED, DisseminationDestination.DOWNLOAD)
+        assert evaluate_initial_approval_status(InformationClassification.RESTRICTED, DisseminationDestination.DOWNLOAD, dec_dl) == ApprovalStatus.PENDING_APPROVAL
+
     def test_03_validate_transitions(self):
         # PENDING_APPROVAL -> APPROVED
         assert validate_approval_transition(ApprovalStatus.PENDING_APPROVAL, ApprovalAction.APPROVE) == ApprovalStatus.APPROVED
@@ -188,7 +218,22 @@ class TestApprovalServiceAndGates:
             meta = await approval_service.get_or_initialize_output_approval(mock_db, output, persist=False)
             assert isinstance(meta, OutputApprovalMetadata)
             assert "DOWNLOAD" in meta.destinations
+            assert meta.destinations["DOWNLOAD"].approval_status == "NOT_REQUIRED"
+            assert meta.destinations["PRESENTATION"].approval_status == "PENDING_APPROVAL"
+            assert meta.destinations["INTERNAL"].approval_status == "NOT_REQUIRED"
+            assert meta.destinations["LINKEDIN"].approval_status == "HARD_BLOCKED"
+
+    @pytest.mark.asyncio
+    async def test_04b_get_or_initialize_output_approval_confidential(self):
+        output = self._make_mock_output(classification="CONFIDENTIAL")
+        mock_db = AsyncMock()
+
+        with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.CONFIDENTIAL):
+            meta = await approval_service.get_or_initialize_output_approval(mock_db, output, persist=False)
+            assert isinstance(meta, OutputApprovalMetadata)
+            assert "DOWNLOAD" in meta.destinations
             assert meta.destinations["DOWNLOAD"].approval_status == "PENDING_APPROVAL"
+            assert meta.destinations["PRESENTATION"].approval_status == "PENDING_APPROVAL"
             assert meta.destinations["INTERNAL"].approval_status == "NOT_REQUIRED"
             assert meta.destinations["LINKEDIN"].approval_status == "HARD_BLOCKED"
 
@@ -567,6 +612,20 @@ class TestApprovalEndpoints:
             assert resp.success is True
             assert resp.output_id == output.id
             assert "DOWNLOAD" in resp.destinations
+            assert resp.destinations["DOWNLOAD"].approval_status == "NOT_REQUIRED"
+
+    @pytest.mark.asyncio
+    async def test_14b_get_approval_endpoint_confidential_pending(self):
+        output = self._make_mock_output("CONFIDENTIAL")
+        mock_db = AsyncMock()
+        current_user = CurrentUser(id=OWNER_USER_ID, email="owner@test.com", name="Owner", role="operator")
+
+        with patch("app.services.transformation_service.get_output_owned", return_value=output), \
+             patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.CONFIDENTIAL):
+            resp = await get_output_approval_endpoint(output.id, destination=None, db=mock_db, current_user=current_user)
+            assert resp.success is True
+            assert resp.output_id == output.id
+            assert "DOWNLOAD" in resp.destinations
             assert resp.destinations["DOWNLOAD"].approval_status == "PENDING_APPROVAL"
 
     @pytest.mark.asyncio
@@ -768,13 +827,26 @@ class TestApprovalEndpoints:
 
         with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.INTERNAL):
             meta = await approval_service.get_or_initialize_output_approval(mock_db, output, persist=False)
+            assert meta.destinations["DOWNLOAD"].approval_status == "NOT_REQUIRED"
+            assert meta.destinations["PRESENTATION"].approval_status == "PENDING_APPROVAL"
+            assert meta.destinations["INTERNAL"].approval_status == "NOT_REQUIRED"
+            assert meta.destinations["LINKEDIN"].approval_status == "HARD_BLOCKED"
+
+    @pytest.mark.asyncio
+    async def test_22b_legacy_output_confidential_dynamic_resolution(self):
+        output = self._make_mock_output("CONFIDENTIAL", approval_meta=None)
+        mock_db = AsyncMock()
+
+        with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.CONFIDENTIAL):
+            meta = await approval_service.get_or_initialize_output_approval(mock_db, output, persist=False)
             assert meta.destinations["DOWNLOAD"].approval_status == "PENDING_APPROVAL"
+            assert meta.destinations["PRESENTATION"].approval_status == "PENDING_APPROVAL"
             assert meta.destinations["INTERNAL"].approval_status == "NOT_REQUIRED"
             assert meta.destinations["LINKEDIN"].approval_status == "HARD_BLOCKED"
 
     @pytest.mark.asyncio
     async def test_23_independent_download_and_presentation_approval(self):
-        output = self._make_mock_output("INTERNAL")
+        output = self._make_mock_output("CONFIDENTIAL")
         mock_db = AsyncMock()
         current_user = CurrentUser(id=OWNER_USER_ID, email="owner@test.com", name="Owner", role="operator")
 
@@ -795,7 +867,7 @@ class TestApprovalEndpoints:
 
         mock_db.execute = mock_execute
 
-        with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.INTERNAL):
+        with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.CONFIDENTIAL):
             # Approve DOWNLOAD
             await approval_service.submit_output_approval(
                 mock_db,
@@ -809,18 +881,120 @@ class TestApprovalEndpoints:
             assert dest_meta["PRESENTATION"]["approval_status"] == "PENDING_APPROVAL"
 
     @pytest.mark.asyncio
-    async def test_24_cannot_approve_generating_output(self):
-        output = self._make_mock_output("INTERNAL", status="generating")
+    async def test_25_stale_pending_approval_dynamically_healed_for_internal_download(self):
+        # Existing output created under old rule with PENDING_APPROVAL on DOWNLOAD
+        output = self._make_mock_output(
+            classification="INTERNAL",
+            approval_meta={
+                "destinations": {
+                    "DOWNLOAD": {
+                        "destination": "DOWNLOAD",
+                        "approval_status": "PENDING_APPROVAL",
+                        "policy_reason": "Old policy required approval",
+                    },
+                    "INTERNAL": {
+                        "destination": "INTERNAL",
+                        "approval_status": "NOT_REQUIRED",
+                    },
+                }
+            },
+        )
+        mock_db = AsyncMock()
+
+        with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.INTERNAL), \
+             patch("app.services.approval_service._load_latest_verification_result", return_value=None):
+            eligible, reason = await approval_service.verify_release_eligibility(
+                mock_db,
+                output=output,
+                destination=DisseminationDestination.DOWNLOAD,
+            )
+            assert eligible is True
+            assert "Human approval not required" in reason
+            # The destination status has been safely healed to NOT_REQUIRED
+            assert output.output_metadata["approval"]["destinations"]["DOWNLOAD"]["approval_status"] == "NOT_REQUIRED"
+
+    @pytest.mark.asyncio
+    async def test_26_restricted_and_confidential_pending_approval_not_bypassed_by_healing(self):
+        # Existing output with CONFIDENTIAL classification and PENDING_APPROVAL must remain blocked
+        conf_output = self._make_mock_output(
+            classification="CONFIDENTIAL",
+            approval_meta={
+                "destinations": {
+                    "DOWNLOAD": {
+                        "destination": "DOWNLOAD",
+                        "approval_status": "PENDING_APPROVAL",
+                        "policy_reason": "Confidential export requires sign-off",
+                    }
+                }
+            },
+        )
+        mock_db = AsyncMock()
+
+        with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.CONFIDENTIAL), \
+             patch("app.services.approval_service._load_latest_verification_result", return_value=None):
+            eligible, reason = await approval_service.verify_release_eligibility(
+                mock_db,
+                output=conf_output,
+                destination=DisseminationDestination.DOWNLOAD,
+            )
+            assert eligible is False
+            assert "requires human approval" in reason
+            assert conf_output.output_metadata["approval"]["destinations"]["DOWNLOAD"]["approval_status"] == "PENDING_APPROVAL"
+
+        # Existing output with RESTRICTED classification and PENDING_APPROVAL must remain blocked
+        rest_output = self._make_mock_output(
+            classification="RESTRICTED",
+            approval_meta={
+                "destinations": {
+                    "DOWNLOAD": {
+                        "destination": "DOWNLOAD",
+                        "approval_status": "PENDING_APPROVAL",
+                        "policy_reason": "Restricted export requires dual sign-off",
+                    }
+                }
+            },
+        )
+        with patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.RESTRICTED), \
+             patch("app.services.approval_service._load_latest_verification_result", return_value=None):
+            eligible, reason = await approval_service.verify_release_eligibility(
+                mock_db,
+                output=rest_output,
+                destination=DisseminationDestination.DOWNLOAD,
+            )
+            assert eligible is False
+            assert "requires human approval" in reason
+            assert rest_output.output_metadata["approval"]["destinations"]["DOWNLOAD"]["approval_status"] == "PENDING_APPROVAL"
+
+    @pytest.mark.asyncio
+    async def test_27_authorized_user_internal_download_without_prior_approval(self):
+        """Verify that an authorized project user downloading an INTERNAL output succeeds without approval."""
+        from app.api.v1.transformations import download_output_artifact
+        output = self._make_mock_output("INTERNAL")
         mock_db = AsyncMock()
         current_user = CurrentUser(id=OWNER_USER_ID, email="owner@test.com", name="Owner", role="operator")
 
-        with pytest.raises(HTTPException) as exc_info:
-            await approval_service.submit_output_approval(
-                mock_db,
-                output=output,
-                current_user=current_user,
-                destination=DisseminationDestination.DOWNLOAD,
-                action=ApprovalAction.APPROVE,
-            )
-        assert exc_info.value.status_code == 409
-        assert "only completed outputs can be evaluated" in exc_info.value.detail
+        mock_artifact = SimpleNamespace(storage_key="test-key", mime_type="application/pdf", filename="report.pdf")
+        mock_storage = MagicMock()
+        mock_storage.read.return_value = b"%PDF-1.4 sample internal report"
+
+        with patch("app.services.transformation_service.get_output_owned", return_value=output), \
+             patch("app.api.v1.transformations._resolve_output_classification", return_value=InformationClassification.INTERNAL), \
+             patch("app.services.approval_service.resolve_output_classification", return_value=InformationClassification.INTERNAL), \
+             patch("app.services.approval_service._load_latest_verification_result", return_value=None), \
+             patch("app.api.v1.transformations.artifact_file", return_value=mock_artifact), \
+             patch("app.api.v1.transformations.get_storage", return_value=mock_storage):
+            resp = await download_output_artifact(output.id, artifact="primary", db=mock_db, current_user=current_user)
+            assert resp.status_code == 200
+            assert resp.body == b"%PDF-1.4 sample internal report"
+
+    @pytest.mark.asyncio
+    async def test_28_unauthorized_user_download_remains_blocked(self):
+        """Verify that an unauthorized user cannot access or download the output (404/403)."""
+        from app.api.v1.transformations import download_output_artifact
+        mock_db = AsyncMock()
+        attacker_user = CurrentUser(id=OTHER_USER_ID, email="attacker@test.com", name="Attacker", role="operator")
+
+        with patch("app.services.transformation_service.get_output_owned", return_value=None):
+            with pytest.raises(HTTPException) as exc_info:
+                await download_output_artifact(uuid.uuid4(), artifact="primary", db=mock_db, current_user=attacker_user)
+            assert exc_info.value.status_code == 404

@@ -174,6 +174,7 @@ export function CreateTransformationWorkflow({
   const [language, setLanguage] = useState<string>("English");
   const [detailLevel, setDetailLevel] = useState<"brief" | "standard" | "detailed">("standard");
   const [objective, setObjective] = useState<"brief" | "summarize" | "advise">("brief");
+  const [contentStyle, setContentStyle] = useState<string>("Narrative");
   const [styleArchetype, setStyleArchetype] = useState<string>("Executive");
   const [situationalIntent, setSituationalIntent] = useState<string>("");
 
@@ -310,13 +311,14 @@ export function CreateTransformationWorkflow({
         language,
         detail_level: detailLevel,
         communication_objective: objective,
+        content_style: contentStyle || null,
       });
       setConfiguration(res.data);
       return res.data;
     } catch {
       return null;
     }
-  }, [quickProjectId, configuration, audience, tone, language, detailLevel, objective]);
+  }, [quickProjectId, configuration, audience, tone, language, detailLevel, objective, contentStyle]);
 
   const handleToneChange = (t: Tone) => {
     setTone(t);
@@ -965,24 +967,30 @@ export function CreateTransformationWorkflow({
               <span className="caption text-outline">Drives decision matrices and priority sequencing.</span>
             </div>
 
-            {/* 6. Style Archetype */}
+            {/* 6. Content Style */}
             <div className="flex flex-col gap-2 rounded-lg bg-surface-container p-4">
-              <label className="headline-sm body-sm flex items-center gap-1.5 font-medium text-foreground">
+              <label htmlFor="ctw-content-style" className="headline-sm body-sm flex items-center gap-1.5 font-medium text-foreground">
                 <LayoutGrid className="h-5 w-5 text-secondary-fixed-dim" />
-                Style Archetype
+                Content Style
               </label>
               <select
-                value={styleArchetype}
-                onChange={(e) => setStyleArchetype(e.target.value)}
+                id="ctw-content-style"
+                aria-label="Content style"
+                value={contentStyle}
+                onChange={(e) => {
+                  setContentStyle(e.target.value);
+                  setStyleArchetype(e.target.value);
+                  setConfiguration(null);
+                }}
+                disabled={running}
                 className="w-full cursor-pointer rounded bg-surface-container-lowest px-3 py-2 body-md text-foreground focus:outline-none"
               >
-                <option value="Executive">Executive Intelligence Brief</option>
-                <option value="Analytical">Analytical Whitepaper</option>
-                <option value="Advisory">Operational Risk Advisory</option>
-                <option value="News-style">News Flash / Threat Dispatch</option>
-                <option value="Technical">Technical Runbook Schema</option>
+                <option value="Narrative">Narrative</option>
+                <option value="Bullet-points">Bullet-points</option>
+                <option value="Analytical">Analytical</option>
+                <option value="Conversational">Conversational</option>
               </select>
-              <span className="caption text-outline">Applies verified enterprise formatting frameworks.</span>
+              <span className="caption text-outline">Consistent framing structure for generated outputs.</span>
             </div>
           </div>
 
@@ -1033,6 +1041,7 @@ export function CreateTransformationWorkflow({
           tone={tone}
           detailLevel={detailLevel}
           objective={objective}
+          contentStyle={contentStyle}
           styleArchetype={styleArchetype}
           mode={mode}
           onEdit={goToStage}
@@ -1331,6 +1340,7 @@ function ReviewPanel({
   tone,
   detailLevel,
   objective,
+  contentStyle = "Narrative",
   styleArchetype,
   mode,
   onEdit,
@@ -1344,6 +1354,7 @@ function ReviewPanel({
   tone: string;
   detailLevel: string;
   objective: string;
+  contentStyle?: string;
   styleArchetype: string;
   mode: { id: string; label: string; note: string };
   onEdit: (step: number) => void;
@@ -1438,8 +1449,8 @@ function ReviewPanel({
                 <span className="capitalize text-foreground">{objective}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-outline">Style</span>
-                <span className="text-foreground">{styleArchetype}</span>
+                <span className="text-outline">Content Style</span>
+                <span className="text-foreground">{contentStyle}</span>
               </div>
             </div>
           </div>

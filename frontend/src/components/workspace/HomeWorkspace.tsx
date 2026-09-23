@@ -72,6 +72,8 @@ import {
   BarChart3,
   Video,
   BadgeCheck,
+  ChevronDown,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ToneSelector, type Tone } from "@/components/configuration";
 import { AudienceSelector } from "@/components/configuration";
@@ -113,6 +115,12 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
   const [tone, setTone] = useState<Tone>("Professional");
   const [audience, setAudience] = useState<string>("General");
   const [language, setLanguage] = useState<string>("English");
+
+  // ---- Advanced parameters (Detail level, Objective, Content style) -----
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [detailLevel, setDetailLevel] = useState<string>("standard");
+  const [communicationObjective, setCommunicationObjective] = useState<string>("");
+  const [contentStyle, setContentStyle] = useState<string>("");
 
   // ---- Outputs -----------------------------------------------------------
   const [selectedOutputs, setSelectedOutputs] = useState<OutputTypeId[]>([]);
@@ -245,15 +253,16 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         target_audience: audience === "General" ? null : audience,
         tone: tone === "Professional" ? null : tone,
         language,
-        detail_level: "standard",
-        communication_objective: null,
+        detail_level: detailLevel || "standard",
+        communication_objective: communicationObjective.trim() || null,
+        content_style: contentStyle.trim() || null,
       });
       setConfiguration(res.data);
       return res.data;
     } catch {
       return null;
     }
-  }, [quickProjectId, configuration, audience, tone, language]);
+  }, [quickProjectId, configuration, audience, tone, language, detailLevel, communicationObjective, contentStyle]);
 
   const sourceReady = source?.status === "ready";
 
@@ -842,6 +851,93 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
                   disabled={running}
                 />
               </div>
+            </div>
+
+            {/* Advanced Parameters toggle (Detail Level, Objective, Content Style) */}
+            <div className="border-t border-border/60 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((prev) => !prev)}
+                disabled={running}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                aria-expanded={showAdvanced}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Advanced Parameters</span>
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition-transform duration-200", showAdvanced && "rotate-180")}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {showAdvanced && (
+                <div className="mt-3 grid grid-cols-1 gap-3 border-t border-dashed border-border/60 pt-3 sm:grid-cols-3">
+                  {/* Detail Level */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="hw-detail-level" className="text-xs font-medium text-foreground">
+                      Detail Level
+                    </label>
+                    <select
+                      id="hw-detail-level"
+                      aria-label="Detail level"
+                      value={detailLevel}
+                      onChange={(e) => {
+                        setDetailLevel(e.target.value);
+                        setConfiguration(null);
+                      }}
+                      disabled={running}
+                      className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="concise">Concise</option>
+                      <option value="standard">Standard</option>
+                      <option value="detailed">Detailed</option>
+                    </select>
+                  </div>
+
+                  {/* Communication Objective */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="hw-communication-objective" className="text-xs font-medium text-foreground">
+                      Communication Objective
+                    </label>
+                    <input
+                      id="hw-communication-objective"
+                      type="text"
+                      value={communicationObjective}
+                      onChange={(e) => {
+                        setCommunicationObjective(e.target.value);
+                        setConfiguration(null);
+                      }}
+                      placeholder="e.g. inform, advise, summarize"
+                      disabled={running}
+                      className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+
+                  {/* Content Style */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="hw-content-style" className="text-xs font-medium text-foreground">
+                      Content Style
+                    </label>
+                    <select
+                      id="hw-content-style"
+                      aria-label="Content style"
+                      value={contentStyle}
+                      onChange={(e) => {
+                        setContentStyle(e.target.value);
+                        setConfiguration(null);
+                      }}
+                      disabled={running}
+                      className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Default (Standard)</option>
+                      <option value="Narrative">Narrative</option>
+                      <option value="Bullet-points">Bullet-points</option>
+                      <option value="Analytical">Analytical</option>
+                      <option value="Conversational">Conversational</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

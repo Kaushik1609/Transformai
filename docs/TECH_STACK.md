@@ -2,7 +2,7 @@
 
 ## TransformIQ — Gen AI Platform for Automated Content Transformation
 
-**SIH Problem Statement:** 26154
+**Platform Edition:** Enterprise v2.0
 **Version:** 2.0
 **Status:** Implemented stack — verified from the repository (requirements.txt, worker/requirements.txt, frontend/package.json, docker-compose.yml)
 **Supersedes:** v1.0 "Approved for MVP planning" (retains constraints that are still in force, §4)

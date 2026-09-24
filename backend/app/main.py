@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="TransformIQ API",
-    description="Gen AI Platform for Automated Content Transformation — SIH 26154",
+    description="Gen AI Platform for Automated Content Transformation",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",

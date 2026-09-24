@@ -3,7 +3,7 @@
  *
  * Provides a dedicated, high-assurance browser-based presentation viewport
  * for the 35–40 second deterministic architecture animation sequence.
- * Fully recordable for PS 26154 video evaluation.
+ * Fully recordable for technical evaluation.
  */
 "use client";
 
@@ -52,7 +52,7 @@ export default function ArchitectureDemoPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="label-mono-xs uppercase text-secondary-fixed-dim">
-                SIH PS 26154 · Evaluation Demo
+                Enterprise Architecture · Live Demo
               </span>
               <span className="h-1.5 w-1.5 rounded-full bg-secondary animate-pulse" />
             </div>

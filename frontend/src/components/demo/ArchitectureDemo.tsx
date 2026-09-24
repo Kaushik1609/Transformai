@@ -209,7 +209,7 @@ export const SCENES: SceneConfig[] = [
     startSec: 38,
     endSec: 40,
     title: "KARYASETU AI",
-    subtitle: "Gen AI Platform for Automated Content Transformation · SIH PS 26154",
+    subtitle: "Gen AI Platform for Automated Content Transformation",
   },
 ];
 
@@ -645,7 +645,7 @@ export function ArchitectureDemo({
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold tracking-tight text-white">KaryaSetu AI</span>
                 <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  SIH PS 26154
+                  Core Engine
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-mono">Architecture & Execution Sequence</p>
@@ -1357,7 +1357,7 @@ function Scene8PlatformHero({ currentSec, isCompact }: { currentSec: number; isC
           KaryaSetu AI
         </h2>
         <p className="text-[10px] font-mono text-blue-400">
-          SIH PS 26154 · Gen AI Platform for Automated Content Transformation
+          Gen AI Platform for Automated Content Transformation
         </p>
       </div>
 

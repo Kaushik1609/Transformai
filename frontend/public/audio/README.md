@@ -9,7 +9,7 @@
 ## Narration Tone and Style
 
 - **Tone:** Calm, confident, technical, clear, concise enterprise narration.
-- **Pacing:** Normal conversational pace (~130–145 words per minute), suitable for SIH presentation / technical evaluation.
+- **Pacing:** Normal conversational pace (~130–145 words per minute), suitable for executive presentation / technical evaluation.
 - **Audio Specs:** 44.1 kHz / 48 kHz stereo, 192 kbps MP3 format, normalized to -14 LUFS (EBU R128 standard).
 
 ## Voice-Over Script & Scene Timecodes

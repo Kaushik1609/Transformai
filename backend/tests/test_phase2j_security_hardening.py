@@ -1,6 +1,6 @@
 """
 Phase 2J — Security Hardening and Production Readiness Test Suite
-KaryaSetu AI / TransformIQ (SIH PS 26154)
+KaryaSetu AI / TransformIQ
 
 Tests cover:
 1. Authorization and IDOR hardening on all sensitive endpoints

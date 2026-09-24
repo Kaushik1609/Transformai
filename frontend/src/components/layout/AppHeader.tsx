@@ -21,14 +21,11 @@ import {
   transformationsApi,
 } from "@/lib/api";
 import { getAuthUser, getDevSession } from "@/lib/auth";
-import { useTheme } from "@/components/theme";
 import { cn } from "@/lib/utils";
 import {
   Building2,
   Search,
   Bell,
-  Sun,
-  Moon,
   ChevronDown,
   Menu,
   CheckCircle2,
@@ -52,7 +49,6 @@ export function AppHeader({
   onToggleMobileMenu,
 }: AppHeaderProps) {
   const router = useRouter();
-  const { theme, resolved, setTheme } = useTheme();
 
   // ---- Workspace dropdown state -------------------------------------------
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
@@ -152,11 +148,6 @@ export function AppHeader({
     if (searchQuery.trim()) {
       router.push(`/history?search=${encodeURIComponent(searchQuery.trim())}`);
     }
-  };
-
-  const toggleTheme = () => {
-    const next = resolved === "dark" ? "light" : "dark";
-    setTheme(next);
   };
 
   return (
@@ -361,21 +352,6 @@ export function AppHeader({
             </div>
           )}
         </div>
-
-        {/* Theme Toggle (Light / Dark switch) */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
-          aria-label={`Switch to ${resolved === "dark" ? "light" : "dark"} theme`}
-          title={`Switch to ${resolved === "dark" ? "light" : "dark"} theme`}
-        >
-          {resolved === "dark" ? (
-            <Sun className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <Moon className="h-4 w-4" aria-hidden="true" />
-          )}
-        </button>
 
         {/* Profile Avatar Chip */}
         <Link

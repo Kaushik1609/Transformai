@@ -2,7 +2,7 @@
 
 ## TransformIQ — Gen AI Platform for Automated Content Transformation
 
-**SIH Problem Statement:** 26154  
+**Platform Edition:** Enterprise v1.0  
 **Version:** 1.0  
 **Status:** MVP Design
 
@@ -12,7 +12,7 @@
 
 This document defines the application data model, API contracts, job lifecycle, storage references and service boundaries.
 
-The design is intentionally simple enough for AI-assisted/vibe-coded implementation while remaining scalable for the SIH prototype.
+The design is intentionally simple enough for AI-assisted implementation while remaining scalable for the enterprise prototype.
 
 ---
 
@@ -271,7 +271,7 @@ POST /api/v1/auth/logout
 GET  /api/v1/auth/me
 ```
 
-For the SIH MVP, authentication may initially be simplified if the evaluation environment does not require multi-user access. The security boundary must still be designed so authentication can be enabled.
+For the core MVP, authentication may initially be simplified if the evaluation environment does not require multi-user access. The security boundary must still be designed so authentication can be enabled.
 
 ---
 

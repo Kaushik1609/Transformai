@@ -18,6 +18,11 @@ _UNSET = object()
 class OpenAILLMProvider(LLMProvider):
     """Generate text using an OpenAI-compatible chat model via langchain."""
 
+    is_external: bool = True
+    is_local: bool = False
+    requires_network: bool = True
+    supports_offline: bool = False
+
     def __init__(
         self,
         *,

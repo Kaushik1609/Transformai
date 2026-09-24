@@ -2,8 +2,8 @@
 
 ## Gen AI Platform for Automated Content Transformation
 
-**Problem Statement ID:** 26154\
-**SIH:** Smart India Hackathon 2026\
+**Platform Edition:** Enterprise\
+**Release:** TransformIQ v1.0 Core\
 **Product Name:** TransformIQ\
 **Document Version:** 1.0\
 **Status:** Proposed MVP
@@ -584,7 +584,7 @@ using measured demo/test cases. Do not claim unmeasured time savings.
 
 ------------------------------------------------------------------------
 
-## 26. SIH Demonstration Flow
+## 26. End-to-End Demonstration Flow
 
 Recommended demonstration:
 
@@ -648,5 +648,4 @@ Its defining workflow is:
 → Configurable Transformation → Multiple Communication Artefacts →
 Verification → Human Review → Export**
 
-This workflow is the primary product requirement for SIH Problem
-Statement 26154.
+This workflow is the primary product requirement for the TransformIQ platform.

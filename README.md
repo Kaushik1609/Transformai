@@ -1,8 +1,7 @@
 # TransformIQ
 
 **Gen AI Platform for Automated Content Transformation**
-
-SIH Problem Statement ID: 26154 | Smart India Hackathon 2026
+Enterprise AI Content Transformation Platform
 
 ---
 
@@ -195,7 +194,7 @@ main                  # Always runnable — protected
 | 10 | Export + Polish |
 | 11 | Testing + Evaluation |
 | 12 | Docker + Cloud Deployment |
-| 13 | SIH Demo Hardening |
+| 13 | Evaluation Demo Hardening |
 
 ---
 

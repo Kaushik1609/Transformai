@@ -353,8 +353,24 @@ class TransformationWorkflow:
             try:
                 job = self.deps.session.get(TransformationJob, uuid.UUID(has_job_id))
                 if job is not None:
+                    import hashlib
                     meta = dict(job.requested_outputs or {})
                     meta["brief"] = brief
+                    if rag_context and getattr(rag_context, "citations", None):
+                        meta["evidence_citations"] = [
+                            {
+                                "source_id": str(c.source_id),
+                                "chunk_id": str(c.chunk_id),
+                                "chunk_index": c.chunk_index,
+                                "content_hash": (
+                                    hashlib.sha256(c.evidence.encode("utf-8")).hexdigest()[:16]
+                                    if c.evidence else None
+                                ),
+                                "relevance_score": c.relevance_score,
+                                "excerpt": c.evidence[:250] if c.evidence else "",
+                            }
+                            for c in rag_context.citations
+                        ]
                     job.requested_outputs = meta
                     self.deps.session.flush()
             except (ValueError, TypeError):

@@ -12,8 +12,8 @@
  */
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   AuthShell,
@@ -28,12 +28,14 @@ import {
 } from "@/lib/auth";
 import { authApi, errorMessage } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sessionExpired = searchParams?.get("session_expired") === "true";
 
   const devBypass = isDevAuthBypassEnabled();
 
@@ -84,6 +86,12 @@ export default function LoginPage() {
             Sign in to continue to KaryaSetu AI.
           </p>
         </div>
+
+        {sessionExpired && (
+          <div role="status" className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-500">
+            Your session has expired. Please sign in again.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -152,5 +160,13 @@ export default function LoginPage() {
         </p>
       </div>
     </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

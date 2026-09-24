@@ -6,9 +6,9 @@ Phase 2: persistence model only. No actual job enqueueing.
 """
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.transformation.generators import KNOWN_OUTPUT_TYPES
 
@@ -45,7 +45,11 @@ class TransformationJobCreate(BaseModel):
     )
     llm_provider: str | None = Field(
         default=None,
-        description="Optional LLM provider override: fake | gemini | openai",
+        description="Optional LLM provider override: fake | gemini | openai | local",
+    )
+    model: str | None = Field(
+        default=None,
+        description="Optional model identifier override (e.g. 'gpt-4o-mini', 'llama-3-8b')",
     )
 
     @field_validator("prompt")
@@ -325,3 +329,189 @@ class ConsistencyResultResponse(BaseModel):
 class ConsistencyResponse(BaseModel):
     success: bool = True
     data: ConsistencyResultResponse
+
+
+# ---------------------------------------------------------------------------
+# Dissemination Control schemas (Phase 2D)
+# ---------------------------------------------------------------------------
+
+class DisseminateRequest(BaseModel):
+    """Request payload for attempting dissemination of an output."""
+
+    destination: str = Field(
+        ...,
+        description="Target destination (e.g. 'INTERNAL', 'DOWNLOAD', 'LINKEDIN', 'X', 'PUBLIC_WEB').",
+    )
+
+
+class DisseminationDecisionResponse(BaseModel):
+    """Deterministic dissemination decision outcome."""
+
+    allowed: bool
+    decision: str  # ALLOW | BLOCK | REVIEW
+    classification: str
+    destination: str
+    reason: str
+    policy_id: str = "karyasetu-dissemination-v1"
+    artifact_hash: str | None = None
+    signature: str | None = None
+    provenance_id: str | None = None
+    approval_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class DisseminateResponse(BaseModel):
+    """Authoritative server response for a dissemination attempt."""
+
+    success: bool = True
+    data: DisseminationDecisionResponse
+
+
+class DisseminationReportResponse(BaseModel):
+    """Comprehensive dissemination policy report for an output across destinations."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    output_type: str
+    classification: str
+    destinations: dict[str, DisseminationDecisionResponse]
+
+
+class DisseminationEvaluateRequest(BaseModel):
+    """Request to evaluate dissemination policy without an existing output."""
+
+    classification: str = Field(..., description="Information classification label.")
+    destination: str = Field(..., description="Target dissemination destination.")
+    output_type: str | None = Field(default=None, description="Optional output type context.")
+
+
+# ---------------------------------------------------------------------------
+# Evidence & Provenance schemas (Phase 2E)
+# ---------------------------------------------------------------------------
+
+class ProvenanceDetailResponse(BaseModel):
+    """Authoritative provenance record response for an output."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Human Approval & Controlled Release schemas (Phase 2F)
+# ---------------------------------------------------------------------------
+
+class ApprovalActionRequest(BaseModel):
+    """Operator action to approve or reject output dissemination to a destination."""
+
+    destination: str = Field(..., description="Target DisseminationDestination (e.g. DOWNLOAD, LINKEDIN).")
+    action: Literal["approve", "reject"] = Field(..., description="Action: 'approve' or 'reject'.")
+    comments: str | None = Field(default=None, max_length=1000, description="Optional reviewer remarks.")
+    rejection_reason: str | None = Field(default=None, max_length=1000, description="Mandatory justification if action is 'reject'.")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class DestinationApprovalDetail(BaseModel):
+    """Destination-scoped approval state detail."""
+
+    destination: str
+    approval_status: str  # HARD_BLOCKED | NOT_REQUIRED | PENDING_APPROVAL | APPROVED | REJECTED | REVOKED
+    approval_id: str | None = None
+    decision: str | None = None
+    approver_id: str | None = None
+    approver_email: str | None = None
+    approver_role: str | None = None
+    approved_at: str | None = None
+    rejection_reason: str | None = None
+    comments: str | None = None
+    self_approved: bool = False
+    policy_reason: str | None = None
+    classification_snapshot: str | None = None
+    verification_status_snapshot: str | None = None
+
+
+class ApprovalStatusResponse(BaseModel):
+    """Aggregated approval report for an output across destinations."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    classification: str
+    destinations: dict[str, DestinationApprovalDetail]
+    latest_approval_id: str | None = None
+
+
+class ApprovalActionResponse(BaseModel):
+    """Response returned upon submitting an approval or rejection action."""
+
+    success: bool = True
+    data: DestinationApprovalDetail
+
+
+# ---------------------------------------------------------------------------
+# Cryptographic Integrity schemas (Phase 2G)
+# ---------------------------------------------------------------------------
+
+class OutputIntegrityDetail(BaseModel):
+    """Authoritative cryptographic integrity status and digests for an output artifact."""
+
+    status: str = Field(..., description="Integrity status ('VERIFIED', 'INVALID', 'UNAVAILABLE').")
+    algorithm: str = Field(default="sha256", description="Hash algorithm used ('sha256').")
+    artifact_hash: str | None = Field(default=None, description="Primary artifact SHA-256 digest.")
+    companion_hashes: dict[str, str] = Field(default_factory=dict, description="Named companion artifact digests.")
+    provenance_id: str | None = Field(default=None, description="Canonical provenance record identifier.")
+    provenance_hash: str | None = Field(default=None, description="Deterministic canonical provenance projection digest.")
+    approval_id: str | None = Field(default=None, description="Latest approval identifier snapshot bound at sealing.")
+    recorded_at: str | None = Field(default=None, description="ISO timestamp when integrity was sealed.")
+    details: dict[str, Any] = Field(default_factory=dict, description="Verification details and comparison results.")
+
+
+class OutputIntegrityResponse(BaseModel):
+    """Response model for GET /api/v1/outputs/{output_id}/integrity."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputIntegrityDetail
+
+
+class IntegrityVerifyResponse(BaseModel):
+    """Response model for POST /api/v1/outputs/{output_id}/integrity/verify."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputIntegrityDetail
+
+
+# ---------------------------------------------------------------------------
+# Digital Signature schemas (Phase 2H)
+# ---------------------------------------------------------------------------
+
+class OutputSignatureDetail(BaseModel):
+    """Authoritative digital signature status and verification metadata for an output artifact."""
+
+    status: str = Field(..., description="Signature status ('VALID', 'INVALID', 'UNAVAILABLE').")
+    algorithm: str | None = Field(default=None, description="Signing algorithm ('ed25519', 'fake-sig-v1', 'hmac-sha256').")
+    key_id: str | None = Field(default=None, description="Public key or key reference identifier.")
+    signature: str | None = Field(default=None, description="Cryptographic signature string.")
+    signed_payload_hash: str | None = Field(default=None, description="SHA-256 digest of the canonical signed payload.")
+    signed_integrity_hash: str | None = Field(default=None, description="Primary artifact hash bound into signature.")
+    signed_provenance_hash: str | None = Field(default=None, description="Provenance hash bound into signature.")
+    signed_at: str | None = Field(default=None, description="ISO timestamp when signature was recorded.")
+    provider: str | None = Field(default=None, description="Signer provider category or name.")
+    details: dict[str, Any] = Field(default_factory=dict, description="Verification details and diagnostics.")
+
+
+class OutputSignatureResponse(BaseModel):
+    """Response model for GET /api/v1/outputs/{output_id}/signature."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputSignatureDetail
+
+
+class SignatureVerifyResponse(BaseModel):
+    """Response model for POST /api/v1/outputs/{output_id}/signature/verify."""
+
+    success: bool = True
+    output_id: uuid.UUID
+    data: OutputSignatureDetail

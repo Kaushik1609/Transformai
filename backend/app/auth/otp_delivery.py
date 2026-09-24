@@ -42,6 +42,8 @@ class OtpDeliveryResult:
     channel: str
     identifier: str
     provider_name: str
+    status: str = "delivered"  # "delivered" | "failed" | "unavailable"
+    error_message: str | None = None
     otp: str | None = None
 
 
@@ -59,9 +61,13 @@ def _mask(identifier: str) -> str:
 
 
 class OtpDeliveryProvider(ABC):
-    """Abstract OTP delivery channel."""
+    """Abstract OTP delivery channel.
+
+    Designed for extension across delivery channels (Email, future Twilio SMS).
+    """
 
     provider_name: str = "abstract"
+    delivery_channel: str = "email"
 
     @abstractmethod
     def send_otp(
@@ -75,9 +81,10 @@ class OtpDeliveryProvider(ABC):
 
 
 class ConsoleOtpProvider(OtpDeliveryProvider):
-    """Development/test provider. Logs the code only in development."""
+    """Development/test provider. Logs redacted marker and keeps offline test seam."""
 
     provider_name = "console"
+    delivery_channel = "email"
 
     def __init__(self) -> None:
         self.recent_codes: dict[tuple[str, str], str] = {}
@@ -90,30 +97,22 @@ class ConsoleOtpProvider(OtpDeliveryProvider):
         otp: str,
         reason: str = "authentication",
     ) -> OtpDeliveryResult:
-        # Test seam: always record the code so offline tests can read it.
+        # Test seam: record code in memory so offline test suites can read it via last_otp_for.
         self.recent_codes[(channel, identifier.strip().lower())] = otp
-        if settings.ENVIRONMENT == "development":
-            logger.info(
-                "otp_console_delivery",
-                channel=channel,
-                identifier=_mask(identifier),
-                reason=reason,
-                otp=otp,
-            )
-        else:
-            logger.info(
-                "otp_console_delivery_redacted",
-                channel=channel,
-                identifier=_mask(identifier),
-                reason=reason,
-                otp="[REDACTED]",
-            )
+        logger.info(
+            "otp_console_delivery",
+            channel=channel,
+            identifier=_mask(identifier),
+            reason=reason,
+            otp="[REDACTED]",
+        )
         return OtpDeliveryResult(
             delivered=True,
             channel=channel,
             identifier=identifier,
             provider_name=self.provider_name,
-            otp=otp if settings.ENVIRONMENT in ("development", "staging") else None,
+            status="delivered",
+            otp=None,
         )
 
     def last_otp_for(self, channel: Channel, identifier: str) -> str | None:
@@ -121,9 +120,10 @@ class ConsoleOtpProvider(OtpDeliveryProvider):
 
 
 class EmailOtpProvider(OtpDeliveryProvider):
-    """SMTP email delivery. Requires SMTP_HOST and SMTP_USER to be configured."""
+    """SMTP email delivery. Requires SMTP_HOST, SMTP_USER, and SMTP_FROM to be configured."""
 
     provider_name = "email"
+    delivery_channel = "email"
 
     def _require_config(self) -> None:
         missing = [
@@ -176,27 +176,108 @@ class EmailOtpProvider(OtpDeliveryProvider):
                 identifier=_mask(identifier),
                 error=str(exc),
             )
-            # In staging or development, cloud platforms (Render, Heroku free tiers)
-            # block outbound SMTP (ports 25, 465, 587) to prevent spam.
-            # Do not crash user registration; fallback gracefully and log the code.
-            if settings.ENVIRONMENT in ("development", "staging"):
-                logger.info(
-                    "otp_email_delivery_fallback_code",
-                    identifier=_mask(identifier),
-                    otp=otp,
-                    reason=reason,
-                )
-                delivered_via = "email_fallback"
-                delivered_otp = otp
-            else:
-                raise OtpDeliveryError(f"Failed to deliver email OTP: {exc}") from exc
+            raise OtpDeliveryError(
+                "We couldn't send the verification email. Please try again later."
+            ) from exc
 
         return OtpDeliveryResult(
             delivered=True,
             channel="email",
             identifier=identifier,
-            provider_name=delivered_via,
-            otp=delivered_otp,
+            provider_name=self.provider_name,
+            status="delivered",
+            otp=None,
+        )
+
+
+class ResendOtpProvider(OtpDeliveryProvider):
+    """Resend HTTP API email delivery.
+
+    Delivers verification codes via the Resend HTTPS API (port 443),
+    bypassing cloud provider blocks on outbound SMTP ports 25, 465, and 587.
+    """
+
+    provider_name = "resend"
+    delivery_channel = "email"
+
+    def __init__(self, api_key: str | None = None, from_address: str | None = None) -> None:
+        self.api_key = (api_key or settings.RESEND_API_KEY or "").strip()
+        self.from_address = (from_address or settings.RESEND_FROM or "TransformIQ <onboarding@resend.dev>").strip()
+
+    def _require_config(self) -> None:
+        if not self.api_key:
+            raise OtpDeliveryError("Resend OTP delivery requires RESEND_API_KEY to be configured.")
+
+    def send_otp(
+        self,
+        *,
+        channel: Channel,
+        identifier: str,
+        otp: str,
+        reason: str = "authentication",
+    ) -> OtpDeliveryResult:
+        if channel != "email":
+            raise OtpDeliveryError("ResendOtpProvider supports channel='email' only.")
+        self._require_config()
+
+        subject = f"TransformIQ verification code ({settings.SMTP_FROM_NAME})"
+        text_content = (
+            f"Your TransformIQ verification code is {otp}.\n"
+            f"It expires in {settings.OTP_EXPIRY_SECONDS} seconds.\n"
+            "If you did not request this, you can safely ignore this email."
+        )
+        html_content = (
+            f"<div style='font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;'>"
+            f"<h2 style='color: #0f172a; margin-top: 0;'>TransformIQ Verification</h2>"
+            f"<p style='color: #475569; font-size: 15px;'>Use the one-time code below to complete your verification:</p>"
+            f"<div style='background-color: #f8fafc; border: 1px dashed #cbd5e1; padding: 18px; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #1e293b; text-align: center; border-radius: 6px; margin: 24px 0;'>{otp}</div>"
+            f"<p style='color: #64748b; font-size: 13px; line-height: 1.5;'>This code expires in {settings.OTP_EXPIRY_SECONDS // 60} minutes. For security, never share this code with anyone.<br/>If you did not request this code, please ignore this email.</p>"
+            f"</div>"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "from": self.from_address,
+            "to": [identifier.strip()],
+            "subject": subject,
+            "text": text_content,
+            "html": html_content,
+        }
+
+        try:
+            import httpx
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post("https://api.resend.com/emails", json=payload, headers=headers)
+                if resp.status_code >= 400:
+                    err_msg = resp.text
+                    logger.error(
+                        "resend_otp_delivery_failed",
+                        status_code=resp.status_code,
+                        error=err_msg,
+                        identifier=_mask(identifier),
+                    )
+                    raise OtpDeliveryError("We couldn't send the verification email. Please try again later.")
+            logger.info("resend_otp_delivered", identifier=_mask(identifier))
+        except OtpDeliveryError:
+            raise
+        except Exception as exc:
+            logger.error(
+                "resend_otp_exception",
+                identifier=_mask(identifier),
+                error=str(exc),
+            )
+            raise OtpDeliveryError("We couldn't send the verification email. Please try again later.") from exc
+
+        return OtpDeliveryResult(
+            delivered=True,
+            channel="email",
+            identifier=identifier,
+            provider_name=self.provider_name,
+            status="delivered",
+            otp=None,
         )
 
 
@@ -211,6 +292,7 @@ class SmsOtpProvider(OtpDeliveryProvider):
     """
 
     provider_name = "sms"
+    delivery_channel = "mobile"
 
     def _require_config(self) -> None:
         missing = [
@@ -246,19 +328,140 @@ class SmsOtpProvider(OtpDeliveryProvider):
         )
 
 
+class BrevoOtpProvider(OtpDeliveryProvider):
+    """Brevo (formerly Sendinblue) HTTP API email delivery.
+
+    Delivers verification codes via Brevo's HTTPS API (port 443),
+    enabling free transactional email delivery to any recipient domain
+    without requiring custom DNS domain verification.
+    """
+
+    provider_name = "brevo"
+    delivery_channel = "email"
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        from_email: str | None = None,
+        from_name: str | None = None,
+    ) -> None:
+        self.api_key = (api_key or settings.BREVO_API_KEY or "").strip()
+        self.from_email = (from_email or settings.BREVO_FROM or "ketan.krg.ak@gmail.com").strip()
+        self.from_name = (from_name or settings.BREVO_FROM_NAME or "KaryaSetu AI").strip()
+
+    def _require_config(self) -> None:
+        if not self.api_key:
+            raise OtpDeliveryError("Brevo OTP delivery requires BREVO_API_KEY to be configured.")
+
+    def send_otp(
+        self,
+        *,
+        channel: Channel,
+        identifier: str,
+        otp: str,
+        reason: str = "authentication",
+    ) -> OtpDeliveryResult:
+        if channel != "email":
+            raise OtpDeliveryError("BrevoOtpProvider supports channel='email' only.")
+        self._require_config()
+
+        subject = f"KaryaSetu AI verification code"
+        text_content = (
+            f"Your KaryaSetu AI verification code is {otp}.\n"
+            f"It expires in {settings.OTP_EXPIRY_SECONDS} seconds.\n"
+            "If you did not request this, you can safely ignore this email."
+        )
+        html_content = (
+            f"<div style='font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;'>"
+            f"<h2 style='color: #0f172a; margin-top: 0;'>KaryaSetu AI Verification</h2>"
+            f"<p style='color: #475569; font-size: 15px;'>Use the one-time code below to complete your verification:</p>"
+            f"<div style='background-color: #f8fafc; border: 1px dashed #cbd5e1; padding: 18px; font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #1e293b; text-align: center; border-radius: 6px; margin: 24px 0;'>{otp}</div>"
+            f"<p style='color: #64748b; font-size: 13px; line-height: 1.5;'>This code expires in {settings.OTP_EXPIRY_SECONDS // 60} minutes. For security, never share this code with anyone.<br/>If you did not request this code, please ignore this email.</p>"
+            f"</div>"
+        )
+
+        headers = {
+            "api-key": self.api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        payload = {
+            "sender": {
+                "name": self.from_name,
+                "email": self.from_email,
+            },
+            "to": [
+                {
+                    "email": identifier.strip(),
+                }
+            ],
+            "subject": subject,
+            "textContent": text_content,
+            "htmlContent": html_content,
+        }
+
+        try:
+            import httpx
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+                if resp.status_code >= 400:
+                    err_msg = resp.text
+                    logger.error(
+                        "brevo_otp_delivery_failed",
+                        status_code=resp.status_code,
+                        error=err_msg,
+                        identifier=_mask(identifier),
+                    )
+                    raise OtpDeliveryError("We couldn't send the verification email. Please try again later.")
+            logger.info("brevo_otp_delivered", identifier=_mask(identifier))
+        except OtpDeliveryError:
+            raise
+        except Exception as exc:
+            logger.error(
+                "brevo_otp_exception",
+                identifier=_mask(identifier),
+                error=str(exc),
+            )
+            raise OtpDeliveryError("We couldn't send the verification email. Please try again later.") from exc
+
+        return OtpDeliveryResult(
+            delivered=True,
+            channel="email",
+            identifier=identifier,
+            provider_name=self.provider_name,
+            status="delivered",
+            otp=None,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Factory + dependency
 # ---------------------------------------------------------------------------
 
 def build_otp_delivery_provider(name: str | None = None) -> OtpDeliveryProvider:
     provider_name = (name or settings.OTP_PROVIDER or "console").lower()
+
+    # Automatically prioritize Brevo if configured or requested (sends to ANY recipient domain)
+    if provider_name == "brevo" or (bool(settings.BREVO_API_KEY) and provider_name in ("email", "console")):
+        if settings.BREVO_API_KEY:
+            return BrevoOtpProvider()
+        if provider_name == "brevo":
+            raise OtpDeliveryError("OTP_PROVIDER=brevo requires BREVO_API_KEY to be configured.")
+
+    # Resend provider
+    if provider_name == "resend" or (bool(settings.RESEND_API_KEY) and provider_name in ("email", "console")):
+        if settings.RESEND_API_KEY:
+            return ResendOtpProvider()
+        if provider_name == "resend":
+            raise OtpDeliveryError("OTP_PROVIDER=resend requires RESEND_API_KEY to be configured.")
+
     if provider_name == "email":
         if settings.SMTP_HOST and settings.SMTP_USER:
             return EmailOtpProvider()
         if settings.ENVIRONMENT == "development":
             logger.warning("otp_provider_fallback_console", wanted="email")
             return ConsoleOtpProvider()
-        raise OtpDeliveryError("OTP_PROVIDER=email requires SMTP credentials in production.")
+        raise OtpDeliveryError("OTP_PROVIDER=email requires BREVO_API_KEY or SMTP credentials in production.")
     if provider_name == "sms":
         if settings.SMS_ACCOUNT_SID and settings.SMS_AUTH_TOKEN:
             return SmsOtpProvider()

@@ -9,7 +9,8 @@
  */
 "use client";
 
-import type { OutputResponse } from "@/lib/api";
+import { useState } from "react";
+import { type OutputResponse, outputsApi } from "@/lib/api";
 import {
   outputTypeLabel,
   outputStatusVariant,
@@ -18,7 +19,7 @@ import {
 import { StatusBadge } from "@/components/common";
 import { DownloadButton, CopyButton, ExportButton } from "@/components/export";
 import { artifactOptions } from "@/components/export/DownloadButton";
-import { VerificationPanel, FactVerificationPanel, ArtifactIntegrity } from "@/components/verification";
+import { VerificationPanel, FactVerificationPanel, ArtifactIntegrity, ProvenancePanel } from "@/components/verification";
 
 interface ResultsPanelProps {
   outputs: OutputResponse[];
@@ -61,22 +62,265 @@ function OutputCard({ output }: { output: OutputResponse }) {
   const isBinary = BINARY_OUTPUT_TYPES.has(output.output_type);
   const hasArtifact = artifactOptions(output).length > 0;
   const failure = outputFailureDetails(output);
+  const dissemination = output.output_metadata?.dissemination as
+    | {
+        primary_decision?: "ALLOW" | "BLOCK" | "REVIEW";
+        primary_reason?: string;
+      }
+    | undefined;
+
+  let dissemBadge: { label: string; className: string; reason?: string } | null = null;
+  if (dissemination?.primary_decision === "ALLOW") {
+    dissemBadge = {
+      label: "Allowed",
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      reason: dissemination.primary_reason,
+    };
+  } else if (dissemination?.primary_decision === "REVIEW") {
+    dissemBadge = {
+      label: "Requires review",
+      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      reason: dissemination.primary_reason,
+    };
+  } else if (dissemination?.primary_decision === "BLOCK") {
+    dissemBadge = {
+      label: "Blocked by policy",
+      className: "bg-destructive/10 text-destructive",
+      reason: dissemination.primary_reason,
+    };
+  }
+
+  const [acting, setActing] = useState(false);
+  const [localStatus, setLocalStatus] = useState<string | null>(null);
+
+  const approvalMeta = output.output_metadata?.approval as
+    | {
+        destinations?: Record<
+          string,
+          {
+            approval_status?: string;
+            approval_id?: string;
+            rejection_reason?: string;
+          }
+        >;
+      }
+    | undefined;
+
+  const downloadApproval = approvalMeta?.destinations?.["DOWNLOAD"];
+  const effectiveStatus = localStatus || downloadApproval?.approval_status;
+
+  let approvalBadge: { label: string; className: string } | null = null;
+  if (effectiveStatus === "PENDING_APPROVAL") {
+    approvalBadge = {
+      label: "Pending Approval",
+      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+    };
+  } else if (effectiveStatus === "APPROVED") {
+    approvalBadge = {
+      label: "Approved",
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+    };
+  } else if (effectiveStatus === "REJECTED") {
+    approvalBadge = {
+      label: "Rejected",
+      className: "bg-destructive/10 text-destructive border border-destructive/20",
+    };
+  }
+
+  // Classification badge
+  const classification = (
+    output.output_metadata?.classification ||
+    (output.output_metadata?.provenance as any)?.source?.classification ||
+    (output.output_metadata?.provenance as any)?.policy_routing?.classification
+  ) as string | undefined;
+
+  let classificationBadge: { label: string; className: string } | null = null;
+  if (classification) {
+    const uc = classification.toUpperCase();
+    if (uc === "RESTRICTED") {
+      classificationBadge = {
+        label: uc,
+        className: "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20",
+      };
+    } else if (uc === "CONFIDENTIAL") {
+      classificationBadge = {
+        label: uc,
+        className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+      };
+    } else if (uc === "INTERNAL") {
+      classificationBadge = {
+        label: uc,
+        className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
+      };
+    } else {
+      classificationBadge = {
+        label: uc,
+        className: "bg-muted/70 text-muted-foreground border border-border/50",
+      };
+    }
+  }
+
+  // Execution route badge (Local / Offline / Cloud)
+  const routing = (
+    output.output_metadata?.policy_routing ||
+    (output.output_metadata?.provenance as any)?.policy_routing
+  ) as {
+    processing_route?: string;
+    provider_category?: string;
+    provider_id?: string;
+    model_id?: string;
+  } | undefined;
+
+  const routeVal = (routing?.processing_route || routing?.provider_category)?.toUpperCase();
+  let routeBadge: { label: string; className: string; tooltip?: string } | null = null;
+  if (routeVal === "LOCAL" || routeVal === "OFFLINE" || routeVal === "AIR_GAPPED") {
+    routeBadge = {
+      label: routeVal === "AIR_GAPPED" ? "Air-Gapped" : routeVal === "OFFLINE" ? "Offline" : "Local",
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+      tooltip: routing?.model_id ? `${routing.provider_id || "local"}: ${routing.model_id}` : "Local/offline execution",
+    };
+  } else if (routeVal === "CLOUD") {
+    routeBadge = {
+      label: "Cloud",
+      className: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20",
+      tooltip: routing?.model_id ? `${routing.provider_id || "cloud"}: ${routing.model_id}` : "Cloud execution",
+    };
+  }
+
+  // Digital signature badge
+  const digitalSig = output.output_metadata?.digital_signature as
+    | { status?: string; algorithm?: string; key_id?: string }
+    | undefined;
+
+  let sigBadge: { label: string; className: string; tooltip?: string } | null = null;
+  if (digitalSig?.status === "VALID") {
+    sigBadge = {
+      label: `Signed · ${digitalSig.algorithm || "Ed25519"}`,
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+      tooltip: `Key ID: ${digitalSig.key_id || "authoritative"}`,
+    };
+  } else if (digitalSig?.status === "INVALID") {
+    sigBadge = {
+      label: "Signature Invalid",
+      className: "bg-destructive/10 text-destructive border border-destructive/20",
+      tooltip: "Signature verification failed",
+    };
+  }
+
+  const handleApprove = async () => {
+    try {
+      setActing(true);
+      await outputsApi.submitApproval(output.id, {
+        destination: "DOWNLOAD",
+        action: "approve",
+        comments: "Approved via workspace interface",
+      });
+      setLocalStatus("APPROVED");
+    } catch {
+      // Keep state fail-closed on error
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    const reason = window.prompt("Enter reason for rejecting this output artifact:");
+    if (!reason || !reason.trim()) return;
+    try {
+      setActing(true);
+      await outputsApi.submitApproval(output.id, {
+        destination: "DOWNLOAD",
+        action: "reject",
+        rejection_reason: reason.trim(),
+      });
+      setLocalStatus("REJECTED");
+    } catch {
+      // Keep state fail-closed on error
+    } finally {
+      setActing(false);
+    }
+  };
 
   return (
     <article className="rounded-lg border border-border">
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground">
             {outputTypeLabel(output.output_type)}
           </h3>
+          {classificationBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${classificationBadge.className}`}
+              data-testid={`classification-badge-${output.id}`}
+            >
+              {classificationBadge.label}
+            </span>
+          )}
+          {routeBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${routeBadge.className}`}
+              title={routeBadge.tooltip}
+              data-testid={`route-badge-${output.id}`}
+            >
+              {routeBadge.label}
+            </span>
+          )}
           <ArtifactIntegrity output={output} compact />
         </div>
-        <StatusBadge variant={outputStatusVariant(output.status)}>
-          {output.status}
-        </StatusBadge>
+        <div className="flex flex-wrap items-center gap-2">
+          {sigBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${sigBadge.className}`}
+              title={sigBadge.tooltip}
+              data-testid={`signature-badge-${output.id}`}
+            >
+              {sigBadge.label}
+            </span>
+          )}
+          {approvalBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${approvalBadge.className}`}
+              data-testid={`approval-badge-${output.id}`}
+            >
+              {approvalBadge.label}
+            </span>
+          )}
+          {dissemBadge && (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${dissemBadge.className}`}
+              title={dissemBadge.reason || dissemBadge.label}
+              data-testid={`dissemination-badge-${output.id}`}
+            >
+              {dissemBadge.label}
+            </span>
+          )}
+          <StatusBadge variant={outputStatusVariant(output.status)}>
+            {output.status}
+          </StatusBadge>
+        </div>
       </header>
 
       <div className="space-y-3 px-4 py-3">
+        {effectiveStatus === "PENDING_APPROVAL" && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium" role="alert">
+            Controlled release: Human approval required before downloading or exporting this artifact.
+          </p>
+        )}
+        {effectiveStatus === "REJECTED" && (
+          <p className="text-xs text-destructive font-medium" role="alert">
+            Release blocked: Artifact was rejected by reviewer{downloadApproval?.rejection_reason ? `: ${downloadApproval.rejection_reason}` : "."}
+          </p>
+        )}
+        {dissemBadge && dissemBadge.label === "Blocked by policy" && (
+          <p className="text-xs text-destructive font-medium" role="alert">
+            Dissemination blocked by policy: {dissemBadge.reason}
+          </p>
+        )}
+        {dissemBadge && dissemBadge.label === "Requires review" && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+            Dissemination requires review: {dissemBadge.reason}
+          </p>
+        )}
         {generating && (
           <p className="text-xs text-muted-foreground">
             This output is still being generated…
@@ -89,6 +333,29 @@ function OutputCard({ output }: { output: OutputResponse }) {
 
         {!failed && (
           <OutputContent output={output} />
+        )}
+
+        {!failed && effectiveStatus === "PENDING_APPROVAL" && (
+          <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => void handleApprove()}
+              className="inline-flex items-center rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              data-testid={`approve-btn-${output.id}`}
+            >
+              {acting ? "Approving…" : "Approve Release"}
+            </button>
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => void handleReject()}
+              className="inline-flex items-center rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/20 disabled:opacity-50"
+              data-testid={`reject-btn-${output.id}`}
+            >
+              Reject
+            </button>
+          </div>
         )}
 
         {!failed && (
@@ -131,6 +398,9 @@ function OutputCard({ output }: { output: OutputResponse }) {
 
         {output.status === "completed" && (
           <FactVerificationPanel outputId={output.id} />
+        )}
+        {!failed && output.status === "completed" && (
+          <ProvenancePanel outputId={output.id} />
         )}
       </div>
     </article>

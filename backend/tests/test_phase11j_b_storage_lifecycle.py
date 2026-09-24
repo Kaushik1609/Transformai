@@ -153,6 +153,7 @@ async def seed_chain(
         status="ready",
         storage_key=source_storage_key,
         extracted_text="Source line one.\nSource line two.",
+        source_metadata={"classification": "PUBLIC"},
     )
     config = GenerationConfiguration(id=uuid.uuid4(), project_id=project.id, language="English")
     db.add_all([source, config])
@@ -245,6 +246,7 @@ async def seed_project(
             source_type="text",
             status="ready",
             storage_key=spec.get("storage_key"),
+            source_metadata={"classification": "PUBLIC"},
         )
         db.add(source)
         if spec.get("storage_key"):
@@ -339,6 +341,7 @@ async def seed_project_via_api(
         sid = uuid.UUID(src.json()["data"]["id"])
         source = await db.get(Source, sid)
         source.storage_key = spec["storage_key"]
+        source.source_metadata = {"classification": "PUBLIC"}
         storage.save(spec["storage_key"], b"source-bytes")
         source_ids.append(sid)
 

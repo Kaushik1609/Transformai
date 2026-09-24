@@ -363,4 +363,47 @@ describe("CreateTransformationWorkflow", () => {
     expect(screen.queryByText(/1,420 chunks/)).not.toBeInTheDocument();
     expect(screen.queryByText(/99\.4%/)).not.toBeInTheDocument();
   });
+
+  it("configures and passes content_style in Step 2 payload", async () => {
+    render(<CreateTransformationWorkflow />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Create Transformation" }),
+      ).toBeInTheDocument(),
+    );
+
+    await userEvent.type(
+      screen.getByLabelText("Transformation prompt"),
+      "Summarize the quarterly results",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Continue to Configuration/ }),
+    );
+    await waitFor(() => expect(screen.getByText("Tone & Style")).toBeInTheDocument());
+
+    const contentStyleSelect = screen.getByLabelText("Content style");
+    expect(contentStyleSelect).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Narrative" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Bullet-points" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Analytical" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Conversational" })).toBeInTheDocument();
+
+    await userEvent.selectOptions(contentStyleSelect, "Bullet-points");
+    expect(contentStyleSelect).toHaveValue("Bullet-points");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Continue to Output Selection/ }),
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Choose Your Outputs")).toBeInTheDocument(),
+    );
+
+    const configCall = mockFetch.mock.calls.find(
+      ([input, init]) =>
+        String(input).endsWith("/configurations") && init?.method === "POST",
+    );
+    expect(configCall).toBeDefined();
+    const configBody = JSON.parse(String(configCall?.[1]?.body));
+    expect(configBody.content_style).toBe("Bullet-points");
+  });
 });

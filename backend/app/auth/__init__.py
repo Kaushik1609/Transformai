@@ -1,7 +1,10 @@
 """TransformIQ Backend — Auth Service Package (Phase 11F)."""
 
 from app.auth.otp_delivery import (
+    BrevoOtpProvider,
+    EmailOtpProvider,
     OtpDeliveryProvider,
+    ResendOtpProvider,
 )
 from app.auth.otp_service import (
     OtpIssueError,
@@ -31,7 +34,10 @@ from app.auth.schemas import (
 
 __all__ = [
     # Delivery
+    "BrevoOtpProvider",
+    "EmailOtpProvider",
     "OtpDeliveryProvider",
+    "ResendOtpProvider",
     # OTP service
     "OtpIssueError",
     "OtpIssueResult",

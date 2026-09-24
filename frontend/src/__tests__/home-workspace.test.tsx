@@ -291,4 +291,59 @@ describe("HomeWorkspace", () => {
       screen.getByText(/Choose one or more output formats to get started/),
     ).toBeInTheDocument();
   });
+
+  it("exposes Advanced Parameters (Detail Level, Objective, Content Style) and persists them", async () => {
+    mockFetch.mockImplementation(handler());
+    render(<HomeWorkspace />);
+    await waitFor(() =>
+      expect(
+        screen.getByText("What would you like to transform?"),
+      ).toBeInTheDocument(),
+    );
+
+    const advancedBtn = screen.getByRole("button", { name: /Advanced Parameters/ });
+    expect(advancedBtn).toBeInTheDocument();
+    expect(screen.queryByLabelText("Detail level")).not.toBeInTheDocument();
+
+    await userEvent.click(advancedBtn);
+
+    const detailSelect = screen.getByLabelText("Detail level");
+    const objectiveInput = screen.getByLabelText("Communication Objective");
+    const contentStyleSelect = screen.getByLabelText("Content style");
+
+    expect(detailSelect).toBeInTheDocument();
+    expect(objectiveInput).toBeInTheDocument();
+    expect(contentStyleSelect).toBeInTheDocument();
+
+    await userEvent.selectOptions(detailSelect, "detailed");
+    await userEvent.type(objectiveInput, "advise leadership");
+    await userEvent.selectOptions(contentStyleSelect, "Analytical");
+
+    await userEvent.type(
+      screen.getByLabelText("Transformation prompt"),
+      "Summarize strategic roadmap",
+    );
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /Summary/ }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Transform" }));
+
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        `http://localhost:8000/api/v1/projects/${QUICK_ID}/configurations`,
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+
+    const configCall = mockFetch.mock.calls.find(
+      ([input, init]) =>
+        String(input).endsWith(`/projects/${QUICK_ID}/configurations`) &&
+        init?.method === "POST",
+    );
+    expect(configCall).toBeDefined();
+    const configBody = JSON.parse(String(configCall?.[1]?.body));
+    expect(configBody.detail_level).toBe("detailed");
+    expect(configBody.communication_objective).toBe("advise leadership");
+    expect(configBody.content_style).toBe("Analytical");
+  });
 });

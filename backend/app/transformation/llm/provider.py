@@ -13,6 +13,12 @@ class LLMProvider(ABC):
     schema validation and prompt assembly are owned by the generators.
     """
 
+    # Safe provider capability markers (Phase 2I)
+    is_external: bool = False
+    is_local: bool = False
+    requires_network: bool = False
+    supports_offline: bool = False
+
     @abstractmethod
     def generate_text(self, *, system_prompt: str, user_content: str) -> str:
         """Return the generated text for the given prompts."""

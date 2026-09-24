@@ -133,27 +133,44 @@ def validate_source(
             f"MIME type {mime_type!r} is not valid for {normalized_type!r}."
         )
 
+    clean_filename: str | None = None
     if normalized_type != "text":
         if not filename or not filename.strip():
             raise SourceValidationError(
                 f"A filename is required for {normalized_type!r} sources."
             )
-        extension = PurePath(filename).suffix.lower()
+        clean = filename.strip()
+        if len(clean) > 255:
+            raise SourceValidationError("Filename exceeds 255 characters.")
+        if "\0" in clean or any(ord(c) < 32 for c in clean):
+            raise SourceValidationError("Filename contains invalid control characters.")
+        if ".." in clean or "/" in clean or "\\" in clean:
+            raise SourceValidationError("Filename contains invalid path characters.")
+        extension = PurePath(clean).suffix.lower()
         if extension not in EXTENSIONS_BY_SOURCE_TYPE[normalized_type]:
             raise SourceValidationError(
                 f"Filename extension {extension!r} is not valid for "
                 f"{normalized_type!r} sources."
             )
+        clean_filename = clean
     elif filename:
-        extension = PurePath(filename).suffix.lower()
+        clean = filename.strip()
+        if len(clean) > 255:
+            raise SourceValidationError("Filename exceeds 255 characters.")
+        if "\0" in clean or any(ord(c) < 32 for c in clean):
+            raise SourceValidationError("Filename contains invalid control characters.")
+        if ".." in clean or "/" in clean or "\\" in clean:
+            raise SourceValidationError("Filename contains invalid path characters.")
+        extension = PurePath(clean).suffix.lower()
         if extension and extension != ".txt":
             raise SourceValidationError(
                 "Direct text sources may only use a .txt filename."
             )
+        clean_filename = clean
 
     return ValidatedSource(
         source_type=normalized_type,
-        filename=filename.strip() if filename else None,
+        filename=clean_filename,
         mime_type=normalized_mime,
         file_size=len(content),
     )

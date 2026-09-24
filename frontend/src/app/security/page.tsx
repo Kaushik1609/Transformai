@@ -18,10 +18,10 @@ export default function SecurityPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="label-mono-xs uppercase text-secondary-fixed-dim">
+              <span className="label-mono-xs uppercase text-muted-foreground">
                 Zero-Trust Audit Log
               </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-secondary animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </div>
             <h1 className="headline-xl font-semibold text-foreground tracking-tight">
               Security Activity
@@ -34,7 +34,7 @@ export default function SecurityPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 rounded bg-surface-container-high px-2.5 py-1 text-xs text-on-surface">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
               <span className="font-label-mono-sm uppercase">Audit Log On</span>
             </div>
             <div className="flex items-center gap-1.5 rounded bg-surface-container-low px-2.5 py-1 text-xs text-secondary-fixed-dim">
@@ -46,7 +46,7 @@ export default function SecurityPage() {
 
         {/* Security Posture Summary Tiles */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border bg-surface-container p-4 shadow-sm">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="label-mono-xs uppercase">Engine Sandbox</span>
               <Lock className="h-4 w-4 text-primary" />
@@ -62,13 +62,13 @@ export default function SecurityPage() {
           <div className="rounded-xl border border-border bg-surface-container p-4 shadow-sm">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="label-mono-xs uppercase">Malware & Threat Scan</span>
-              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <ShieldCheck className="h-4 w-4 text-secondary-fixed-dim" />
             </div>
             <div className="mt-2 text-xl font-semibold text-foreground">
-              ClamAV & YARA
+              Deployment Dependent
             </div>
-            <p className="mt-1 text-xs text-emerald-400 font-label-mono-sm">
-              In-Memory Stream Verification
+            <p className="mt-1 text-xs text-muted-foreground font-label-mono-sm">
+              Active when ClamAV daemon is provisioned; reports unavailable when absent
             </p>
           </div>
 
@@ -78,23 +78,23 @@ export default function SecurityPage() {
               <CheckCircle2 className="h-4 w-4 text-secondary-fixed-dim" />
             </div>
             <div className="mt-2 text-xl font-semibold text-foreground">
-              Presidio Enforced
+              Deterministic PII Detection
             </div>
             <p className="mt-1 text-xs text-muted-foreground font-label-mono-sm">
-              Auto PII Redaction
+              Algorithmic PII Redaction
             </p>
           </div>
 
           <div className="rounded-xl border border-border bg-surface-container p-4 shadow-sm">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="label-mono-xs uppercase">Integrity Seals</span>
+              <span className="label-mono-xs uppercase">Integrity & Signatures</span>
               <ShieldAlert className="h-4 w-4 text-primary" />
             </div>
             <div className="mt-2 text-xl font-semibold text-foreground">
-              SHA-256 Validated
+              SHA-256 & Ed25519
             </div>
             <p className="mt-1 text-xs text-primary font-label-mono-sm">
-              Digest recorded at generation
+              Cryptographic integrity seal and digital signature verification
             </p>
           </div>
         </div>

@@ -106,8 +106,8 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
             enqueue_source_embedding(source.id, queue=get_embedding_queue())
         except Exception as exc:  # pragma: no cover - defensive best effort
             source_metadata = dict(source.source_metadata or {})
-            source_metadata["embedding_status"] = "failed"
             source_metadata["embedding_queue_error"] = str(exc)
+            source_metadata["embedding_status"] = "queued"
             source.source_metadata = source_metadata
             db.commit()
         return source
@@ -124,16 +124,68 @@ def process_source_with_session(db: Session, source_id: uuid.UUID) -> Source:
         raise
 
 
+def claim_source_for_embedding(db: Session, source_id: uuid.UUID) -> bool:
+    """Atomically claim a source for embedding generation.
+
+    State transition: queued -> processing.
+    Returns True if this worker won the claim and must generate embeddings.
+    Returns False if the source is already processing, completed, or failed.
+    """
+    try:
+        source = db.execute(
+            select(Source).where(Source.id == source_id).with_for_update()
+        ).scalar_one_or_none()
+    except Exception:
+        # Fallback for engines/dialects without SELECT FOR UPDATE (e.g. SQLite)
+        source = db.execute(select(Source).where(Source.id == source_id)).scalar_one_or_none()
+
+    if source is None:
+        return False
+
+    meta = dict(source.source_metadata or {})
+    current_status = meta.get("embedding_status")
+
+    if current_status in ("processing", "completed", "failed"):
+        return False
+
+    meta["embedding_status"] = "processing"
+    source.source_metadata = meta
+    db.commit()
+    return True
+
+
 def process_source_embeddings_with_session(
     db: Session,
     source_id: uuid.UUID,
     *,
     provider=None,
 ) -> Source:
-    """Generate deterministic embeddings for a ready source and persist them without deleting source data."""
+    """Generate deterministic embeddings for a ready source and persist them without deleting source data.
+
+    Enforces dual-dispatch safety: only the worker that successfully claims
+    the source executes embedding generation.
+    """
     source = db.execute(select(Source).where(Source.id == source_id)).scalar_one_or_none()
     if source is None:
         raise ValueError(f"Source {source_id} was not found.")
+
+    meta = dict(source.source_metadata or {})
+    current_status = meta.get("embedding_status")
+
+    # Idempotency check: if completed and all chunks have embeddings, return early
+    if current_status == "completed":
+        chunks = db.execute(
+            select(SourceChunk)
+            .where(SourceChunk.source_id == source.id)
+            .order_by(SourceChunk.chunk_index)
+        ).scalars().all()
+        if chunks and all(chunk.embedding is not None for chunk in chunks):
+            return source
+
+    # Dual-dispatch safety: only the worker that wins the claim proceeds
+    if not claim_source_for_embedding(db, source_id):
+        refreshed = db.execute(select(Source).where(Source.id == source_id)).scalar_one_or_none()
+        return refreshed or source
 
     try:
         chunks = db.execute(
@@ -149,6 +201,9 @@ def process_source_embeddings_with_session(
         vectors = service.embed_texts(texts)
         for chunk, vector in zip(chunks, vectors, strict=True):
             chunk.embedding = vector
+
+        if not all(chunk.embedding is not None and len(chunk.embedding) == settings.EMBEDDING_DIMENSIONS for chunk in chunks):
+            raise ValueError("Embedding generation incomplete: one or more chunks failed vector generation.")
 
         source_metadata = dict(source.source_metadata or {})
         source_metadata["embedding_status"] = "completed"
@@ -170,3 +225,26 @@ def process_source_embeddings_with_session(
             failed_source.source_metadata = metadata
             db.commit()
         raise
+
+
+def execute_source_embeddings_sync(source_id: str | uuid.UUID, *, provider=None) -> None:
+    """Execute source embedding generation synchronously using DATABASE_SYNC_URL.
+
+    Safe for in-process background tasks or direct worker dispatch.
+    """
+    import structlog
+    from sqlalchemy import create_engine
+    from app.embeddings.factory import build_resilient_embedding_provider
+
+    _logger = structlog.get_logger(__name__)
+    engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+    try:
+        if provider is None:
+            provider = build_resilient_embedding_provider()
+        with Session(engine) as session:
+            process_source_embeddings_with_session(session, uuid.UUID(str(source_id)), provider=provider)
+            _logger.info("execute_source_embeddings_sync completed", source_id=str(source_id))
+    except Exception as exc:
+        _logger.error("execute_source_embeddings_sync failed", source_id=str(source_id), error=str(exc))
+    finally:
+        engine.dispose()

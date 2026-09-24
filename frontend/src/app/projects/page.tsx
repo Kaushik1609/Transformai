@@ -53,46 +53,50 @@ export default function ProjectsPage() {
     try {
       const res = await projectsApi.list();
       setProjects(res.data);
-      // Load per-project stats. A project whose stats fail to load is shown
-      // as "Unavailable" — the failure is never hidden behind fabricated zeros.
-      void Promise.all(
-        res.data.map(async (p) => {
-          try {
-            const [sources, jobs] = await Promise.all([
-              sourcesApi.list(p.id),
-              transformationsApi.listByProject(p.id),
-            ]);
-            const latest = jobs.data[0] ?? null;
-            const jobMeta = latest
-              ? await transformationsApi
-                  .listOutputs(latest.id)
-                  .then((o) => o.count)
-                  .catch(() => null)
-              : 0;
-            setMeta((prev) => ({
-              ...prev,
-              [p.id]: {
-                project: p,
-                statsState: "ok",
-                sourceCount: sources.count,
-                outputCount: jobMeta === null ? 0 : jobMeta,
-                latestJob: latest,
-              },
-            }));
-          } catch {
-            setMeta((prev) => ({
-              ...prev,
-              [p.id]: {
-                project: p,
-                statsState: "unavailable",
-                sourceCount: 0,
-                outputCount: 0,
-                latestJob: null,
-              },
-            }));
-          }
-        }),
-      );
+      // Load per-project stats with bounded concurrency (batchSize=3) to prevent
+      // network storms and connection exhaustion on cloud free tiers.
+      const batchSize = 3;
+      for (let i = 0; i < res.data.length; i += batchSize) {
+        const batch = res.data.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (p) => {
+            try {
+              const [sources, jobs] = await Promise.all([
+                sourcesApi.list(p.id),
+                transformationsApi.listByProject(p.id),
+              ]);
+              const latest = jobs.data[0] ?? null;
+              const jobMeta = latest
+                ? await transformationsApi
+                    .listOutputs(latest.id)
+                    .then((o) => o.count)
+                    .catch(() => null)
+                : 0;
+              setMeta((prev) => ({
+                ...prev,
+                [p.id]: {
+                  project: p,
+                  statsState: "ok",
+                  sourceCount: sources.count,
+                  outputCount: jobMeta === null ? 0 : jobMeta,
+                  latestJob: latest,
+                },
+              }));
+            } catch {
+              setMeta((prev) => ({
+                ...prev,
+                [p.id]: {
+                  project: p,
+                  statsState: "unavailable",
+                  sourceCount: 0,
+                  outputCount: 0,
+                  latestJob: null,
+                },
+              }));
+            }
+          }),
+        );
+      }
     } catch (err) {
       setLoadError(errorMessage(err, "Failed to load projects."));
     }

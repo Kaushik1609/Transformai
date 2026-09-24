@@ -9,3 +9,4 @@ export { SecurityPipeline } from "./SecurityPipeline";
 export { SecurityActivity } from "./SecurityActivity";
 export { ArtifactIntegrity } from "./ArtifactIntegrity";
 export { TrustCockpit, trustCounts } from "./TrustCockpit";
+export { ProvenancePanel } from "./ProvenancePanel";

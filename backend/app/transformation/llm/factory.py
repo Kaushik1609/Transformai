@@ -22,6 +22,7 @@ from __future__ import annotations
 from app.core.config import settings
 from app.transformation.llm.fake import FakeLLMProvider
 from app.transformation.llm.gemini_provider import GeminiLLMProvider
+from app.transformation.llm.local_provider import LocalLLMProvider
 from app.transformation.llm.openai_provider import OpenAILLMProvider
 from app.transformation.llm.provider import LLMProvider
 from app.transformation.llm.resilience import ProviderManager, RetryPolicy
@@ -32,13 +33,25 @@ def build_llm_provider(provider: str | None = None) -> LLMProvider:
 
     Raises:
         ValueError: Unknown provider name, or an explicitly selected real
-            provider (``openai``/``gemini``) missing its ``LLM_API_KEY``.
+            provider (``openai``/``gemini``) missing its ``LLM_API_KEY``,
+            or an external cloud provider requested in offline mode.
             Error messages never contain credential values.
     """
     name = (provider or settings.LLM_PROVIDER or "openai").strip().lower()
     api_key = (settings.LLM_API_KEY or "").strip()
+    execution_mode = getattr(settings, "LLM_EXECUTION_MODE", "auto")
+
+    # Offline mode enforcement: external cloud providers are rejected immediately
+    if execution_mode == "offline" and name in ("openai", "gemini"):
+        raise ValueError(
+            f"External cloud provider '{name}' is prohibited when LLM_EXECUTION_MODE='offline'. "
+            "Use a local provider ('local', 'ollama', 'vllm') or 'fake' for offline execution."
+        )
+
     if name == "fake":
         return FakeLLMProvider()
+    if name in ("local", "ollama", "vllm"):
+        return LocalLLMProvider()
     if name == "openai":
         if not api_key:
             raise ValueError(
@@ -84,8 +97,16 @@ def build_resilient_provider() -> ProviderManager:
 
 def _build_fallback_provider(name: str) -> LLMProvider:
     """Build an optional fallback provider atomically or raise a clear error."""
+    execution_mode = getattr(settings, "LLM_EXECUTION_MODE", "auto")
+    if execution_mode == "offline" and name in ("openai", "gemini"):
+        raise ValueError(
+            f"External cloud fallback '{name}' is prohibited when LLM_EXECUTION_MODE='offline'."
+        )
+
     if name == "fake":
         return FakeLLMProvider()
+    if name in ("local", "ollama", "vllm"):
+        return LocalLLMProvider()
     if name == "openai":
         # A real OpenAI fallback requires a key; if absent, there is no safe
         # fallback to use, so we do not silently inject one.

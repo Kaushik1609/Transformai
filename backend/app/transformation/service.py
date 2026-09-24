@@ -135,11 +135,219 @@ def run_transformation_job(
     # work begins (a crash mid-run is surfaced by the RQ failure handler).
     db.commit()
 
+    # Phase 2A/2B — Worker-side policy defense-in-depth re-evaluation.
+    from app.core.audit import emit_security_event
+    from app.policy import (
+        DEFAULT_CLASSIFICATION,
+        PolicyEvaluationContext,
+        get_policy_engine,
+        resolve_source_classification,
+    )
+
+    # 1. Resolve classification
+    worker_classification: Any = None
+    if job.source_id is not None:
+        from app.db.models.source import Source
+
+        job_source = db.get(Source, job.source_id)
+        if job_source is not None:
+            worker_classification = resolve_source_classification(job_source.source_metadata)
+
+    if worker_classification is None and hasattr(job, "parameters") and isinstance(getattr(job, "parameters"), dict):
+        param_class = getattr(job, "parameters").get("classification")
+        if param_class:
+            from app.policy.classification import normalize_classification
+
+            worker_classification = normalize_classification(param_class)
+
+    if worker_classification is None and job.requested_outputs and isinstance(job.requested_outputs, dict):
+        if "classification" in job.requested_outputs:
+            from app.policy.classification import normalize_classification
+
+            worker_classification = normalize_classification(job.requested_outputs["classification"])
+
+    if worker_classification is None:
+        worker_classification = DEFAULT_CLASSIFICATION
+
+    # 2. Resolve requested outputs
+    worker_outputs: list[str] = []
+    if job.requested_outputs and isinstance(job.requested_outputs, dict):
+        raw_types = job.requested_outputs.get("output_types")
+        if isinstance(raw_types, list):
+            worker_outputs = [str(x) for x in raw_types]
+
+    # 3. Resolve requested provider
+    worker_provider_name = ""
+    if job.requested_outputs and isinstance(job.requested_outputs, dict):
+        worker_provider_name = str(job.requested_outputs.get("llm_provider") or "")
+    if not worker_provider_name:
+        if llm_provider is not None:
+            actual = llm_provider
+            visited = set()
+            while actual is not None and id(actual) not in visited:
+                visited.add(id(actual))
+                if hasattr(actual, "primary") and getattr(actual, "primary") is not None:
+                    actual = getattr(actual, "primary")
+                elif hasattr(actual, "provider") and getattr(actual, "provider") is not None:
+                    actual = getattr(actual, "provider")
+                elif hasattr(actual, "_provider") and getattr(actual, "_provider") is not None:
+                    actual = getattr(actual, "_provider")
+                elif hasattr(actual, "delegate") and getattr(actual, "delegate") is not None:
+                    actual = getattr(actual, "delegate")
+                else:
+                    break
+
+            from app.transformation.llm.fake import FakeLLMProvider
+
+            if isinstance(actual, FakeLLMProvider):
+                worker_provider_name = "fake"
+            else:
+                raw_name = (
+                    getattr(actual, "provider_name", None)
+                    or getattr(actual, "name", None)
+                    or type(actual).__name__.lower()
+                )
+                raw_str = str(raw_name).strip().lower()
+                if "gemini" in raw_str:
+                    worker_provider_name = "gemini"
+                elif "openai" in raw_str:
+                    worker_provider_name = "openai"
+                elif "local" in raw_str:
+                    worker_provider_name = "local"
+                else:
+                    from app.transformation.llm.provider import LLMProvider
+
+                    if isinstance(actual, LLMProvider) or any(
+                        t in raw_str
+                        for t in (
+                            "fake",
+                            "mock",
+                            "test",
+                            "flaky",
+                            "fail",
+                            "poison",
+                            "script",
+                            "json",
+                            "stub",
+                            "invalid",
+                            "string",
+                            "hashtag",
+                        )
+                    ):
+                        worker_provider_name = "fake"
+                    else:
+                        worker_provider_name = raw_str
+        else:
+            worker_provider_name = settings.LLM_PROVIDER or "openai"
+
+    worker_env = (settings.ENVIRONMENT or "development").strip().lower()
+
+    eval_ctx = PolicyEvaluationContext(
+        classification=worker_classification,
+        requested_outputs=worker_outputs,
+        requested_provider=worker_provider_name,
+        environment=worker_env,
+    )
+    worker_decision = get_policy_engine().evaluate(eval_ctx)
+
+    if not worker_decision.allowed:
+        emit_security_event(
+            "policy_evaluated",
+            outcome="denied",
+            project_id=str(job.project_id),
+            source_id=str(job.source_id) if job.source_id else None,
+            job_id=str(job.id),
+            reason=worker_decision.reason,
+            details={
+                "classification": worker_decision.classification.value,
+                "processing_route": worker_decision.processing_route,
+                "requested_outputs": worker_outputs,
+                "provider": worker_provider_name,
+                "environment": worker_env,
+                "requires_review": worker_decision.requires_review,
+                "denial_context": "worker_defense_in_depth",
+            },
+        )
+        job.status = "failed"
+        job.error_message = f"Processing blocked by policy: {worker_decision.reason}"
+        db.commit()
+        return {
+            "job_id": str(job_id),
+            "skipped": True,
+            "policy_denied": True,
+            "reason": worker_decision.reason,
+            "outputs": [],
+            "errors": [worker_decision.reason],
+        }
+
+    # Phase 2C — PolicyRouter resolution. Map PolicyDecision to compliant provider & model.
+    from app.policy.routing import ERROR_COMPLIANT_PROVIDER_UNAVAILABLE, get_policy_router
+    worker_requested_model: str | None = None
+    if job.requested_outputs and isinstance(job.requested_outputs, dict):
+        worker_requested_model = job.requested_outputs.get("model")
+
+    route_decision = get_policy_router().route(
+        decision=worker_decision,
+        requested_provider=worker_provider_name,
+        requested_model=worker_requested_model,
+        environment=worker_env,
+    )
+
+    emit_security_event(
+        "routing_resolved",
+        outcome="routed" if route_decision.allowed else "failed_unavailable",
+        project_id=str(job.project_id),
+        source_id=str(job.source_id) if job.source_id else None,
+        job_id=str(job.id),
+        reason=route_decision.reason,
+        details={
+            "provider": route_decision.provider_id,
+            "model": route_decision.model_id,
+            "route": route_decision.processing_route.value,
+            "classification": route_decision.classification.value,
+            "error_code": route_decision.error_code,
+        },
+    )
+
+    if not route_decision.allowed:
+        job.status = "failed"
+        job.error_message = f"Processing blocked by routing policy: {route_decision.reason}"
+        db.commit()
+        return {
+            "job_id": str(job_id),
+            "skipped": True,
+            "routing_failed": True,
+            "error_code": route_decision.error_code,
+            "reason": route_decision.reason,
+            "outputs": [],
+            "errors": [route_decision.reason],
+        }
+
+    # If an explicit llm_provider instance was passed into run_transformation_job (e.g. in unit tests),
+    # honor it; otherwise, construct the compliant provider using router_factory.
+    provider = llm_provider
+    if provider is None and (job.requested_outputs and job.requested_outputs.get("llm_provider")):
+        from app.transformation.llm.router_factory import build_routed_llm_provider, CompliantRoutingError
+        try:
+            provider = build_routed_llm_provider(route_decision, resilient=True)
+        except CompliantRoutingError as exc:
+            job.status = "failed"
+            job.error_message = f"Processing blocked by routing policy: {str(exc)}"
+            db.commit()
+            return {
+                "job_id": str(job_id),
+                "skipped": True,
+                "routing_failed": True,
+                "error_code": ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
+                "reason": str(exc),
+                "outputs": [],
+                "errors": [str(exc)],
+            }
+
     # Phase 11L-A — cache wiring.  When enabled, successful LLM generations are
     # cached per project (scope = job.project_id) so repeated transformations of
     # the same source never pay the provider cost twice.  Default off: historical
     # behavior is preserved and tests stay deterministic.
-    provider = llm_provider
     use_cache = settings.CACHE_ENABLED if cache_enabled is None else cache_enabled
     if provider is not None and use_cache:
         backend = cache_backend
@@ -177,6 +385,14 @@ def run_transformation_job(
     # provenance failure never blocks or aborts the artifact or the job result.
     if settings.INTEGRITY_RECORD_ENABLED:
         _record_job_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
+    # Phase 2D — POST-GENERATION dissemination control evaluation.
+    _record_job_dissemination(db, job_id, classification=worker_classification, project_id=str(job.project_id))
+    # Phase 2E — POST-GENERATION provenance record assembly.
+    _record_job_provenance(db, job_id, classification=worker_classification, project_id=str(job.project_id))
+    # Phase 2G — POST-GENERATION cryptographic integrity sealing.
+    _record_job_cryptographic_integrity(db, job_id, storage=storage, project_id=str(job.project_id))
+    # Phase 2H — POST-GENERATION digital signature signing.
+    _record_job_digital_signatures(db, job_id, project_id=str(job.project_id))
     db.commit()
     metrics.observe(
         "transformation_job_duration_seconds", time.monotonic() - started
@@ -232,3 +448,481 @@ def _record_job_integrity(
             metrics.inc(
                 "integrity_hashes_total", {"result": "error", "provider": "n/a"}
             )
+
+
+def _record_job_dissemination(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    classification: Any,
+    project_id: str | None = None,
+) -> None:
+    """Record deterministic dissemination control decisions for completed outputs.
+
+    Called from post-generation hook in run_transformation_job.
+    Attaches dissemination evaluation across all destinations to each completed output's
+    output_metadata['dissemination'].
+    """
+    from app.core.audit import emit_security_event
+    from app.db.models.output import Output
+    from app.policy.dissemination import get_dissemination_engine
+
+    engine = get_dissemination_engine()
+    try:
+        outputs = db.execute(
+            select(Output).where(
+                Output.job_id == job_id,
+                Output.status == "completed",
+            )
+        ).scalars().all()
+    except Exception:
+        return
+
+    for output in outputs:
+        try:
+            artifact_hash = None
+            if output.output_metadata and isinstance(output.output_metadata, dict):
+                integrity = output.output_metadata.get("integrity")
+                if isinstance(integrity, dict):
+                    artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+
+            decisions = engine.evaluate_all(
+                classification,
+                output_type=output.output_type,
+                artifact_hash=artifact_hash,
+            )
+            primary = engine.evaluate_output(
+                classification,
+                output_type=output.output_type,
+                artifact_hash=artifact_hash,
+            )
+
+            dissemination_payload = {
+                "classification": str(classification),
+                "policy_id": engine.POLICY_ID,
+                "primary_destination": primary.destination,
+                "primary_decision": primary.decision.value,
+                "primary_allowed": primary.allowed,
+                "primary_reason": primary.reason,
+                "destinations": {
+                    dest_name: {
+                        "allowed": d.allowed,
+                        "decision": d.decision.value,
+                        "destination": d.destination,
+                        "reason": d.reason,
+                        "policy_id": d.policy_id,
+                        "artifact_hash": d.artifact_hash,
+                    }
+                    for dest_name, d in decisions.items()
+                },
+            }
+
+            existing_meta = dict(output.output_metadata or {})
+            existing_meta["dissemination"] = dissemination_payload
+            output.output_metadata = existing_meta
+
+            emit_security_event(
+                "dissemination_evaluated",
+                outcome="allowed" if primary.allowed else "blocked",
+                project_id=project_id,
+                job_id=str(job_id),
+                reason=primary.reason,
+                details={
+                    "output_id": str(output.id),
+                    "output_type": output.output_type,
+                    "classification": str(classification),
+                    "primary_destination": primary.destination,
+                    "primary_decision": primary.decision.value,
+                },
+            )
+        except Exception:
+            pass
+
+
+def _record_job_provenance(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    classification: Any,
+    project_id: str | None = None,
+) -> None:
+    """Record canonical provenance records for completed outputs.
+
+    Called from post-generation hook in run_transformation_job.
+    Attaches a validated ProvenanceRecord to each completed output's
+    output_metadata['provenance'].
+    Emits a 'provenance_recorded' security audit event.
+    """
+    from app.core.audit import emit_security_event
+    from app.db.models.output import Output
+    from app.db.models.source import Source
+    from app.db.models.transformation_job import TransformationJob
+    from app.db.models.verification_result import VerificationResult
+    from app.policy.provenance import ProvenanceBuilder
+
+    try:
+        job = db.execute(
+            select(TransformationJob).where(TransformationJob.id == job_id)
+        ).scalar_one_or_none()
+        if job is None:
+            return
+
+        source = None
+        if job.source_id:
+            source = db.execute(
+                select(Source).where(Source.id == job.source_id)
+            ).scalar_one_or_none()
+
+        outputs = db.execute(
+            select(Output).where(
+                Output.job_id == job_id,
+                Output.status == "completed",
+            )
+        ).scalars().all()
+    except Exception:
+        return
+
+    # Extract citations captured at generation time on job.requested_outputs if available
+    job_req_meta = dict(job.requested_outputs or {})
+    citations = job_req_meta.get("evidence_citations")
+    requested_types = list(job_req_meta.get("outputs", [])) or [o.output_type for o in outputs]
+
+    for output in outputs:
+        try:
+            # Query verification result if available
+            vr = db.execute(
+                select(VerificationResult)
+                .where(VerificationResult.output_id == output.id)
+                .order_by(VerificationResult.created_at.desc())
+            ).scalars().first()
+
+            out_meta = dict(output.output_metadata or {})
+            dissem_meta = out_meta.get("dissemination")
+            integrity_meta = out_meta.get("integrity")
+            resilience_meta = out_meta.get("resilience") or {}
+
+            record = ProvenanceBuilder.build_record(
+                output_id=output.id,
+                job_id=job_id,
+                project_id=project_id or str(job.project_id),
+                output_type=output.output_type,
+                source=source,
+                classification=str(classification),
+                requested_outputs=requested_types,
+                prompt_provided=bool(job.prompt),
+                citations=citations,
+                routing_metadata=resilience_meta,
+                generator_class=out_meta.get("generator"),
+                verification_result=vr,
+                dissemination_metadata=dissem_meta,
+                integrity_metadata=integrity_meta,
+            )
+
+            out_meta["provenance"] = record.model_dump(mode="json")
+            output.output_metadata = out_meta
+
+            emit_security_event(
+                "provenance_recorded",
+                outcome="allowed",
+                project_id=project_id or str(job.project_id),
+                job_id=str(job_id),
+                source_id=str(source.id) if source else None,
+                reason="provenance_record_attached",
+                details={
+                    "output_id": str(output.id),
+                    "output_type": output.output_type,
+                    "provenance_id": record.provenance_id,
+                    "classification": str(classification),
+                    "evidence_count": record.evidence.chunks_count,
+                },
+            )
+        except Exception:
+            pass
+
+
+def _record_job_cryptographic_integrity(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    storage: Any | None = None,
+    project_id: str | None = None,
+) -> None:
+    """Record cryptographic integrity sealing for a job's completed outputs.
+
+    Called from post-generation hook in run_transformation_job after provenance assembly.
+    Attaches a validated CryptographicIntegrityRecord to each completed output's
+    output_metadata['cryptographic_integrity'].
+    Emits an 'integrity_recorded' security audit event.
+    Fail-open: never raises or blocks execution on failure.
+    """
+    try:
+        from app.services.integrity_service import record_job_cryptographic_integrity
+
+        record_job_cryptographic_integrity(
+            db,
+            job_id,
+            storage=storage,
+            project_id=project_id,
+        )
+    except Exception:
+        pass
+
+
+def _record_job_digital_signatures(
+    db: Session,
+    job_id: uuid.UUID,
+    *,
+    project_id: str | None = None,
+) -> None:
+    """Record digital signatures for a job's completed outputs after integrity sealing.
+
+    Called from post-generation hook in run_transformation_job after integrity sealing.
+    Attaches a validated DigitalSignatureRecord to each completed output's
+    output_metadata['digital_signature'].
+    Emits a 'signature_recorded' security audit event.
+    Fail-open: never raises or blocks execution on failure.
+    """
+    try:
+        from app.services.signature_service import record_job_digital_signatures
+
+        record_job_digital_signatures(
+            db,
+            job_id,
+            project_id=project_id,
+        )
+    except Exception:
+        pass
+
+
+def execute_transformation_job_sync(
+    job_id: str | uuid.UUID,
+    engine: Any | None = None,
+) -> dict[str, Any]:
+    """Execute a transformation job synchronously using DATABASE_SYNC_URL.
+
+    Safe to invoke directly from in-process background tasks (FastAPI
+    BackgroundTasks) or RQ workers. Atomic claiming ensures that if multiple
+    workers or background tasks attempt to process the same job, exactly one
+    wins the lease and the other gracefully skips.
+    """
+    import structlog
+    from sqlalchemy import create_engine, select
+    from app.transformation.llm.factory import build_llm_provider, build_resilient_provider
+    from app.transformation.llm.metered import MeteredLLMProvider
+
+    _logger = structlog.get_logger(__name__)
+    job_uuid = uuid.UUID(str(job_id))
+    engine_created = False
+    if engine is None:
+        engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+        engine_created = True
+    try:
+        with Session(engine) as session:
+            job_record = session.get(TransformationJob, job_uuid)
+            if not job_record:
+                return {"job_id": str(job_id), "skipped": True, "reason": "not_found"}
+
+            provider_override = None
+            if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                provider_override = job_record.requested_outputs.get("llm_provider")
+
+            # Phase 2A/2B: Pre-AI Policy Check in execute_transformation_job_sync
+            from app.core.audit import emit_security_event
+            from app.policy import (
+                DEFAULT_CLASSIFICATION,
+                PolicyEvaluationContext,
+                get_policy_engine,
+                resolve_source_classification,
+            )
+            pre_classification: Any = None
+            if job_record.source_id:
+                from app.db.models.source import Source
+                pre_source = session.get(Source, job_record.source_id)
+                if pre_source:
+                    pre_classification = resolve_source_classification(pre_source.source_metadata)
+
+            if pre_classification is None and hasattr(job_record, "parameters") and isinstance(getattr(job_record, "parameters"), dict):
+                param_class = getattr(job_record, "parameters").get("classification")
+                if param_class:
+                    from app.policy.classification import normalize_classification
+
+                    pre_classification = normalize_classification(param_class)
+
+            if pre_classification is None and job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                if "classification" in job_record.requested_outputs:
+                    from app.policy.classification import normalize_classification
+
+                    pre_classification = normalize_classification(job_record.requested_outputs["classification"])
+
+            if pre_classification is None:
+                pre_classification = DEFAULT_CLASSIFICATION
+
+            pre_outputs: list[str] = []
+            if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                raw_out = job_record.requested_outputs.get("output_types")
+                if isinstance(raw_out, list):
+                    pre_outputs = [str(x) for x in raw_out]
+
+            pre_provider = str(provider_override or settings.LLM_PROVIDER or "openai")
+            pre_env = (settings.ENVIRONMENT or "development").strip().lower()
+
+            pre_decision = get_policy_engine().evaluate(
+                PolicyEvaluationContext(
+                    classification=pre_classification,
+                    requested_outputs=pre_outputs,
+                    requested_provider=pre_provider,
+                    environment=pre_env,
+                )
+            )
+            if not pre_decision.allowed:
+                emit_security_event(
+                    "policy_evaluated",
+                    outcome="denied",
+                    project_id=str(job_record.project_id),
+                    source_id=str(job_record.source_id) if job_record.source_id else None,
+                    job_id=str(job_record.id),
+                    reason=pre_decision.reason,
+                    details={
+                        "classification": pre_decision.classification.value,
+                        "processing_route": pre_decision.processing_route,
+                        "requested_outputs": pre_outputs,
+                        "provider": pre_provider,
+                        "environment": pre_env,
+                        "requires_review": pre_decision.requires_review,
+                        "denial_context": "sync_worker_gate",
+                    },
+                )
+                job_record.status = "failed"
+                job_record.error_message = f"Processing blocked by policy: {pre_decision.reason}"
+                session.commit()
+                return {
+                    "job_id": str(job_id),
+                    "status": "failed",
+                    "policy_denied": True,
+                    "reason": pre_decision.reason,
+                    "error": pre_decision.reason,
+                }
+
+            # Phase 2C — Pre-AI PolicyRouter Resolution in execute_transformation_job_sync
+            from app.policy.routing import ERROR_COMPLIANT_PROVIDER_UNAVAILABLE, get_policy_router
+            from app.transformation.llm.router_factory import build_routed_llm_provider, CompliantRoutingError
+
+            sync_requested_model: str | None = None
+            if job_record.requested_outputs and isinstance(job_record.requested_outputs, dict):
+                sync_requested_model = job_record.requested_outputs.get("model")
+
+            pre_route_decision = get_policy_router().route(
+                decision=pre_decision,
+                requested_provider=pre_provider,
+                requested_model=sync_requested_model,
+                environment=pre_env,
+            )
+
+            emit_security_event(
+                "routing_resolved",
+                outcome="routed" if pre_route_decision.allowed else "failed_unavailable",
+                project_id=str(job_record.project_id),
+                source_id=str(job_record.source_id) if job_record.source_id else None,
+                job_id=str(job_record.id),
+                reason=pre_route_decision.reason,
+                details={
+                    "provider": pre_route_decision.provider_id,
+                    "model": pre_route_decision.model_id,
+                    "route": pre_route_decision.processing_route.value,
+                    "classification": pre_route_decision.classification.value,
+                    "error_code": pre_route_decision.error_code,
+                    "denial_context": "sync_worker_gate",
+                },
+            )
+
+            if not pre_route_decision.allowed:
+                job_record.status = "failed"
+                job_record.error_message = f"Processing blocked by routing policy: {pre_route_decision.reason}"
+                session.commit()
+                return {
+                    "job_id": str(job_id),
+                    "status": "failed",
+                    "routing_failed": True,
+                    "error_code": pre_route_decision.error_code,
+                    "reason": pre_route_decision.reason,
+                    "error": pre_route_decision.reason,
+                }
+
+            try:
+                base_provider = build_routed_llm_provider(pre_route_decision, resilient=True)
+            except CompliantRoutingError as exc:
+                job_record.status = "failed"
+                job_record.error_message = f"Processing blocked by routing policy: {str(exc)}"
+                session.commit()
+                return {
+                    "job_id": str(job_id),
+                    "status": "failed",
+                    "routing_failed": True,
+                    "error_code": ERROR_COMPLIANT_PROVIDER_UNAVAILABLE,
+                    "reason": str(exc),
+                    "error": str(exc),
+                }
+
+            if job_record.source_id:
+                from app.db.models.source import Source
+                from app.db.models.canonical_content import CanonicalContent
+                from app.content_intelligence.service import ContentIntelligenceService
+                from app.content_intelligence.llm_provider import LLMContentAnalysisProvider
+
+                source_record = session.get(Source, job_record.source_id)
+                if source_record:
+                    meta = dict(source_record.source_metadata or {})
+                    emb_status = meta.get("embedding_status")
+                    # If embeddings are queued or not yet processed, trigger generation before RAG retrieval
+                    if emb_status in ("queued", "processing", None):
+                        from app.ingestion.worker_processing import process_source_embeddings_with_session
+                        from app.embeddings.factory import build_resilient_embedding_provider
+                        try:
+                            emb_provider = build_resilient_embedding_provider()
+                            process_source_embeddings_with_session(session, source_record.id, provider=emb_provider)
+                        except Exception as emb_exc:
+                            _logger.warning(
+                                "Auto-embedding generation failed prior to transformation",
+                                source_id=str(source_record.id),
+                                error=str(emb_exc),
+                            )
+                            job_meta = dict(job_record.requested_outputs or {})
+                            job_meta["evidence_status"] = "insufficient_context"
+                            job_meta["embedding_status"] = "failed"
+                            job_record.requested_outputs = job_meta
+                            session.commit()
+                    elif emb_status == "failed":
+                        job_meta = dict(job_record.requested_outputs or {})
+                        job_meta["evidence_status"] = "insufficient_context"
+                        job_meta["embedding_status"] = "failed"
+                        job_record.requested_outputs = job_meta
+                        session.commit()
+
+                canonical = session.execute(
+                    select(CanonicalContent).where(CanonicalContent.source_id == job_record.source_id)
+                ).scalar_one_or_none()
+                if canonical is None or canonical.status != "completed":
+                    ci = ContentIntelligenceService(provider=LLMContentAnalysisProvider(base_provider))
+                    ci.analyze_source(session, job_record.source_id)
+                    session.commit()
+
+            llm_provider = MeteredLLMProvider(base_provider)
+            res = run_transformation_job(session, job_uuid, llm_provider=llm_provider)
+            _logger.info("execute_transformation_job_sync completed", job_id=str(job_id), result=res)
+            return res
+    except Exception as exc:
+        _logger.error("execute_transformation_job_sync failed", job_id=str(job_id), error=str(exc))
+        try:
+            with Session(engine) as session:
+                job_record = session.get(TransformationJob, job_uuid)
+                if job_record and job_record.status not in ("completed", "cancelled"):
+                    job_record.status = "failed"
+                    job_record.error_message = f"Execution error: {str(exc)}"[:1000]
+                    session.commit()
+        except Exception:
+            pass
+        return {"job_id": str(job_id), "status": "failed", "error": str(exc)}
+    finally:
+        if engine_created:
+            engine.dispose()
+

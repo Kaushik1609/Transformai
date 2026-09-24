@@ -55,7 +55,10 @@ export default function ForgotPasswordPage() {
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Open the email and use the code on the{" "}
-              <Link href="/reset-password" className="font-medium text-primary hover:underline">
+              <Link
+                href={`/reset-password?email=${encodeURIComponent(email)}`}
+                className="font-medium text-primary hover:underline"
+              >
                 reset password
               </Link>{" "}
               page.

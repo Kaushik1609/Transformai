@@ -57,6 +57,8 @@ interface TransformationWorkspaceProps {
   initialSourceId?: string | null;
   /** Polling interval for job status (default 2000ms; shorter in tests). */
   pollIntervalMs?: number;
+  /** Callback fired when a new source is successfully ingested. */
+  onSourceAdded?: (source: SourceResponse) => void;
 }
 
 type WorkspacePhase =
@@ -72,6 +74,7 @@ export function TransformationWorkspace({
   projectId,
   initialSourceId,
   pollIntervalMs = 2000,
+  onSourceAdded,
 }: TransformationWorkspaceProps) {
   // ---- Project / sources / configs -------------------------------------
   const [project, setProject] = useState<ProjectResponse | null>(null);
@@ -233,6 +236,7 @@ export function TransformationWorkspace({
   const handleSourceAdded = (source: SourceResponse) => {
     setSources((prev) => [source, ...prev]);
     setCurrentSource(source);
+    onSourceAdded?.(source);
   };
 
   const statusLabel = (() => {

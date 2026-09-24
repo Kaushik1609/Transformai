@@ -19,8 +19,17 @@ import { authHeaders, clearAuthToken, getAuthToken } from "./auth";
 // Configuration
 // ---------------------------------------------------------------------------
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+function resolveDefaultApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "";
+  }
+  return "http://localhost:8000";
+}
+
+export const API_BASE_URL = resolveDefaultApiUrl();
 
 // ---------------------------------------------------------------------------
 // Response types — health
@@ -66,7 +75,7 @@ export interface OtpDeliveryDetails {
   channel: string;
   identifier: string;
   resend_after_seconds: number;
-  dev_otp?: string | null;
+  delivery_status?: string;
 }
 
 export interface RegisterResponse {
@@ -151,6 +160,52 @@ export interface DeleteResponse {
 // Response types — sources
 // ---------------------------------------------------------------------------
 
+export type InformationClassification =
+  | "PUBLIC"
+  | "INTERNAL"
+  | "CONFIDENTIAL"
+  | "RESTRICTED";
+
+export function getSourceClassification(
+  source: SourceResponse,
+): InformationClassification {
+  const metaClass = source.source_metadata?.classification;
+  if (
+    metaClass === "PUBLIC" ||
+    metaClass === "INTERNAL" ||
+    metaClass === "CONFIDENTIAL" ||
+    metaClass === "RESTRICTED"
+  ) {
+    return metaClass as InformationClassification;
+  }
+  if (
+    source.classification === "PUBLIC" ||
+    source.classification === "INTERNAL" ||
+    source.classification === "CONFIDENTIAL" ||
+    source.classification === "RESTRICTED"
+  ) {
+    return source.classification as InformationClassification;
+  }
+  return "INTERNAL";
+}
+
+export function getPolicyPosture(
+  classification: InformationClassification,
+): string {
+  switch (classification) {
+    case "PUBLIC":
+      return "Cloud Allowed";
+    case "INTERNAL":
+      return "Controlled Processing";
+    case "CONFIDENTIAL":
+      return "Private / Local Required";
+    case "RESTRICTED":
+      return "Private / Local Required (Cloud Denied)";
+    default:
+      return "Controlled Processing";
+  }
+}
+
 export interface SourceResponse {
   id: string;
   project_id: string;
@@ -161,6 +216,7 @@ export interface SourceResponse {
   file_size: number | null;
   language: string;
   status: string;
+  classification?: InformationClassification;
   source_metadata: Record<string, unknown> | null;
   created_at: string;
 }
@@ -316,6 +372,258 @@ export interface OutputDetailResponse {
   success: boolean;
   data: OutputResponse;
 }
+
+// ---------------------------------------------------------------------------
+// Dissemination Control (Phase 2D)
+// ---------------------------------------------------------------------------
+
+export type DisseminationDestination =
+  | "INTERNAL"
+  | "REVIEW"
+  | "DOWNLOAD"
+  | "PRESENTATION"
+  | "PUBLIC_WEB"
+  | "LINKEDIN"
+  | "X";
+
+export type DisseminationDecisionOutcome = "ALLOW" | "BLOCK" | "REVIEW";
+
+export interface DisseminationDecision {
+  allowed: boolean;
+  decision: DisseminationDecisionOutcome;
+  classification: string;
+  destination: string;
+  reason: string;
+  policy_id: string;
+  artifact_hash?: string | null;
+  signature?: string | null;
+  provenance_id?: string | null;
+  approval_id?: string | null;
+  details?: Record<string, unknown>;
+}
+
+export interface DisseminationReportResponse {
+  success: boolean;
+  output_id: string;
+  output_type: string;
+  classification: string;
+  destinations: Record<string, DisseminationDecision>;
+}
+
+export interface DisseminateResponse {
+  success: boolean;
+  data: DisseminationDecision;
+}
+
+
+// ---------------------------------------------------------------------------
+// Human Approval & Controlled Release (Phase 2F)
+// ---------------------------------------------------------------------------
+
+export type ApprovalStatus =
+  | "HARD_BLOCKED"
+  | "NOT_REQUIRED"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "REJECTED"
+  | "REVOKED";
+
+export interface DestinationApprovalDetail {
+  destination: string;
+  approval_status: ApprovalStatus;
+  approval_id?: string | null;
+  decision?: string | null;
+  approver_id?: string | null;
+  approver_email?: string | null;
+  approver_role?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
+  comments?: string | null;
+  self_approved: boolean;
+  policy_reason?: string | null;
+  classification_snapshot?: string | null;
+  verification_status_snapshot?: string | null;
+}
+
+export interface ApprovalStatusResponse {
+  success: boolean;
+  output_id: string;
+  classification: string;
+  destinations: Record<string, DestinationApprovalDetail>;
+  latest_approval_id?: string | null;
+}
+
+export interface ApprovalActionRequest {
+  destination: string;
+  action: "approve" | "reject";
+  comments?: string;
+  rejection_reason?: string;
+}
+
+export interface ApprovalActionResponse {
+  success: boolean;
+  data: DestinationApprovalDetail;
+}
+
+
+// ---------------------------------------------------------------------------
+// Evidence & Provenance (Phase 2E)
+// ---------------------------------------------------------------------------
+
+export interface EvidenceCitationLineage {
+  chunk_id?: string | null;
+  source_id?: string | null;
+  chunk_index: number;
+  content_hash?: string | null;
+  relevance_score?: number | null;
+  excerpt: string;
+}
+
+export interface ProvenanceRecord {
+  provenance_id: string;
+  version: string;
+  created_at: string;
+  source: {
+    source_id?: string | null;
+    source_type?: string | null;
+    original_filename?: string | null;
+    source_content_hash?: string | null;
+    classification: string;
+    created_at?: string | null;
+    source_version?: string | null;
+  };
+  evidence: {
+    retrieval_method: string;
+    chunks_count: number;
+    citations: EvidenceCitationLineage[];
+  };
+  transformation: {
+    transformation_id?: string | null;
+    job_id: string;
+    project_id: string;
+    requested_outputs: string[];
+    prompt_provided: boolean;
+  };
+  policy_routing: {
+    classification: string;
+    processing_route: string;
+    provider_id: string;
+    model_id: string;
+    provider_category: string;
+    policy_id: string;
+    routing_reason: string;
+  };
+  generator: {
+    output_type: string;
+    generator_class: string;
+    generator_version?: string | null;
+    schema_name?: string | null;
+    schema_version?: string | null;
+    prompt_identifier?: string | null;
+  };
+  verification: {
+    verification_result_id?: string | null;
+    has_verification: boolean;
+    overall_status?: string | null;
+    grounding_score?: number | null;
+    consistency_score?: number | null;
+    claims_checked?: number | null;
+    claims_supported?: number | null;
+  };
+  dissemination: {
+    policy_id: string;
+    primary_destination: string;
+    primary_decision: string;
+    primary_allowed: boolean;
+  };
+  integrity: {
+    algorithm: string;
+    content_digest?: string | null;
+    representation?: string | null;
+    ledger_status?: string | null;
+    ledger_reference?: string | null;
+  };
+  audit: {
+    provenance_event_type: string;
+    recorded_at: string;
+  };
+  extensions?: {
+    approval_id?: string | null;
+    signature?: string | null;
+    signature_algorithm?: string | null;
+    airgap_bundle_id?: string | null;
+  };
+}
+
+export interface ProvenanceResponse {
+  success: boolean;
+  output_id: string;
+  data: ProvenanceRecord;
+}
+
+
+// ---------------------------------------------------------------------------
+// Cryptographic Integrity & Artifact Hashing (Phase 2G)
+// ---------------------------------------------------------------------------
+
+export type IntegrityStatus = "VERIFIED" | "INVALID" | "UNAVAILABLE";
+
+export interface OutputIntegrityDetail {
+  status: IntegrityStatus;
+  algorithm: string;
+  artifact_hash?: string | null;
+  companion_hashes?: Record<string, string>;
+  provenance_id?: string | null;
+  provenance_hash?: string | null;
+  approval_id?: string | null;
+  recorded_at?: string | null;
+  details?: Record<string, unknown>;
+}
+
+export interface OutputIntegrityResponse {
+  success: boolean;
+  output_id: string;
+  data: OutputIntegrityDetail;
+}
+
+export interface IntegrityVerifyResponse {
+  success: boolean;
+  output_id: string;
+  data: OutputIntegrityDetail;
+}
+
+// ---------------------------------------------------------------------------
+// Digital Signatures & Trusted Artifact Signing (Phase 2H)
+// ---------------------------------------------------------------------------
+
+export type SignatureStatus = "VALID" | "INVALID" | "UNAVAILABLE";
+
+export interface OutputSignatureDetail {
+  status: SignatureStatus;
+  algorithm?: string | null;
+  key_id?: string | null;
+  signature?: string | null;
+  signed_payload_hash?: string | null;
+  signed_integrity_hash?: string | null;
+  signed_provenance_hash?: string | null;
+  provider?: string | null;
+  signed_at?: string | null;
+  details?: Record<string, unknown>;
+}
+
+export interface OutputSignatureResponse {
+  success: boolean;
+  output_id: string;
+  data: OutputSignatureDetail;
+}
+
+export interface SignatureVerifyResponse {
+  success: boolean;
+  output_id: string;
+  data: OutputSignatureDetail;
+}
+
+
 
 export interface VerificationResultResponse {
   id: string;
@@ -507,11 +815,17 @@ export function getApiBaseUrl(): string {
 async function throwApiError(response: Response): Promise<never> {
   let detail = `HTTP ${response.status}`;
   try {
-    const body: ApiErrorResponse = await response.json();
+    const body: any = await response.json();
     if (typeof body.detail === "string") {
       detail = body.detail;
     } else if (Array.isArray(body.detail)) {
-      detail = body.detail.map((e) => e.msg).join("; ");
+      detail = body.detail.map((e: any) => e.msg).join("; ");
+    } else if (body.detail && typeof body.detail === "object") {
+      if (body.detail.message && body.detail.reason) {
+        detail = `${body.detail.message} ${body.detail.reason}`;
+      } else {
+        detail = body.detail.message || body.detail.reason || JSON.stringify(body.detail);
+      }
     }
   } catch {
     // ignore JSON parse failure — use status text
@@ -520,47 +834,93 @@ async function throwApiError(response: Response): Promise<never> {
 }
 
 /**
- * React to an expired/invalid bearer token: drop the stored credentials and
- * send the user back to the login page instead of retrying silently.
+ * React to an expired/invalid bearer token: drop stored credentials and
+ * redirect the user to login with an explicit session-expired parameter.
  */
 function handleUnauthorized(): void {
   clearAuthToken();
   if (typeof window !== "undefined") {
     try {
-      window.location.assign("/login");
+      if (
+        !window.location.pathname.startsWith("/login") &&
+        !window.location.pathname.startsWith("/register")
+      ) {
+        window.location.assign("/login?session_expired=true");
+      }
     } catch {
-      // Navigation is not available in every environment (e.g. tests) —
-      // the token has still been cleared.
+      // Navigation not available in tests
     }
   }
+}
+
+const MAX_TRANSIENT_RETRIES = 2;
+const RETRY_DELAY_MS = process.env.NODE_ENV === "test" ? 10 : 800;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isTransientStatus(status: number): boolean {
+  return status === 502 || status === 503;
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${getApiBaseUrl()}${path}`;
   const hadBearerToken = getAuthToken() !== null;
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-        ...options?.headers,
-      },
-      ...options,
-    });
-  } catch {
-    throw new ApiError(0, `Network error: could not reach ${url}`);
-  }
-
-  if (!response.ok) {
-    if (response.status === 401 && hadBearerToken) {
-      handleUnauthorized();
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt++) {
+    let response: Response | undefined;
+    try {
+      response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(),
+          ...options?.headers,
+        },
+        ...options,
+      });
+    } catch {
+      lastError = new ApiError(0, `Network error: could not reach ${url}`);
+      if (attempt < MAX_TRANSIENT_RETRIES) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      throw lastError;
     }
-    await throwApiError(response);
-  }
 
-  return response.json() as Promise<T>;
+    if (!response || typeof response.ok !== "boolean") {
+      if (lastError) throw lastError;
+      throw new ApiError(0, `Network error: could not reach ${url}`);
+    }
+
+    if (!response.ok) {
+      if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+        let detail = `HTTP ${response.status}`;
+        try {
+          if (typeof response.clone === "function") {
+            const body = await response.clone().json();
+            if (body?.detail) detail = body.detail;
+          } else if (typeof response.json === "function") {
+            const body = await response.json();
+            if (body?.detail) detail = body.detail;
+          }
+        } catch {
+          // ignore
+        }
+        lastError = new ApiError(response.status, detail);
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      if (response.status === 401 && hadBearerToken) {
+        handleUnauthorized();
+      }
+      await throwApiError(response);
+    }
+
+    return response.json() as Promise<T>;
+  }
+  throw lastError || new ApiError(0, `Network error: could not reach ${url}`);
 }
 
 async function apiFetchForm<T>(
@@ -571,30 +931,60 @@ async function apiFetchForm<T>(
   const url = `${getApiBaseUrl()}${path}`;
   const hadBearerToken = getAuthToken() !== null;
 
-  let response: Response;
-  try {
-    // The browser sets the multipart content-type with its boundary for us.
-    response = await fetch(url, {
-      ...options,
-      method: options?.method ?? "POST",
-      body: formData,
-      headers: {
-        ...authHeaders(),
-        ...options?.headers,
-      },
-    });
-  } catch {
-    throw new ApiError(0, `Network error: could not reach ${url}`);
-  }
-
-  if (!response.ok) {
-    if (response.status === 401 && hadBearerToken) {
-      handleUnauthorized();
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt++) {
+    let response: Response | undefined;
+    try {
+      response = await fetch(url, {
+        ...options,
+        method: options?.method ?? "POST",
+        body: formData,
+        headers: {
+          ...authHeaders(),
+          ...options?.headers,
+        },
+      });
+    } catch {
+      lastError = new ApiError(0, `Network error: could not reach ${url}`);
+      if (attempt < MAX_TRANSIENT_RETRIES) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      throw lastError;
     }
-    await throwApiError(response);
-  }
 
-  return response.json() as Promise<T>;
+    if (!response || typeof response.ok !== "boolean") {
+      if (lastError) throw lastError;
+      throw new ApiError(0, `Network error: could not reach ${url}`);
+    }
+
+    if (!response.ok) {
+      if (isTransientStatus(response.status) && attempt < MAX_TRANSIENT_RETRIES) {
+        let detail = `HTTP ${response.status}`;
+        try {
+          if (typeof response.clone === "function") {
+            const body = await response.clone().json();
+            if (body?.detail) detail = body.detail;
+          } else if (typeof response.json === "function") {
+            const body = await response.json();
+            if (body?.detail) detail = body.detail;
+          }
+        } catch {
+          // ignore
+        }
+        lastError = new ApiError(response.status, detail);
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      if (response.status === 401 && hadBearerToken) {
+        handleUnauthorized();
+      }
+      await throwApiError(response);
+    }
+
+    return response.json() as Promise<T>;
+  }
+  throw lastError || new ApiError(0, `Network error: could not reach ${url}`);
 }
 
 function parseFilenameFromDisposition(
@@ -788,12 +1178,21 @@ export const sourcesApi = {
     apiFetch<SourceListResponse>(`/api/v1/projects/${projectId}/sources`),
 
   /** Ingest a direct text source. */
-  ingestText: (projectId: string, text: string, language = "en") =>
+  ingestText: (
+    projectId: string,
+    text: string,
+    language = "en",
+    classification?: InformationClassification,
+  ) =>
     apiFetch<SourceDetailResponse>(
       `/api/v1/projects/${projectId}/sources/text`,
       {
         method: "POST",
-        body: JSON.stringify({ text, language }),
+        body: JSON.stringify({
+          text,
+          language,
+          ...(classification ? { classification } : {}),
+        }),
       },
     ),
 
@@ -801,7 +1200,11 @@ export const sourcesApi = {
    * Upload a source file. TXT goes through the /file endpoint, PDF/DOCX
    * through /document (matching the backend contract).
    */
-  ingestFile: (projectId: string, file: File) => {
+  ingestFile: (
+    projectId: string,
+    file: File,
+    classification?: InformationClassification,
+  ) => {
     const name = file.name || "";
     const ext = name.includes(".")
       ? name.split(".").pop()!.toLowerCase()
@@ -809,6 +1212,9 @@ export const sourcesApi = {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("language", "en");
+    if (classification) {
+      formData.append("classification", classification);
+    }
     const endpoint =
       ext === "pdf" || ext === "docx"
         ? `${projectId}/sources/document`
@@ -949,6 +1355,86 @@ export const outputsApi = {
     apiFetchBlob(
       `/api/v1/outputs/${outputId}/export`,
       { format },
+      { method: "POST" },
+    ),
+
+  /**
+   * Get dissemination policy evaluation for an output across destinations (Phase 2D).
+   */
+  dissemination: (outputId: string, destination?: string) =>
+    apiFetch<DisseminationReportResponse>(
+      `/api/v1/outputs/${outputId}/dissemination${destination ? `?destination=${encodeURIComponent(destination)}` : ""}`,
+    ),
+
+  /**
+   * Request dissemination of an output to a target destination (Phase 2D).
+   * Authoritatively evaluated by backend policy.
+   */
+  disseminate: (outputId: string, destination: string) =>
+    apiFetch<DisseminateResponse>(
+      `/api/v1/outputs/${outputId}/disseminate`,
+      { method: "POST", body: JSON.stringify({ destination }) },
+    ),
+
+  /**
+   * Get canonical provenance record for an output (Phase 2E).
+   */
+  provenance: (outputId: string) =>
+    apiFetch<ProvenanceResponse>(
+      `/api/v1/outputs/${outputId}/provenance`,
+    ),
+
+  /**
+   * Get human approval status for an output across destinations (Phase 2F).
+   */
+  approval: (outputId: string, destination?: string) =>
+    apiFetch<ApprovalStatusResponse>(
+      `/api/v1/outputs/${outputId}/approval${destination ? `?destination=${encodeURIComponent(destination)}` : ""}`,
+    ),
+
+  /**
+   * Submit an approval or rejection decision for a destination (Phase 2F).
+   */
+  submitApproval: (outputId: string, body: ApprovalActionRequest) =>
+    apiFetch<ApprovalActionResponse>(
+      `/api/v1/outputs/${outputId}/approval`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    ),
+
+  /**
+   * Get cryptographic integrity record for an output (Phase 2G).
+   */
+  integrity: (outputId: string) =>
+    apiFetch<OutputIntegrityResponse>(
+      `/api/v1/outputs/${outputId}/integrity`,
+    ),
+
+  /**
+   * Verify cryptographic integrity of output artifacts and provenance (Phase 2G).
+   */
+  verifyIntegrity: (outputId: string) =>
+    apiFetch<IntegrityVerifyResponse>(
+      `/api/v1/outputs/${outputId}/integrity/verify`,
+      { method: "POST" },
+    ),
+
+  /**
+   * Get digital signature record for an output (Phase 2H).
+   */
+  signature: (outputId: string) =>
+    apiFetch<OutputSignatureResponse>(
+      `/api/v1/outputs/${outputId}/signature`,
+    ),
+
+  /**
+   * Verify digital signature and underlying integrity (Phase 2H).
+   */
+  verifySignature: (outputId: string) =>
+    apiFetch<SignatureVerifyResponse>(
+      `/api/v1/outputs/${outputId}/signature/verify`,
       { method: "POST" },
     ),
 };

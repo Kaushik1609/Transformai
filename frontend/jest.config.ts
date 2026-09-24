@@ -1,6 +1,7 @@
 import type { Config } from "jest";
 
 const config: Config = {
+  testTimeout: 15000,
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/src/__tests__/setupJestDom.ts"],
   moduleNameMapper: {

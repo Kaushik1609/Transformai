@@ -78,7 +78,7 @@ export function OutputSelector({
               disabled={disabled}
               onClick={() => toggle(id)}
               className={cn(
-                "group flex items-start gap-3 rounded-lg border p-3.5 text-left transition-all",
+                "group flex items-start gap-3 rounded-lg border p-3 text-left transition-all",
                 active
                   ? cn(accentClass, tintClass)
                   : "border-border bg-surface-elevated hover:border-input hover:bg-muted/40",
@@ -87,14 +87,14 @@ export function OutputSelector({
             >
               <span
                 className={cn(
-                  "mv-auto mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors",
+                  "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors",
                   active
                     ? cn("border-transparent", tintClass)
                     : "border-border bg-background",
                 )}
                 aria-hidden="true"
               >
-                <Icon className={cn("h-5 w-5", iconClass)} />
+                <Icon className={cn("h-4 w-4", iconClass)} />
               </span>
               <span className="min-w-0 flex-1 space-y-0.5">
                 <span className="block text-sm font-medium text-foreground">

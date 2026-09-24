@@ -19,7 +19,7 @@ import uuid
 from typing import Any, Literal
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,12 +48,36 @@ from app.api.v1.schemas.transformation import (
     TrustStatusResponse,
     VerificationListResponse,
     VerificationResultResponse,
+    DisseminateRequest,
+    DisseminateResponse,
+    DisseminationDecisionResponse,
+    DisseminationEvaluateRequest,
+    DisseminationReportResponse,
+    ProvenanceDetailResponse,
+    ApprovalActionRequest,
+    ApprovalActionResponse,
+    ApprovalStatusResponse,
+    DestinationApprovalDetail,
+    OutputIntegrityDetail,
+    OutputIntegrityResponse,
+    IntegrityVerifyResponse,
+    OutputSignatureDetail,
+    OutputSignatureResponse,
+    SignatureVerifyResponse,
 )
 from app.core.ratelimit import rate_limit_bucket
 from app.core.config import settings
 from app.db.session import get_db
 from app.core.metrics import metrics
-from app.services import project_service, source_service, configuration_service, transformation_service
+from app.services import (
+    project_service,
+    source_service,
+    configuration_service,
+    transformation_service,
+    approval_service,
+    integrity_service,
+    signature_service,
+)
 from app.transformation.artifacts import artifact_file, get_storage
 from app.transformation.output_schemas import Advisory, ExecutiveSummary
 from app.transformation.queue import (
@@ -66,6 +90,7 @@ from app.transformation.render.docx import (
     render_advisory_docx,
     render_executive_summary_docx,
 )
+from app.transformation.service import execute_transformation_job_sync
 from app.transformation.render.pdf import (
     PDF_MIME_TYPE,
     render_advisory_pdf,
@@ -123,6 +148,7 @@ async def list_project_transformations(
 )
 async def create_transformation(
     body: TransformationJobCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
     _: None = Depends(rate_limit_bucket("transformation")),
@@ -153,6 +179,106 @@ async def create_transformation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Configuration {body.configuration_id} not found in project {body.project_id}.",
         )
+
+    # Phase 2A/2B: Deterministic Policy Engine Gate (Pre-AI Enforcement)
+    from app.core.audit import emit_security_event
+    from app.policy import (
+        DEFAULT_CLASSIFICATION,
+        PolicyEvaluationContext,
+        get_policy_engine,
+        resolve_source_classification,
+    )
+
+    # 1. Resolve information classification from source or default
+    classification = DEFAULT_CLASSIFICATION
+    if body.source_id is not None:
+        # source was already verified above
+        classification = resolve_source_classification(source.source_metadata)
+
+    # 2. Determine requested provider and environment
+    requested_provider = (
+        (body.llm_provider or settings.LLM_PROVIDER or "openai").strip().lower()
+    )
+    environment = (settings.ENVIRONMENT or "development").strip().lower()
+
+    # 3. Evaluate deterministic policy
+    context = PolicyEvaluationContext(
+        classification=classification,
+        requested_outputs=body.output_types,
+        requested_provider=requested_provider,
+        environment=environment,
+    )
+    policy_engine = get_policy_engine()
+    decision = policy_engine.evaluate(context)
+
+    # 4. Record audit event
+    emit_security_event(
+        "policy_evaluated",
+        outcome="allowed" if decision.allowed else "denied",
+        user_id=str(current_user.id),
+        project_id=str(body.project_id),
+        source_id=str(body.source_id) if body.source_id else None,
+        reason=decision.reason,
+        details={
+            "classification": decision.classification.value,
+            "processing_route": decision.processing_route,
+            "requested_outputs": body.output_types,
+            "provider": requested_provider,
+            "environment": environment,
+            "requires_review": decision.requires_review,
+        },
+    )
+
+    # 5. Fail closed if not allowed (HTTP 403, 0 jobs, 0 LLM calls, 0 artifacts)
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Processing blocked by policy.",
+                "reason": decision.reason,
+                "classification": decision.classification.value,
+                "processing_route": decision.processing_route,
+                "requires_review": decision.requires_review,
+            },
+        )
+
+    # 6. Phase 2C — Pre-Job PolicyRouter Validation
+    from app.policy.routing import get_policy_router
+    router = get_policy_router()
+    route_decision = router.route(
+        decision=decision,
+        requested_provider=requested_provider,
+        requested_model=body.model,
+        environment=environment,
+    )
+
+    emit_security_event(
+        "routing_resolved",
+        outcome="routed" if route_decision.allowed else "failed_unavailable",
+        user_id=str(current_user.id),
+        project_id=str(body.project_id),
+        source_id=str(body.source_id) if body.source_id else None,
+        reason=route_decision.reason,
+        details={
+            "provider": route_decision.provider_id,
+            "model": route_decision.model_id,
+            "route": route_decision.processing_route.value,
+            "classification": route_decision.classification.value,
+            "error_code": route_decision.error_code,
+        },
+    )
+
+    if not route_decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Processing blocked by routing policy.",
+                "reason": route_decision.reason,
+                "classification": route_decision.classification.value,
+                "error_code": route_decision.error_code,
+            },
+        )
+
     job = await transformation_service.create_job(
         db,
         project_id=body.project_id,
@@ -161,10 +287,9 @@ async def create_transformation(
         output_types=body.output_types,
         prompt=body.prompt,
         llm_provider=body.llm_provider,
+        model=body.model,
     )
-    # Enqueue the transformation job for asynchronous processing. Enqueueing is
-    # best-effort: if Redis is unavailable the job record still persists in the
-    # queued state so callers can observe/retry it (resilience, not corruption).
+    # Enqueue the transformation job for asynchronous processing.
     try:
         enqueue_transformation_job(job.id, queue=get_transformation_queue())
     except Exception as exc:  # pragma: no cover - Redis availability edge
@@ -173,6 +298,10 @@ async def create_transformation(
             job_id=str(job.id),
             error=str(exc),
         )
+    # Also dispatch to in-process background worker so jobs are executed immediately
+    # without depending on an external Redis worker daemon (e.g. single-service cloud deployments).
+    background_tasks.add_task(execute_transformation_job_sync, str(job.id))
+
     metrics.inc("transformations_requested_total")
     return TransformationJobDetailResponse(
         data=TransformationJobResponse.model_validate(job)
@@ -186,6 +315,7 @@ async def create_transformation(
 )
 async def get_transformation(
     job_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> TransformationJobDetailResponse:
@@ -197,9 +327,174 @@ async def get_transformation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found.",
         )
+    # If the job is still queued (e.g. awaiting an external worker),
+    # trigger immediate execution via background task so the client never hangs.
+    if job.status == "queued":
+        background_tasks.add_task(execute_transformation_job_sync, str(job.id))
+
     return TransformationJobDetailResponse(
         data=TransformationJobResponse.model_validate(job)
     )
+
+
+# ---------------------------------------------------------------------------
+# Helpers for Job & Dissemination Resolution
+# ---------------------------------------------------------------------------
+
+async def _load_job(db: AsyncSession, job_id: uuid.UUID) -> Any:
+    """Load a transformation job row (used to resolve scope/source)."""
+    from app.db.models.transformation_job import TransformationJob
+    from sqlalchemy import select
+
+    result = await db.execute(select(TransformationJob).where(TransformationJob.id == job_id))
+    return result.scalar_one_or_none()
+
+
+async def _resolve_output_classification(db: AsyncSession, output: Any) -> Any:
+    """Resolve the source/job classification for a given Output row."""
+    from app.policy import DEFAULT_CLASSIFICATION, resolve_source_classification, normalize_classification
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        dissem = output.output_metadata.get("dissemination")
+        if isinstance(dissem, dict) and dissem.get("classification"):
+            try:
+                return normalize_classification(dissem["classification"])
+            except Exception:
+                pass
+    job = await _load_job(db, output.job_id)
+    if job is not None:
+        if job.source_id is not None:
+            src = await source_service.get_source(db, source_id=job.source_id)
+            if src is not None:
+                return resolve_source_classification(src.source_metadata)
+        if hasattr(job, "parameters") and isinstance(getattr(job, "parameters"), dict):
+            raw = getattr(job, "parameters").get("classification")
+            if raw:
+                try:
+                    return normalize_classification(raw)
+                except Exception:
+                    pass
+        if job.requested_outputs and isinstance(job.requested_outputs, dict):
+            raw = job.requested_outputs.get("classification")
+            if raw:
+                try:
+                    return normalize_classification(raw)
+                except Exception:
+                    pass
+    return DEFAULT_CLASSIFICATION
+
+
+async def _ensure_output_dissemination(db: AsyncSession, output: Any) -> None:
+    """Ensure output.output_metadata contains deterministic dissemination metadata."""
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        if "dissemination" in output.output_metadata:
+            return
+    try:
+        classification = await _resolve_output_classification(db, output)
+        from app.policy.dissemination import get_dissemination_engine
+        engine = get_dissemination_engine()
+        artifact_hash = None
+        if output.output_metadata and isinstance(output.output_metadata, dict):
+            integrity = output.output_metadata.get("integrity")
+            if isinstance(integrity, dict):
+                artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+        decisions = engine.evaluate_all(
+            classification,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        primary = engine.evaluate_output(
+            classification,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        payload = {
+            "classification": classification.value,
+            "policy_id": engine.POLICY_ID,
+            "primary_destination": primary.destination,
+            "primary_decision": primary.decision.value,
+            "primary_allowed": primary.allowed,
+            "primary_reason": primary.reason,
+            "destinations": {
+                k: {
+                    "allowed": v.allowed,
+                    "decision": v.decision.value,
+                    "destination": v.destination,
+                    "reason": v.reason,
+                    "policy_id": v.policy_id,
+                    "artifact_hash": v.artifact_hash,
+                }
+                for k, v in decisions.items()
+            },
+        }
+        existing = dict(output.output_metadata or {})
+        existing["dissemination"] = payload
+        output.output_metadata = existing
+    except Exception:
+        pass
+
+
+async def _ensure_output_provenance(db: AsyncSession, output: Any) -> None:
+    """Ensure output.output_metadata contains canonical provenance metadata."""
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        if "provenance" in output.output_metadata:
+            return
+    try:
+        from app.policy.provenance import ProvenanceBuilder
+        from app.db.models.verification_result import VerificationResult
+        from app.db.models.source import Source
+        from sqlalchemy import select
+
+        classification = await _resolve_output_classification(db, output)
+        job = await _load_job(db, output.job_id)
+        source = None
+        if job and job.source_id:
+            src_res = await db.execute(select(Source).where(Source.id == job.source_id))
+            source = src_res.scalar_one_or_none()
+
+        vr_res = await db.execute(
+            select(VerificationResult)
+            .where(VerificationResult.output_id == output.id)
+            .order_by(VerificationResult.created_at.desc())
+        )
+        vr = vr_res.scalars().first()
+
+        out_meta = dict(output.output_metadata or {})
+        dissem_meta = out_meta.get("dissemination")
+        integrity_meta = out_meta.get("integrity")
+        resilience_meta = out_meta.get("resilience") or {}
+        job_req_meta = dict(job.requested_outputs or {}) if job else {}
+        citations = job_req_meta.get("evidence_citations")
+        requested_types = list(job_req_meta.get("outputs", [])) or [output.output_type]
+
+        record = ProvenanceBuilder.build_record(
+            output_id=output.id,
+            job_id=output.job_id,
+            project_id=job.project_id if job else uuid.uuid4(),
+            output_type=output.output_type,
+            source=source,
+            classification=str(classification.value if hasattr(classification, "value") else classification),
+            requested_outputs=requested_types,
+            prompt_provided=bool(job.prompt) if job else False,
+            citations=citations,
+            routing_metadata=resilience_meta,
+            generator_class=out_meta.get("generator"),
+            verification_result=vr,
+            dissemination_metadata=dissem_meta,
+            integrity_metadata=integrity_meta,
+            is_backfill=(citations is None),
+            audit_event_type="provenance_backfilled" if citations is None else "provenance_recorded",
+        )
+
+        approval_meta = out_meta.get("approval")
+        if isinstance(approval_meta, dict):
+            latest_aid = approval_meta.get("latest_approval_id")
+            if latest_aid:
+                record.extensions.approval_id = latest_aid
+
+        out_meta["provenance"] = record.model_dump(mode="json")
+        output.output_metadata = out_meta
+    except Exception:
+        pass
 
 
 @transformations_router.get(
@@ -221,6 +516,9 @@ async def list_job_outputs(
             detail=f"Job {job_id} not found.",
         )
     outputs = await transformation_service.list_job_outputs(db, job_id=job_id)
+    for o in outputs:
+        await _ensure_output_dissemination(db, o)
+        await _ensure_output_provenance(db, o)
     return OutputListResponse(
         data=[OutputResponse.model_validate(o) for o in outputs],
         count=len(outputs),
@@ -301,6 +599,8 @@ async def get_output(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} not found.",
         )
+    await _ensure_output_dissemination(db, output)
+    await _ensure_output_provenance(db, output)
     return OutputDetailResponse(data=OutputResponse.model_validate(output))
 
 
@@ -331,53 +631,12 @@ async def list_output_verifications(
     )
 
 
-@outputs_router.get(
-    "/{output_id}/integrity",
-    response_model=IntegrityDetailResponse,
-    summary="Get the integrity/provenance record for an output artifact",
-)
-async def get_output_integrity(
-    output_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-) -> IntegrityDetailResponse:
-    # Authorization is resolved at the database level (Output -> job -> project
-    # -> user); a non-owned output is indistinguishable from a missing one.
-    output = await transformation_service.get_output_owned(
-        db, output_id=output_id, user_id=current_user.id
-    )
-    if output is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} not found.",
-        )
-    meta = (output.output_metadata or {}).get("integrity")
-    if not isinstance(meta, dict) or not meta:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Output {output_id} has no integrity record.",
-        )
-    return IntegrityDetailResponse(
-        data=IntegrityRecordResponse(
-            output_id=output.id,
-            digest=meta.get("digest"),
-            algorithm=meta.get("algorithm"),
-            representation=meta.get("representation"),
-            provider=meta.get("provider"),
-            reference=meta.get("reference"),
-            status=meta.get("status", "unavailable"),
-            recorded=bool(meta.get("recorded", False)),
-            verified_at=meta.get("verified_at"),
-        )
-    )
-
-
 @outputs_router.post(
     "/{output_id}/verify",
     response_model=IntegrityVerifyResponse,
-    summary="Verify the current artifact against its recorded SHA-256 digest",
+    summary="Verify the current artifact against its recorded SHA-256 digest (legacy route)",
 )
-async def verify_output_integrity_endpoint(
+async def verify_legacy_output_integrity_endpoint(
     output_id: uuid.UUID,
     role: Literal["primary", "pdf", "srt"] = Query(default="primary"),
     db: AsyncSession = Depends(get_db),
@@ -590,16 +849,6 @@ def _run_fact_verification_sync(
     return report, record.id
 
 
-async def _load_job(db: AsyncSession, job_id: uuid.UUID) -> Any:
-    """Load a transformation job row (used to resolve scope/source)."""
-    from app.db.models.transformation_job import TransformationJob
-
-    from sqlalchemy import select
-
-    result = await db.execute(select(TransformationJob).where(TransformationJob.id == job_id))
-    return result.scalar_one_or_none()
-
-
 # ---------------------------------------------------------------------------
 # Trust Status + Cross-Output Consistency (Phase 12B)
 # ---------------------------------------------------------------------------
@@ -775,6 +1024,58 @@ async def export_output_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} has no exportable content.",
         )
+
+    # Phase 2D: Dissemination Policy Enforcement for DOWNLOAD destination
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import DisseminationDestination, get_dissemination_engine
+    engine = get_dissemination_engine()
+    dissem_decision = engine.evaluate(
+        classification=classification,
+        destination=DisseminationDestination.DOWNLOAD,
+        output_type=output.output_type,
+    )
+    if not dissem_decision.allowed:
+        from app.core.audit import emit_security_event
+        emit_security_event(
+            "dissemination_blocked",
+            outcome="blocked",
+            user_id=str(current_user.id),
+            reason=dissem_decision.reason,
+            details={
+                "output_id": str(output.id),
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "output_type": output.output_type,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by policy.",
+                "reason": dissem_decision.reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "decision": dissem_decision.decision.value,
+            },
+        )
+
+    # Phase 2F: Approval Verification for DOWNLOAD destination
+    eligible, release_reason = await approval_service.verify_release_eligibility(
+        db,
+        output=output,
+        destination=DisseminationDestination.DOWNLOAD,
+        user_id=current_user.id,
+    )
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Export blocked by approval policy.",
+                "reason": release_reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
+            },
+        )
+
     structured = output.structured_content
     if not structured:
         raise HTTPException(
@@ -849,6 +1150,58 @@ async def download_output_artifact(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Output {output_id} has no downloadable artifact.",
         )
+
+    # Phase 2D: Dissemination Policy Enforcement for DOWNLOAD destination
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import DisseminationDestination, get_dissemination_engine
+    engine = get_dissemination_engine()
+    dissem_decision = engine.evaluate(
+        classification=classification,
+        destination=DisseminationDestination.DOWNLOAD,
+        output_type=output.output_type,
+    )
+    if not dissem_decision.allowed:
+        from app.core.audit import emit_security_event
+        emit_security_event(
+            "dissemination_blocked",
+            outcome="blocked",
+            user_id=str(current_user.id),
+            reason=dissem_decision.reason,
+            details={
+                "output_id": str(output.id),
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "output_type": output.output_type,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by policy.",
+                "reason": dissem_decision.reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
+                "classification": dissem_decision.classification.value,
+                "decision": dissem_decision.decision.value,
+            },
+        )
+
+    # Phase 2F: Approval Verification for DOWNLOAD destination
+    eligible, release_reason = await approval_service.verify_release_eligibility(
+        db,
+        output=output,
+        destination=DisseminationDestination.DOWNLOAD,
+        user_id=current_user.id,
+    )
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Download blocked by approval policy.",
+                "reason": release_reason,
+                "destination": DisseminationDestination.DOWNLOAD.value,
+            },
+        )
+
     resolved = artifact_file(output, artifact)
     if resolved is None:
         raise HTTPException(
@@ -866,4 +1219,589 @@ async def download_output_artifact(
         content=content,
         media_type=resolved.mime_type,
         headers={"Content-Disposition": f'attachment; filename="{resolved.filename}"'},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Dissemination Endpoints (Phase 2D)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/dissemination",
+    response_model=DisseminationReportResponse,
+    summary="Get dissemination policy evaluation for an output across destinations",
+)
+async def get_output_dissemination_endpoint(
+    output_id: uuid.UUID,
+    destination: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> DisseminationReportResponse:
+    """Return deterministic dissemination decisions for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import get_dissemination_engine
+    engine = get_dissemination_engine()
+
+    artifact_hash = None
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        integrity = output.output_metadata.get("integrity")
+        if isinstance(integrity, dict):
+            artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+
+    if destination:
+        dec = engine.evaluate(
+            classification=classification,
+            destination=destination,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        dest_dict = {
+            dec.destination: DisseminationDecisionResponse(
+                allowed=dec.allowed,
+                decision=dec.decision.value,
+                classification=dec.classification.value,
+                destination=dec.destination,
+                reason=dec.reason,
+                policy_id=dec.policy_id,
+                artifact_hash=dec.artifact_hash,
+                signature=dec.signature,
+                provenance_id=dec.provenance_id,
+                approval_id=dec.approval_id,
+                details=dec.details,
+            )
+        }
+    else:
+        all_decs = engine.evaluate_all(
+            classification=classification,
+            output_type=output.output_type,
+            artifact_hash=artifact_hash,
+        )
+        dest_dict = {
+            d_name: DisseminationDecisionResponse(
+                allowed=d.allowed,
+                decision=d.decision.value,
+                classification=d.classification.value,
+                destination=d.destination,
+                reason=d.reason,
+                policy_id=d.policy_id,
+                artifact_hash=d.artifact_hash,
+                signature=d.signature,
+                provenance_id=d.provenance_id,
+                approval_id=d.approval_id,
+                details=d.details,
+            )
+            for d_name, d in all_decs.items()
+        }
+
+    return DisseminationReportResponse(
+        success=True,
+        output_id=output.id,
+        output_type=output.output_type,
+        classification=classification.value,
+        destinations=dest_dict,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/disseminate",
+    response_model=DisseminateResponse,
+    summary="Attempt dissemination of an output to a target destination",
+)
+async def disseminate_output_endpoint(
+    output_id: uuid.UUID,
+    body: DisseminateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> DisseminateResponse:
+    """Authoritatively evaluate dissemination to a destination and enforce policy."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    if output.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Output {output_id} is not in completed state (cannot disseminate).",
+        )
+
+    classification = await _resolve_output_classification(db, output)
+    from app.policy.dissemination import get_dissemination_engine
+    engine = get_dissemination_engine()
+
+    artifact_hash = None
+    if output.output_metadata and isinstance(output.output_metadata, dict):
+        integrity = output.output_metadata.get("integrity")
+        if isinstance(integrity, dict):
+            artifact_hash = integrity.get("hash") or integrity.get("content_digest")
+
+    decision = engine.evaluate(
+        classification=classification,
+        destination=body.destination,
+        output_type=output.output_type,
+        artifact_hash=artifact_hash,
+    )
+
+    from app.core.audit import emit_security_event
+    emit_security_event(
+        "dissemination_requested",
+        outcome="allowed" if decision.allowed else "blocked",
+        user_id=str(current_user.id),
+        reason=decision.reason,
+        details={
+            "output_id": str(output.id),
+            "destination": decision.destination,
+            "classification": decision.classification.value,
+            "output_type": output.output_type,
+            "decision": decision.decision.value,
+        },
+    )
+
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by policy.",
+                "reason": decision.reason,
+                "destination": decision.destination,
+                "classification": decision.classification.value,
+                "decision": decision.decision.value,
+            },
+        )
+
+    # Phase 2F: Approval Verification for requested destination
+    eligible, release_reason = await approval_service.verify_release_eligibility(
+        db,
+        output=output,
+        destination=body.destination,
+        user_id=current_user.id,
+    )
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Dissemination blocked by approval policy.",
+                "reason": release_reason,
+                "destination": decision.destination,
+                "classification": decision.classification.value,
+                "decision": decision.decision.value,
+            },
+        )
+
+    # Fetch approval_id if present for this destination
+    appr_meta = (output.output_metadata or {}).get("approval", {})
+    dest_appr = appr_meta.get("destinations", {}).get(decision.destination, {})
+    resolved_approval_id = dest_appr.get("approval_id") or appr_meta.get("latest_approval_id") or decision.approval_id
+
+    resp_data = DisseminationDecisionResponse(
+        allowed=decision.allowed,
+        decision=decision.decision.value,
+        classification=decision.classification.value,
+        destination=decision.destination,
+        reason=decision.reason,
+        policy_id=decision.policy_id,
+        artifact_hash=decision.artifact_hash,
+        signature=decision.signature,
+        provenance_id=decision.provenance_id,
+        approval_id=resolved_approval_id,
+        details=decision.details,
+    )
+    return DisseminateResponse(success=True, data=resp_data)
+
+
+@transformations_router.post(
+    "/dissemination/evaluate",
+    response_model=DisseminateResponse,
+    summary="Evaluate dissemination policy without an existing output",
+)
+async def evaluate_dissemination_policy_endpoint(
+    body: DisseminationEvaluateRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> DisseminateResponse:
+    """Pre-evaluate dissemination policy for a classification and destination."""
+    from app.policy.dissemination import get_dissemination_engine
+    engine = get_dissemination_engine()
+    decision = engine.evaluate(
+        classification=body.classification,
+        destination=body.destination,
+        output_type=body.output_type,
+    )
+    resp_data = DisseminationDecisionResponse(
+        allowed=decision.allowed,
+        decision=decision.decision.value,
+        classification=decision.classification.value,
+        destination=decision.destination,
+        reason=decision.reason,
+        policy_id=decision.policy_id,
+        artifact_hash=decision.artifact_hash,
+        signature=decision.signature,
+        provenance_id=decision.provenance_id,
+        approval_id=decision.approval_id,
+        details=decision.details,
+    )
+    return DisseminateResponse(success=True, data=resp_data)
+
+
+# ---------------------------------------------------------------------------
+# Provenance Endpoints (Phase 2E)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/provenance",
+    response_model=ProvenanceDetailResponse,
+    summary="Get canonical provenance record for an output",
+)
+async def get_output_provenance_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ProvenanceDetailResponse:
+    """Return deterministic, auditable provenance lineage for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    await _ensure_output_dissemination(db, output)
+    await _ensure_output_provenance(db, output)
+
+    prov_data = (output.output_metadata or {}).get("provenance")
+    if not prov_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Provenance record for output {output_id} is unavailable.",
+        )
+
+    return ProvenanceDetailResponse(
+        success=True,
+        output_id=output.id,
+        data=prov_data,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Human Approval & Controlled Release Endpoints (Phase 2F)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/approval",
+    response_model=ApprovalStatusResponse,
+    summary="Get approval status for an output across destinations (Phase 2F)",
+)
+async def get_output_approval_endpoint(
+    output_id: uuid.UUID,
+    destination: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ApprovalStatusResponse:
+    """Return destination-scoped human approval status for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+    classification = await approval_service.resolve_output_classification(db, output)
+    meta = await approval_service.get_or_initialize_output_approval(db, output)
+
+    if destination:
+        from app.policy.dissemination import normalize_destination
+        try:
+            norm_dest = normalize_destination(destination).value
+            dests = {norm_dest: meta.destinations[norm_dest]} if norm_dest in meta.destinations else {}
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from None
+    else:
+        dests = meta.destinations
+
+    return ApprovalStatusResponse(
+        success=True,
+        output_id=output.id,
+        classification=classification.value,
+        destinations={
+            k: DestinationApprovalDetail(
+                destination=v.destination,
+                approval_status=v.approval_status,
+                approval_id=v.approval_id,
+                decision=v.decision,
+                approver_id=v.approver_id,
+                approver_email=v.approver_email,
+                approver_role=v.approver_role,
+                approved_at=v.approved_at,
+                rejection_reason=v.rejection_reason,
+                comments=v.comments,
+                self_approved=v.self_approved,
+                policy_reason=v.policy_reason,
+                classification_snapshot=v.classification_snapshot,
+                verification_status_snapshot=v.verification_status_snapshot,
+            )
+            for k, v in dests.items()
+        },
+        latest_approval_id=meta.latest_approval_id,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/approval",
+    response_model=ApprovalActionResponse,
+    summary="Submit an approval or rejection decision for a destination (Phase 2F)",
+)
+async def submit_output_approval_endpoint(
+    output_id: uuid.UUID,
+    body: ApprovalActionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ApprovalActionResponse:
+    """Authoritatively record a human approval or rejection decision for an output destination."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    rec = await approval_service.submit_output_approval(
+        db,
+        output=output,
+        current_user=current_user,
+        destination=body.destination,
+        action=body.action,
+        comments=body.comments,
+        rejection_reason=body.rejection_reason,
+    )
+
+    return ApprovalActionResponse(
+        success=True,
+        data=DestinationApprovalDetail(
+            destination=rec.destination,
+            approval_status=rec.approval_status,
+            approval_id=rec.approval_id,
+            decision=rec.decision,
+            approver_id=rec.approver_id,
+            approver_email=rec.approver_email,
+            approver_role=rec.approver_role,
+            approved_at=rec.approved_at,
+            rejection_reason=rec.rejection_reason,
+            comments=rec.comments,
+            self_approved=rec.self_approved,
+            policy_reason=rec.policy_reason,
+            classification_snapshot=rec.classification_snapshot,
+            verification_status_snapshot=rec.verification_status_snapshot,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Cryptographic Integrity Endpoints (Phase 2G)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/integrity",
+    response_model=OutputIntegrityResponse,
+    summary="Get cryptographic integrity status and digests for an output (Phase 2G)",
+)
+async def get_output_integrity_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> OutputIntegrityResponse:
+    """Return authoritative cryptographic integrity record for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    meta = output.output_metadata if isinstance(output.output_metadata, dict) else {}
+    stored = meta.get("cryptographic_integrity")
+    if not isinstance(stored, dict):
+        detail = OutputIntegrityDetail(
+            status="UNAVAILABLE",
+            algorithm="sha256",
+            artifact_hash=None,
+            companion_hashes={},
+            provenance_id=None,
+            provenance_hash=None,
+            approval_id=None,
+            recorded_at=None,
+            details={"reason": "Cryptographic integrity record not found (legacy or unsealed output)."},
+        )
+    else:
+        detail = OutputIntegrityDetail(
+            status=stored.get("status", "VERIFIED"),
+            algorithm=stored.get("algorithm", "sha256"),
+            artifact_hash=stored.get("artifact_hash"),
+            companion_hashes=stored.get("companion_hashes", {}),
+            provenance_id=stored.get("provenance_id"),
+            provenance_hash=stored.get("provenance_hash"),
+            approval_id=stored.get("approval_id"),
+            recorded_at=stored.get("recorded_at"),
+            details={},
+        )
+
+    return OutputIntegrityResponse(
+        success=True,
+        output_id=output.id,
+        data=detail,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/integrity/verify",
+    response_model=IntegrityVerifyResponse,
+    summary="Verify cryptographic integrity of output artifacts and provenance (Phase 2G)",
+)
+async def verify_output_integrity_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> IntegrityVerifyResponse:
+    """Verify current output artifact bytes and provenance against the stored cryptographic integrity record."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    res = integrity_service.verify_output_integrity(output)
+    return IntegrityVerifyResponse(
+        success=True,
+        output_id=output.id,
+        data=OutputIntegrityDetail(
+            status=res["status"],
+            algorithm=res.get("algorithm", "sha256"),
+            artifact_hash=res.get("artifact_hash"),
+            companion_hashes=res.get("companion_hashes", {}),
+            provenance_id=res.get("provenance_id"),
+            provenance_hash=res.get("provenance_hash"),
+            approval_id=res.get("approval_id"),
+            recorded_at=res.get("recorded_at"),
+            details=res.get("details", {}),
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Digital Signature Endpoints (Phase 2H)
+# ---------------------------------------------------------------------------
+
+@outputs_router.get(
+    "/{output_id}/signature",
+    response_model=OutputSignatureResponse,
+    summary="Get digital signature status and verification metadata for an output (Phase 2H)",
+)
+async def get_output_signature_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> OutputSignatureResponse:
+    """Return authoritative digital signature record for an authorized output."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    meta = output.output_metadata if isinstance(output.output_metadata, dict) else {}
+    stored = meta.get("digital_signature")
+    if not isinstance(stored, dict):
+        detail = OutputSignatureDetail(
+            status="UNAVAILABLE",
+            algorithm=None,
+            key_id=None,
+            signature=None,
+            signed_payload_hash=None,
+            signed_integrity_hash=None,
+            signed_provenance_hash=None,
+            signed_at=None,
+            provider=None,
+            details={"reason": "Digital signature record not found (legacy or unsigned output)."},
+        )
+    else:
+        detail = OutputSignatureDetail(
+            status=stored.get("status", "VALID"),
+            algorithm=stored.get("algorithm"),
+            key_id=stored.get("key_id"),
+            signature=stored.get("signature"),
+            signed_payload_hash=stored.get("signed_payload_hash"),
+            signed_integrity_hash=stored.get("signed_integrity_hash"),
+            signed_provenance_hash=stored.get("signed_provenance_hash"),
+            signed_at=stored.get("signed_at"),
+            provider=stored.get("provider"),
+            details={},
+        )
+
+    return OutputSignatureResponse(
+        success=True,
+        output_id=output.id,
+        data=detail,
+    )
+
+
+@outputs_router.post(
+    "/{output_id}/signature/verify",
+    response_model=SignatureVerifyResponse,
+    summary="Verify digital signature and underlying cryptographic integrity for an output (Phase 2H)",
+)
+async def verify_output_signature_endpoint(
+    output_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> SignatureVerifyResponse:
+    """Verify cryptographic signature and underlying integrity against authoritative output state."""
+    output = await transformation_service.get_output_owned(
+        db, output_id=output_id, user_id=current_user.id
+    )
+    if output is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Output {output_id} not found.",
+        )
+
+    res = signature_service.verify_output_signature(output)
+    return SignatureVerifyResponse(
+        success=True,
+        output_id=output.id,
+        data=OutputSignatureDetail(
+            status=res["status"],
+            algorithm=res.get("algorithm"),
+            key_id=res.get("key_id"),
+            signature=res.get("signature"),
+            signed_payload_hash=res.get("signed_payload_hash"),
+            signed_integrity_hash=res.get("signed_integrity_hash"),
+            signed_provenance_hash=res.get("signed_provenance_hash"),
+            signed_at=res.get("signed_at"),
+            provider=res.get("provider"),
+            details=res.get("details", {}),
+        ),
     )

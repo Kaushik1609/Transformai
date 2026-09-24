@@ -139,6 +139,22 @@ async def ready() -> JSONResponse:
             if settings.MALWARE_SCAN_REQUIRED:
                 all_ready = False
 
+    # ------------------------------------------------------------------
+    # Worker readiness check (Phase 2J)
+    # ------------------------------------------------------------------
+    if checks.get("redis") == "ok":
+        try:
+            from rq import Worker
+            import redis as redis_lib
+
+            conn_rq = redis_lib.from_url(settings.REDIS_URL, socket_connect_timeout=2)
+            if hasattr(conn_rq, "smembers"):
+                worker_count = Worker.count(connection=conn_rq)
+                checks["worker"] = "ok" if worker_count > 0 else "idle"
+            conn_rq.close()
+        except Exception:
+            pass
+
     status_code = 200 if all_ready else 503
     return JSONResponse(
         status_code=status_code,

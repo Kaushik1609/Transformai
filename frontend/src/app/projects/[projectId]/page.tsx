@@ -15,7 +15,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import type { ProjectResponse } from "@/lib/api";
+import type { ProjectResponse, SourceResponse } from "@/lib/api";
 import { projectsApi, errorMessage } from "@/lib/api";
 import { isQuickProjectName } from "@/lib/quickWorkspace";
 import { formatDateTime, timeAgo } from "@/lib/outputTypes";
@@ -34,6 +34,12 @@ function ProjectDetailInner({ projectId }: { projectId: string }) {
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(
     urlSource,
   );
+  const [sourceRefreshKey, setSourceRefreshKey] = useState(0);
+
+  const handleSourceAdded = useCallback((source: SourceResponse) => {
+    setSourceRefreshKey((k) => k + 1);
+    setSelectedSourceId(source.id);
+  }, []);
 
   const loadProject = useCallback(async () => {
     setError(null);
@@ -94,6 +100,7 @@ function ProjectDetailInner({ projectId }: { projectId: string }) {
           <ProjectSourceLibrary
             projectId={projectId}
             selectedSourceId={selectedSourceId}
+            refreshTrigger={sourceRefreshKey}
             onTransformSource={(id) => setSelectedSourceId(id)}
           />
 
@@ -108,6 +115,7 @@ function ProjectDetailInner({ projectId }: { projectId: string }) {
               projectId={projectId}
               key={selectedSourceId ?? "workspace-default"}
               initialSourceId={selectedSourceId}
+              onSourceAdded={handleSourceAdded}
             />
           </section>
         </>

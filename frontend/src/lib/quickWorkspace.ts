@@ -10,27 +10,40 @@
 "use client";
 
 import { projectsApi, type ProjectResponse } from "@/lib/api";
+import { getAuthUser, getDevSession } from "@/lib/auth";
 
 const QUICK_PROJECT_KEY = "transformiq.quick_project_id";
 const QUICK_PROJECT_NAME = "Quick Transformations";
+
+function getStorageKey(): string {
+  const user = getAuthUser();
+  if (user?.id) {
+    return `${QUICK_PROJECT_KEY}.${user.id}`;
+  }
+  const session = getDevSession();
+  if (session?.email) {
+    return `${QUICK_PROJECT_KEY}.${session.email}`;
+  }
+  return QUICK_PROJECT_KEY;
+}
 
 /** A quick transformation belongs to this project — shown as "Quick" in history. */
 export function isQuickProject(projectId: string): boolean {
   return projectId === getCachedQuickProjectId();
 }
 
-function getCachedQuickProjectId(): string | null {
+export function getCachedQuickProjectId(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem(QUICK_PROJECT_KEY);
+    return window.localStorage.getItem(getStorageKey());
   } catch {
     return null;
   }
 }
 
-function setCachedQuickProjectId(id: string): void {
+export function setCachedQuickProjectId(id: string): void {
   try {
-    window.localStorage.setItem(QUICK_PROJECT_KEY, id);
+    window.localStorage.setItem(getStorageKey(), id);
   } catch {
     // storage unavailable — non-fatal
   }
@@ -42,6 +55,7 @@ function setCachedQuickProjectId(id: string): void {
  */
 export function clearQuickProjectId(): void {
   try {
+    window.localStorage.removeItem(getStorageKey());
     window.localStorage.removeItem(QUICK_PROJECT_KEY);
   } catch {
     // storage unavailable — non-fatal
@@ -58,7 +72,8 @@ export async function ensureQuickProject(): Promise<ProjectResponse> {
       const res = await projectsApi.get(cached);
       return res.data;
     } catch {
-      // cached project may have been deleted — fall through and recreate
+      // cached project may belong to another user or was deleted — clear and recreate
+      clearQuickProjectId();
     }
   }
 

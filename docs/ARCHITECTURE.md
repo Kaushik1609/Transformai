@@ -2,7 +2,7 @@
 
 ## Gen AI Platform for Automated Content Transformation
 
-**Problem Statement:** SIH 26154\
+**Platform Edition:** Enterprise v2.0\
 **Version:** 2.0\
 **Status:** Implemented System (replaces the earlier "Proposed Architecture" draft)
 
@@ -54,8 +54,7 @@
 
 ## 1. System Purpose
 
-TransformIQ is a **Gen AI Platform for Automated Content Transformation** (SIH Problem
-Statement 26154). It takes user-provided source material and a configured
+TransformIQ is an enterprise **Gen AI Platform for Automated Content Transformation**. It takes user-provided source material and a configured
 transformation request, processes the source through secure ingestion and retrieval,
 builds trusted context, uses an LLM-powered transformation pipeline, validates and
 verifies structured outputs, renders artifacts, and persists results for history and
@@ -95,7 +94,7 @@ registry `supported_output_types()` returns the same seven.
 ## 2. Repository Layout
 
 ```
-D:\SIH 26154
+TransformIQ/
 ├── ARCHITECTURE.md          # this document (canonical)
 ├── docs/                    # mirrors of team documentation
 │   ├── ARCHITECTURE.md      # copy of this document

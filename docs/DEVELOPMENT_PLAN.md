@@ -2,7 +2,7 @@
 
 ## TransformIQ — Gen AI Platform for Automated Content Transformation
 
-**SIH Problem Statement:** 26154  
+**Platform Edition:** Enterprise v1.0  
 **Version:** 1.0  
 **Status:** Approved Development Roadmap
 
@@ -81,7 +81,7 @@ PHASE 9  Frontend Integration
 PHASE 10 Export + Polish
 PHASE 11 Testing + Evaluation
 PHASE 12 Docker + Cloud Deployment
-PHASE 13 SIH Demo Hardening
+PHASE 13 Evaluation Demo Hardening
 ```
 
 ---
@@ -529,7 +529,7 @@ Cloud provider is selected after checking current credits, service availability 
 
 ---
 
-# 17. Phase 13 — SIH Demo Hardening
+# 17. Phase 13 — Evaluation Demo Hardening
 
 Before demo:
 
@@ -654,7 +654,7 @@ v0.6-transformations
 v0.7-verification
 v0.8-frontend
 v0.9-export
-v1.0-sih-mvp
+v1.0-release-mvp
 ```
 
 ---
@@ -695,7 +695,7 @@ PHASE 2
         ↓
 ...
         ↓
-SIH MVP
+PRODUCTION MVP
 ```
 
 ---

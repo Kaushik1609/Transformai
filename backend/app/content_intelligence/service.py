@@ -135,3 +135,88 @@ async def create_pending_analysis_async(db: AsyncSession, source: Source) -> Can
     await db.flush()
     await db.refresh(canonical)
     return canonical
+
+
+def execute_content_intelligence_with_session(
+    session: Session,
+    source_id: uuid.UUID,
+    *,
+    provider: ContentAnalysisProvider | None = None,
+) -> CanonicalContent:
+    """Execute content intelligence using policy routing and compliant provider.
+
+    Enforces deterministic policy evaluation and provider routing so that
+    sensitive data (CONFIDENTIAL/RESTRICTED) is never sent to external cloud providers.
+    """
+    source = session.execute(select(Source).where(Source.id == source_id)).scalar_one_or_none()
+    if source is None:
+        raise ValueError(f"Source {source_id} was not found.")
+
+    if provider is not None:
+        return ContentIntelligenceService(provider=provider).analyze_source(session, source_id)
+
+    # Resolve policy-mandated provider
+    from app.core.config import settings
+    from app.policy import (
+        DEFAULT_CLASSIFICATION,
+        PolicyEvaluationContext,
+        get_policy_engine,
+        resolve_source_classification,
+    )
+    from app.policy.routing import get_policy_router
+    from app.transformation.llm.router_factory import build_routed_llm_provider
+    from app.content_intelligence.llm_provider import LLMContentAnalysisProvider
+
+    classification = resolve_source_classification(source.source_metadata)
+    policy_engine = get_policy_engine()
+    requested_provider = (settings.LLM_PROVIDER or "openai").strip().lower()
+    env = settings.ENVIRONMENT
+
+    decision = policy_engine.evaluate(
+        PolicyEvaluationContext(
+            classification=classification,
+            requested_provider=requested_provider,
+            environment=env,
+        )
+    )
+    if not decision.allowed:
+        return _record_failure(session, source, f"Processing blocked by policy: {decision.reason}")
+
+    router = get_policy_router()
+    route_decision = router.route(
+        decision=decision,
+        requested_provider=requested_provider,
+        environment=env,
+    )
+    if not route_decision.allowed:
+        return _record_failure(session, source, f"Processing blocked by routing policy: {route_decision.reason}")
+
+    llm_provider = build_routed_llm_provider(route_decision, resilient=True)
+    analysis_provider = LLMContentAnalysisProvider(llm_provider)
+    return ContentIntelligenceService(provider=analysis_provider).analyze_source(session, source_id)
+
+
+def execute_content_intelligence_sync(source_id: str | uuid.UUID) -> None:
+    """Execute content intelligence synchronously using DATABASE_SYNC_URL.
+
+    Safe for in-process background tasks or direct worker dispatch.
+    """
+    import structlog
+    from sqlalchemy import create_engine
+    from app.core.config import settings
+
+    _logger = structlog.get_logger(__name__)
+    engine = create_engine(settings.DATABASE_SYNC_URL, pool_pre_ping=True)
+    try:
+        with Session(engine) as session:
+            execute_content_intelligence_with_session(session, uuid.UUID(str(source_id)))
+            _logger.info("execute_content_intelligence_sync completed", source_id=str(source_id))
+    except Exception as exc:
+        _logger.error(
+            "execute_content_intelligence_sync failed",
+            source_id=str(source_id),
+            error=str(exc),
+        )
+    finally:
+        engine.dispose()
+

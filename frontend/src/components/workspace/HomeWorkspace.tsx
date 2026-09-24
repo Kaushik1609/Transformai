@@ -52,7 +52,6 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Info,
   Layers,
   Terminal,
@@ -73,6 +72,8 @@ import {
   BarChart3,
   Video,
   BadgeCheck,
+  ChevronDown,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ToneSelector, type Tone } from "@/components/configuration";
 import { AudienceSelector } from "@/components/configuration";
@@ -114,6 +115,12 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
   const [tone, setTone] = useState<Tone>("Professional");
   const [audience, setAudience] = useState<string>("General");
   const [language, setLanguage] = useState<string>("English");
+
+  // ---- Advanced parameters (Detail level, Objective, Content style) -----
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [detailLevel, setDetailLevel] = useState<string>("standard");
+  const [communicationObjective, setCommunicationObjective] = useState<string>("");
+  const [contentStyle, setContentStyle] = useState<string>("");
 
   // ---- Outputs -----------------------------------------------------------
   const [selectedOutputs, setSelectedOutputs] = useState<OutputTypeId[]>([]);
@@ -246,15 +253,16 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         target_audience: audience === "General" ? null : audience,
         tone: tone === "Professional" ? null : tone,
         language,
-        detail_level: "standard",
-        communication_objective: null,
+        detail_level: detailLevel || "standard",
+        communication_objective: communicationObjective.trim() || null,
+        content_style: contentStyle.trim() || null,
       });
       setConfiguration(res.data);
       return res.data;
     } catch {
       return null;
     }
-  }, [quickProjectId, configuration, audience, tone, language]);
+  }, [quickProjectId, configuration, audience, tone, language, detailLevel, communicationObjective, contentStyle]);
 
   const sourceReady = source?.status === "ready";
 
@@ -471,53 +479,45 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
       </div>
 
       {/* 2. Hero Section */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-surface-container to-surface-container-low p-8 shadow-md lg:p-10">
-        <div
-          className="pointer-events-none absolute -mt-20 -mr-20 right-0 top-0 h-96 w-96 rounded-full bg-primary-container/10 blur-3xl"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -mb-16 left-1/3 bottom-0 h-80 w-80 rounded-full bg-secondary/5 blur-2xl"
-          aria-hidden="true"
-        />
-        <div className="relative z-10 max-w-4xl space-y-6">
-          <div className="inline-flex items-center gap-2 rounded bg-surface-container-highest px-3 py-1 text-secondary-fixed-dim shadow-sm">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="label-mono-sm uppercase tracking-wider">
-              Automated Enterprise Transformation Engine
+      <section className="relative overflow-hidden rounded-xl border border-border bg-card p-6 lg:p-8 shadow-sm">
+        <div className="relative z-10 max-w-4xl space-y-5">
+          <div className="inline-flex items-center gap-2 rounded border border-border/80 bg-muted/50 px-3 py-1 text-foreground shadow-xs">
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            <span className="label-mono-sm uppercase tracking-wider text-muted-foreground">
+              Enterprise Information Transformation Engine
             </span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <h1 className="headline-xl font-semibold tracking-tight text-foreground">
               Transform information into{" "}
-              <span className="bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
+              <span className="text-primary font-semibold">
                 communication
               </span>
               .
             </h1>
-            <p className="body-lg max-w-2xl leading-relaxed text-muted-foreground">
-              Transform documents and prompts into grounded, ready-to-use content.
+            <p className="body-md max-w-2xl leading-relaxed text-muted-foreground">
+              Transform documents and prompts into grounded, policy-governed deliverables with verifiable evidence.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4 pt-2">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link
               href="/create"
               id="open-new-trans-modal"
-              className="inline-flex items-center gap-2.5 rounded-lg bg-primary px-5 py-3 headline-sm text-primary-foreground shadow-[0_0_16px_rgba(37,99,235,0.4)] transition-all hover:bg-primary/90 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.98]"
             >
-              <Plus className="h-4 w-4 stroke-[3]" />
+              <Plus className="h-4 w-4 stroke-[2.5]" />
               <span>+ Create Transformation</span>
             </Link>
             <Link
               href="/history"
-              className="inline-flex items-center gap-2 rounded-lg bg-surface-container-high px-4 py-3 body-md text-foreground shadow-sm transition-colors hover:bg-surface-container-highest"
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/40 px-4 py-2.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
             >
               <History className="h-4 w-4 text-muted-foreground" />
-              <span>View Transformation History</span>
+              <span>View History</span>
             </Link>
-            <div className="flex items-center gap-2 rounded-lg bg-surface-container-lowest px-3.5 py-2.5 text-muted-foreground shadow-inner">
-              <span className="h-2 w-2 rounded-full bg-secondary-fixed-dim" />
-              <span className="label-mono-sm">Source Grounding: Multi-Document RAG Enabled</span>
+            <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground text-xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="label-mono-sm">Multi-Document RAG Grounding Active</span>
             </div>
           </div>
         </div>
@@ -627,7 +627,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-transform group-hover:scale-105">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform group-hover:scale-105">
                   <Layers className="h-6 w-6" />
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full bg-secondary/15 px-2.5 py-0.5 text-secondary-fixed-dim">
@@ -680,16 +680,62 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Mandate — full width */}
+          {/* 1. Primary Vector: Source */}
           <section className="space-y-2 lg:col-span-2">
             <div className="space-y-0.5">
               <span className="label-mono-xs uppercase text-muted-foreground">
-                Prompt
+                Step 1 · Trusted Source Corpus
+              </span>
+              <h2 className="headline-md font-semibold text-foreground">Source</h2>
+              <p className="text-xs text-muted-foreground">
+                Attach authoritative documents or text to ground your transformation.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
+              {sourceUploading ? (
+                <SourceChipUploading />
+              ) : source ? (
+                <SourceChip
+                  source={source}
+                  onRemove={() => {
+                    setSource(null);
+                    setConfiguration(null);
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    No source attached yet — attach a file or proceed with prompt-only instructions.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={running}
+                    className="inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                    Attach Document
+                  </button>
+                </div>
+              )}
+              {sourceError && (
+                <p role="alert" className="mt-1 text-xs font-medium text-destructive">
+                  {sourceError}
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* 2. Instructions / Mandate */}
+          <section className="space-y-2 lg:col-span-2">
+            <div className="space-y-0.5">
+              <span className="label-mono-xs uppercase text-muted-foreground">
+                Step 2 · Transformation Instructions
               </span>
               <h2 className="headline-md font-semibold text-foreground">Mandate</h2>
               <p className="text-xs text-muted-foreground">
-                Describe what you want KaryaSetu AI to create. A source is optional
-                — the instruction alone is enough to transform.
+                Specify what KaryaSetu AI should synthesize, highlight, or enforce.
               </p>
             </div>
 
@@ -737,105 +783,15 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
             </div>
           </section>
 
-          {/* Source */}
-          <section className="space-y-2">
-            <div className="space-y-0.5">
-              <span className="label-mono-xs uppercase text-muted-foreground">
-                Input vector 02 · Corpus
-              </span>
-              <h2 className="headline-md font-semibold text-foreground">Source</h2>
-              <p className="text-xs text-muted-foreground">
-                Attach the material to transform. KaryaSetu AI ingests and analyzes
-                it before transforming.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
-              {sourceUploading ? (
-                <SourceChipUploading />
-              ) : source ? (
-                <SourceChip
-                  source={source}
-                  onRemove={() => {
-                    setSource(null);
-                    setConfiguration(null);
-                  }}
-                />
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  No source attached — a prompt alone is enough to transform.
-                </p>
-              )}
-              {sourceError && (
-                <p role="alert" className="mt-1 text-xs font-medium text-destructive">
-                  {sourceError}
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* Tone */}
-          <section className="space-y-2">
-            <div className="space-y-0.5">
-              <span className="label-mono-xs uppercase text-muted-foreground">Style</span>
-              <h2 className="headline-md font-semibold text-foreground">Tone</h2>
-              <p className="text-xs text-muted-foreground">
-                Use a consistent voice across every deliverable.
-              </p>
-            </div>
-            <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
-              <ToneSelector value={tone} onChange={handleToneChange} disabled={running} />
-            </div>
-          </section>
-
-          {/* Audience */}
-          <section className="space-y-2">
-            <div className="space-y-0.5">
-              <span className="label-mono-xs uppercase text-muted-foreground">Audience</span>
-              <h2 className="headline-md font-semibold text-foreground">Audience</h2>
-              <p className="text-xs text-muted-foreground">
-                Who are the outputs written for?
-              </p>
-            </div>
-            <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
-              <AudienceSelector
-                value={audience}
-                onChange={handleAudienceChange}
-                disabled={running}
-              />
-            </div>
-          </section>
-
-          {/* Output language */}
-          <section className="space-y-2">
-            <div className="space-y-0.5">
-              <span className="label-mono-xs uppercase text-muted-foreground">Locale</span>
-              <h2 className="headline-md font-semibold text-foreground">
-                Output language
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Write the outputs in this language.
-              </p>
-            </div>
-            <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
-              <LanguageSelector
-                value={language}
-                onChange={handleLanguageChange}
-                disabled={running}
-              />
-            </div>
-          </section>
-
-          {/* Deliverables — full width */}
+          {/* 3. Primary Deliverables Selection */}
           <section className="space-y-2 lg:col-span-2">
             <div className="space-y-0.5">
               <span className="label-mono-xs uppercase text-muted-foreground">
-                Output packages
+                Step 3 · Governed Deliverables
               </span>
               <h2 className="headline-md font-semibold text-foreground">Deliverables</h2>
               <p className="text-xs text-muted-foreground">
-                Select one or more output formats. KaryaSetu AI will create them
-                from the same source and instructions.
+                Select one or more governed output formats to generate simultaneously.
               </p>
             </div>
             <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
@@ -844,6 +800,144 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
                 onChange={setSelectedOutputs}
                 disabled={running}
               />
+            </div>
+          </section>
+
+          {/* Secondary Parameters (Tone, Audience, Language) — Collapsed Clean Bar */}
+          <section className="space-y-3 rounded-xl border border-border/80 bg-surface-container-lowest p-4 shadow-sm lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-1 border-b border-border/60 pb-2">
+              <div>
+                <span className="label-mono-xs uppercase text-muted-foreground">
+                  Secondary Controls · Framing &amp; Localization
+                </span>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Tone, Audience &amp; Language
+                </h3>
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                Optional configuration overrides
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {/* Tone */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">
+                  Tone
+                </label>
+                <ToneSelector value={tone} onChange={handleToneChange} disabled={running} />
+              </div>
+
+              {/* Audience */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">
+                  Audience
+                </label>
+                <AudienceSelector
+                  value={audience}
+                  onChange={handleAudienceChange}
+                  disabled={running}
+                />
+              </div>
+
+              {/* Output language */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">
+                  Output language
+                </label>
+                <LanguageSelector
+                  value={language}
+                  onChange={handleLanguageChange}
+                  disabled={running}
+                />
+              </div>
+            </div>
+
+            {/* Advanced Parameters toggle (Detail Level, Objective, Content Style) */}
+            <div className="border-t border-border/60 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((prev) => !prev)}
+                disabled={running}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                aria-expanded={showAdvanced}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Advanced Parameters</span>
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition-transform duration-200", showAdvanced && "rotate-180")}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {showAdvanced && (
+                <div className="mt-3 grid grid-cols-1 gap-3 border-t border-dashed border-border/60 pt-3 sm:grid-cols-3">
+                  {/* Detail Level */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="hw-detail-level" className="text-xs font-medium text-foreground">
+                      Detail Level
+                    </label>
+                    <select
+                      id="hw-detail-level"
+                      aria-label="Detail level"
+                      value={detailLevel}
+                      onChange={(e) => {
+                        setDetailLevel(e.target.value);
+                        setConfiguration(null);
+                      }}
+                      disabled={running}
+                      className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="concise">Concise</option>
+                      <option value="standard">Standard</option>
+                      <option value="detailed">Detailed</option>
+                    </select>
+                  </div>
+
+                  {/* Communication Objective */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="hw-communication-objective" className="text-xs font-medium text-foreground">
+                      Communication Objective
+                    </label>
+                    <input
+                      id="hw-communication-objective"
+                      type="text"
+                      value={communicationObjective}
+                      onChange={(e) => {
+                        setCommunicationObjective(e.target.value);
+                        setConfiguration(null);
+                      }}
+                      placeholder="e.g. inform, advise, summarize"
+                      disabled={running}
+                      className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+
+                  {/* Content Style */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="hw-content-style" className="text-xs font-medium text-foreground">
+                      Content Style
+                    </label>
+                    <select
+                      id="hw-content-style"
+                      aria-label="Content style"
+                      value={contentStyle}
+                      onChange={(e) => {
+                        setContentStyle(e.target.value);
+                        setConfiguration(null);
+                      }}
+                      disabled={running}
+                      className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Default (Standard)</option>
+                      <option value="Narrative">Narrative</option>
+                      <option value="Bullet-points">Bullet-points</option>
+                      <option value="Analytical">Analytical</option>
+                      <option value="Conversational">Conversational</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
@@ -897,7 +991,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
             type="button"
             onClick={() => void handleRun()}
             disabled={!canRun}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_0_18px_rgba(37,99,235,0.25)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {phase === "generating" ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1336,7 +1430,7 @@ export function HomeWorkspace({ pollIntervalMs = 2000 }: HomeWorkspaceProps) {
             </div>
             <Link
               href="/create"
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 stroke-[3]" />
               <span>+ Create Transformation</span>

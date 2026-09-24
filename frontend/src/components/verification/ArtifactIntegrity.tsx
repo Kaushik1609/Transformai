@@ -50,30 +50,64 @@ export function ArtifactIntegrity({
   output: OutputResponse;
   compact?: boolean;
 }) {
-  const meta = (output.output_metadata ?? {}) as { integrity?: IntegrityMeta } | null;
-  const integrity = meta?.integrity;
-  const rawStatus = typeof integrity?.status === "string" ? integrity.status : null;
-  const digest =
-    typeof integrity?.digest === "string" ? integrity.digest : null;
-  const provider =
-    typeof integrity?.provider === "string" ? integrity.provider : "none";
-  const recorded = integrity?.recorded === true;
+  const meta = (output.output_metadata ?? {}) as Record<string, any> | null;
+  const cryptoIntegrity = meta?.cryptographic_integrity as
+    | {
+        status?: string;
+        artifact_hash?: string;
+        algorithm?: string;
+        provenance_id?: string;
+      }
+    | undefined;
+  const legacyIntegrity = meta?.integrity as IntegrityMeta | undefined;
+  const digitalSig = meta?.digital_signature as
+    | {
+        status?: string;
+        algorithm?: string;
+        key_id?: string;
+      }
+    | undefined;
 
   let status: IntegrityStatus;
   let note: string;
-  if (rawStatus === "tampered") {
-    status = "ERROR";
-    note = "This artifact does not match its recorded digest.";
-  } else if (rawStatus === "recorded" || rawStatus === "local") {
-    status = "VERIFIED";
-    note = "SHA-256 digest was recorded at generation time.";
+  let digest: string | null = null;
+  let provenance: "RECORDED" | "UNAVAILABLE" = "UNAVAILABLE";
+  let provider = "local";
+
+  if (cryptoIntegrity) {
+    digest = typeof cryptoIntegrity.artifact_hash === "string" ? cryptoIntegrity.artifact_hash : null;
+    if (cryptoIntegrity.status === "VERIFIED") {
+      status = "VERIFIED";
+      provenance = "RECORDED";
+      note = "SHA-256 digest sealed at generation time.";
+    } else if (cryptoIntegrity.status === "INVALID") {
+      status = "ERROR";
+      note = "Artifact digest or provenance does not match recorded seal.";
+    } else {
+      status = "UNAVAILABLE";
+      note = "Cryptographic integrity record is incomplete or unavailable.";
+    }
+  } else if (legacyIntegrity) {
+    const rawStatus = typeof legacyIntegrity.status === "string" ? legacyIntegrity.status : null;
+    digest = typeof legacyIntegrity.digest === "string" ? legacyIntegrity.digest : null;
+    provider = typeof legacyIntegrity.provider === "string" ? legacyIntegrity.provider : "none";
+    const recorded = legacyIntegrity.recorded === true;
+
+    if (rawStatus === "tampered") {
+      status = "ERROR";
+      note = "This artifact does not match its recorded digest.";
+    } else if (rawStatus === "recorded" || rawStatus === "local") {
+      status = "VERIFIED";
+      note = "SHA-256 digest was recorded at generation time.";
+    } else {
+      status = "UNAVAILABLE";
+      note = "No usable integrity record exists for this artifact.";
+    }
+    provenance = recorded && status === "VERIFIED" ? "RECORDED" : "UNAVAILABLE";
   } else {
     status = "UNAVAILABLE";
     note = "No usable integrity record exists for this artifact.";
   }
-
-  const provenance: "RECORDED" | "UNAVAILABLE" =
-    recorded && status === "VERIFIED" ? "RECORDED" : "UNAVAILABLE";
 
   if (compact) {
     const Icon =
@@ -122,7 +156,13 @@ export function ArtifactIntegrity({
         />
         <Row label="Provenance" value={provenance} />
         <Row label="Recorded at" value={note} />
-        {provider && provider !== "none" && (
+        {digitalSig && (
+          <Row
+            label="Digital signature"
+            value={`${digitalSig.status || "VALID"} (${digitalSig.algorithm || "Ed25519"})`}
+          />
+        )}
+        {provider && provider !== "none" && provider !== "local" && (
           <Row label="Ledger provider" value={provider} />
         )}
       </dl>

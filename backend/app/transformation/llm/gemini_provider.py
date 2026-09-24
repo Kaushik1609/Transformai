@@ -47,6 +47,11 @@ def _normalize_gemini_base_url(base: str) -> str:
 class GeminiLLMProvider(LLMProvider):
     """Generate text using Gemini through its OpenAI-compatible endpoint."""
 
+    is_external: bool = True
+    is_local: bool = False
+    requires_network: bool = True
+    supports_offline: bool = False
+
     def __init__(
         self,
         *,

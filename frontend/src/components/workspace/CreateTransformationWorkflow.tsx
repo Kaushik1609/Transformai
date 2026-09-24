@@ -30,6 +30,8 @@ import {
   transformationsApi,
   errorMessage,
   ApiError,
+  getSourceClassification,
+  getPolicyPosture,
 } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import {
@@ -61,7 +63,6 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Info,
   Workflow,
   ShieldCheck,
@@ -173,6 +174,7 @@ export function CreateTransformationWorkflow({
   const [language, setLanguage] = useState<string>("English");
   const [detailLevel, setDetailLevel] = useState<"brief" | "standard" | "detailed">("standard");
   const [objective, setObjective] = useState<"brief" | "summarize" | "advise">("brief");
+  const [contentStyle, setContentStyle] = useState<string>("Narrative");
   const [styleArchetype, setStyleArchetype] = useState<string>("Executive");
   const [situationalIntent, setSituationalIntent] = useState<string>("");
 
@@ -202,7 +204,11 @@ export function CreateTransformationWorkflow({
       const quick = await ensureQuickProject();
       setQuickProjectId(quick.id);
 
-      const configsRes = await configurationsApi.list(quick.id);
+      const [configsRes, sourcesRes] = await Promise.all([
+        configurationsApi.list(quick.id),
+        sourcesApi.list(quick.id).catch(() => ({ data: [] })),
+      ]);
+      // Sources hydrated for quick workspace; user explicitly chooses/attaches active source
       if (configsRes.data.length > 0) {
         const c = configsRes.data[0];
         setConfiguration(c);
@@ -305,13 +311,14 @@ export function CreateTransformationWorkflow({
         language,
         detail_level: detailLevel,
         communication_objective: objective,
+        content_style: contentStyle || null,
       });
       setConfiguration(res.data);
       return res.data;
     } catch {
       return null;
     }
-  }, [quickProjectId, configuration, audience, tone, language, detailLevel, objective]);
+  }, [quickProjectId, configuration, audience, tone, language, detailLevel, objective, contentStyle]);
 
   const handleToneChange = (t: Tone) => {
     setTone(t);
@@ -435,9 +442,18 @@ export function CreateTransformationWorkflow({
       const res = await transformationsApi.create(payload);
       setJob(res.data);
     } catch (err) {
-      setFormError(
-        errorMessage(err, "The transformation could not be started."),
-      );
+      if (err instanceof ApiError && err.status === 403) {
+        const msg = err.detail || "Processing blocked by policy.";
+        setFormError(
+          msg.toLowerCase().includes("policy")
+            ? msg
+            : `Processing blocked by policy: ${msg}`,
+        );
+      } else {
+        setFormError(
+          errorMessage(err, "The transformation could not be started."),
+        );
+      }
       setPhase("idle");
     }
   };
@@ -769,7 +785,7 @@ export function CreateTransformationWorkflow({
                     }
                     className="inline-flex items-center gap-1 rounded bg-surface-container px-2.5 py-1 label-mono-sm text-foreground transition-colors hover:bg-surface-container-high"
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-secondary-fixed-dim" />
+                    <FileText className="h-3.5 w-3.5 text-secondary-fixed-dim" />
                     <span>Executive BLUF</span>
                   </button>
                   <button
@@ -951,24 +967,30 @@ export function CreateTransformationWorkflow({
               <span className="caption text-outline">Drives decision matrices and priority sequencing.</span>
             </div>
 
-            {/* 6. Style Archetype */}
+            {/* 6. Content Style */}
             <div className="flex flex-col gap-2 rounded-lg bg-surface-container p-4">
-              <label className="headline-sm body-sm flex items-center gap-1.5 font-medium text-foreground">
+              <label htmlFor="ctw-content-style" className="headline-sm body-sm flex items-center gap-1.5 font-medium text-foreground">
                 <LayoutGrid className="h-5 w-5 text-secondary-fixed-dim" />
-                Style Archetype
+                Content Style
               </label>
               <select
-                value={styleArchetype}
-                onChange={(e) => setStyleArchetype(e.target.value)}
+                id="ctw-content-style"
+                aria-label="Content style"
+                value={contentStyle}
+                onChange={(e) => {
+                  setContentStyle(e.target.value);
+                  setStyleArchetype(e.target.value);
+                  setConfiguration(null);
+                }}
+                disabled={running}
                 className="w-full cursor-pointer rounded bg-surface-container-lowest px-3 py-2 body-md text-foreground focus:outline-none"
               >
-                <option value="Executive">Executive Intelligence Brief</option>
-                <option value="Analytical">Analytical Whitepaper</option>
-                <option value="Advisory">Operational Risk Advisory</option>
-                <option value="News-style">News Flash / Threat Dispatch</option>
-                <option value="Technical">Technical Runbook Schema</option>
+                <option value="Narrative">Narrative</option>
+                <option value="Bullet-points">Bullet-points</option>
+                <option value="Analytical">Analytical</option>
+                <option value="Conversational">Conversational</option>
               </select>
-              <span className="caption text-outline">Applies verified enterprise formatting frameworks.</span>
+              <span className="caption text-outline">Consistent framing structure for generated outputs.</span>
             </div>
           </div>
 
@@ -1019,6 +1041,7 @@ export function CreateTransformationWorkflow({
           tone={tone}
           detailLevel={detailLevel}
           objective={objective}
+          contentStyle={contentStyle}
           styleArchetype={styleArchetype}
           mode={mode}
           onEdit={goToStage}
@@ -1049,7 +1072,7 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => goToStage(2)}
               disabled={!inputReady || running}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Continue to Configuration
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -1060,7 +1083,7 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => void nextToOutputs()}
               disabled={running || configSaving}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {configSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1075,7 +1098,7 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => void nextToReview()}
               disabled={selectedOutputs.length === 0 || running || configSaving}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_12px_rgba(37,99,235,0.3)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {configSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1090,12 +1113,12 @@ export function CreateTransformationWorkflow({
               type="button"
               onClick={() => void handleTransform()}
               disabled={!canTransform}
-              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-[0_0_16px_rgba(37,99,235,0.35)] transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded bg-primary px-5 py-2.5 headline-sm body-sm text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {running ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               )}
               Dispatch Transformation
             </button>
@@ -1235,6 +1258,8 @@ function SourceCard({
   const failed = source.status === "failed";
   const processing = source.status === "processing" || source.status === "uploaded";
   const signals = sourceSecuritySignals(source);
+  const classification = getSourceClassification(source);
+  const policyPosture = getPolicyPosture(classification);
 
   return (
     <div className="flex flex-col rounded-xl bg-surface-container p-4">
@@ -1251,6 +1276,16 @@ function SourceCard({
               <span className="rounded bg-surface-container-highest px-1.5 py-0.5 label-mono-sm text-[10px] text-secondary-fixed-dim">
                 {source.status.toUpperCase()}
               </span>
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 label-mono-sm text-[10px] font-semibold",
+                  classification === "RESTRICTED" || classification === "CONFIDENTIAL"
+                    ? "bg-destructive/20 text-destructive"
+                    : "bg-surface-container-highest text-foreground",
+                )}
+              >
+                {classification}
+              </span>
             </div>
             <span className="caption mt-0.5 text-muted-foreground">
               {mimeTypeLabel(source)} · {formatFileSize(source.file_size)} · {languageLabel(source.language)}
@@ -1260,7 +1295,7 @@ function SourceCard({
                 <CheckCircle2 className="h-3.5 w-3.5" /> Indexed & Ready
               </span>
               <span>·</span>
-              <span className="text-muted-foreground">Deterministic Grounding</span>
+              <span className="text-muted-foreground">{policyPosture}</span>
             </div>
           </div>
         </div>
@@ -1305,6 +1340,7 @@ function ReviewPanel({
   tone,
   detailLevel,
   objective,
+  contentStyle = "Narrative",
   styleArchetype,
   mode,
   onEdit,
@@ -1318,6 +1354,7 @@ function ReviewPanel({
   tone: string;
   detailLevel: string;
   objective: string;
+  contentStyle?: string;
   styleArchetype: string;
   mode: { id: string; label: string; note: string };
   onEdit: (step: number) => void;
@@ -1412,8 +1449,8 @@ function ReviewPanel({
                 <span className="capitalize text-foreground">{objective}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-outline">Style</span>
-                <span className="text-foreground">{styleArchetype}</span>
+                <span className="text-outline">Content Style</span>
+                <span className="text-foreground">{contentStyle}</span>
               </div>
             </div>
           </div>

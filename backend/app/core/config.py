@@ -133,7 +133,16 @@ class Settings(BaseSettings):
 
     # OTP storage / delivery backends (memory = offline/tests; redis = prod).
     OTP_STORE_BACKEND: Literal["memory", "redis"] = "memory"
-    OTP_PROVIDER: Literal["console", "email", "sms"] = "console"
+    OTP_PROVIDER: Literal["console", "email", "sms", "resend", "brevo"] = "console"
+
+    # Brevo (Sendinblue) HTTP API email delivery (HTTPS port 443; sends to ANY email free)
+    BREVO_API_KEY: str = ""
+    BREVO_FROM: str = "ketan.krg.ak@gmail.com"
+    BREVO_FROM_NAME: str = "KaryaSetu AI"
+
+    # Resend HTTP API email delivery (HTTPS port 443; reliable on cloud environments)
+    RESEND_API_KEY: str = ""
+    RESEND_FROM: str = "TransformIQ <onboarding@resend.dev>"
 
     # Email delivery (OTP_PROVIDER=email). Never hard-code credentials.
     SMTP_HOST: str = ""
@@ -196,6 +205,15 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float = 0.3
     LLM_MAX_TOKENS: int = 4096
     LLM_TIMEOUT_SECONDS: int = 60
+
+    # -------------------------------------------------------------------------
+    # Offline / Local LLM Execution & Deployment Readiness (Phase 2I)
+    # -------------------------------------------------------------------------
+    LOCAL_LLM_ENABLED: bool = False
+    LOCAL_LLM_BASE_URL: str = ""
+    LOCAL_LLM_MODEL: str = "llama-3-8b"
+    LOCAL_LLM_TIMEOUT: int = 60
+    LLM_EXECUTION_MODE: Literal["cloud", "local", "offline", "auto"] = "auto"
 
     # -------------------------------------------------------------------------
     # LLM resilience (Phase 11D)
@@ -359,6 +377,21 @@ class Settings(BaseSettings):
         if value < 0.0:
             raise ValueError("LLM_RETRY_MAX_429_WAIT must be a non-negative number.")
         return value
+
+    @field_validator("LOCAL_LLM_TIMEOUT")
+    @classmethod
+    def validate_local_llm_timeout(cls, v: int) -> int:
+        return _positive_bounded(v, "LOCAL_LLM_TIMEOUT", 3600)
+
+    @field_validator("LLM_EXECUTION_MODE")
+    @classmethod
+    def validate_llm_execution_mode(cls, v: str) -> str:
+        norm = str(v).strip().lower()
+        if norm not in ("cloud", "local", "offline", "auto"):
+            raise ValueError(
+                f"LLM_EXECUTION_MODE must be one of 'cloud', 'local', 'offline', 'auto'; got {v!r}."
+            )
+        return norm
 
     # -------------------------------------------------------------------------
     # L5 Output Security (Phase 11H)
@@ -887,6 +920,31 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "CACHE_BACKEND must be 'redis' in production when "
                     "CACHE_ENABLED is True."
+                )
+            if self.INTEGRITY_PROVIDER == "fake":
+                raise ValueError(
+                    "INTEGRITY_PROVIDER='fake' is not allowed in production; "
+                    "use 'real' (with INTEGRITY_LEDGER_URL) or 'none' (local integrity hashing without external ledger)."
+                )
+            if self.INTEGRITY_PROVIDER == "real" and not self.INTEGRITY_LEDGER_URL:
+                raise ValueError(
+                    "INTEGRITY_LEDGER_URL is required in production when "
+                    "INTEGRITY_PROVIDER='real'."
+                )
+            if self.STORAGE_BACKEND != "s3":
+                raise ValueError(
+                    f"STORAGE_BACKEND='{self.STORAGE_BACKEND}' is not allowed in production; "
+                    "an explicit persistent storage backend (STORAGE_BACKEND='s3') is required "
+                    "to prevent data loss on ephemeral cloud containers."
+                )
+            if "changeme" in self.DATABASE_URL:
+                raise ValueError(
+                    "DATABASE_URL must not contain default development password 'changeme' in production; "
+                    "a configured production database URL is required."
+                )
+            if self.LLM_FALLBACK_PROVIDER == "fake":
+                raise ValueError(
+                    "LLM_FALLBACK_PROVIDER='fake' is not allowed in production."
                 )
 
         if self.ENVIRONMENT in ("staging", "production"):

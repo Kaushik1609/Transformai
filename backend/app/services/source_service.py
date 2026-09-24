@@ -28,6 +28,7 @@ from app.ingestion.pii_scan import EVENT_TYPE, scan_source_pii
 from app.ingestion.storage import StorageAdapter, get_storage
 from app.ingestion.text import chunk_text, normalize_text
 from app.ingestion.validation import validate_source
+from app.policy.classification import normalize_classification
 from app.services.storage_lifecycle import (
     cleanup_storage_keys,
     collect_source_artifact_keys,
@@ -72,17 +73,17 @@ def _scan_malware(
         )
         return {"malware_scan": meta} if meta else {}
     except MalwareScanRejected as exc:
-        if settings.ENVIRONMENT in ("development", "staging"):
-            logger.warning(
-                "malware_scan_rejected_bypassed_in_staging",
-                scanner=settings.MALWARE_SCANNER,
-                error=str(exc),
-            )
+        # Real/test malware (INFECTED) must ALWAYS be rejected in all environments.
+        if getattr(exc, "status", None) == "infected":
+            raise
+        # When ClamAV daemon is unreachable in free deployment environments:
+        # If scanning is not strictly required, record truthful unavailable metadata.
+        if not settings.MALWARE_SCAN_REQUIRED:
             return {
                 "malware_scan": {
                     "status": "unavailable",
                     "scanner": settings.MALWARE_SCANNER,
-                    "reason": "bypassed_in_staging",
+                    "reason": "daemon_unreachable",
                 }
             }
         raise
@@ -98,6 +99,7 @@ async def create_pending_source(
     mime_type: str,
     language: str,
     metadata: dict[str, Any] | None = None,
+    classification: str | None = None,
 ) -> Source:
     """Validate and store an original, leaving extraction to the worker."""
     validated = validate_source(
@@ -108,6 +110,13 @@ async def create_pending_source(
         max_size_bytes=settings.max_upload_size_bytes,
     )
     source_metadata = dict(metadata or {})
+    source_metadata["classification"] = normalize_classification(
+        classification or source_metadata.get("classification")
+    ).value
+    source_metadata["file_security"] = {
+        "status": "active",
+        "validated_format": validated.source_type,
+    }
     source_metadata.update(_scan_malware(content=content, project_id=project_id))
     source = Source(
         id=uuid.uuid4(),
@@ -143,6 +152,7 @@ async def ingest_text_source(
     mime_type: str,
     language: str,
     metadata: dict[str, Any] | None,
+    classification: str | None = None,
 ) -> Source:
     """Synchronously validate, store, normalize, and persist a text source."""
     validated = validate_source(
@@ -165,6 +175,13 @@ async def ingest_text_source(
         )
 
     source_metadata = dict(metadata or {})
+    source_metadata["classification"] = normalize_classification(
+        classification or source_metadata.get("classification")
+    ).value
+    source_metadata["file_security"] = {
+        "status": "active",
+        "validated_format": validated.source_type,
+    }
     source_metadata.update(_scan_malware(content=content, project_id=project_id))
     pii_scan = scan_source_pii(text)
     if pii_scan["detected"]:
@@ -212,9 +229,29 @@ async def ingest_text_source(
             )
         )
 
+    source_metadata = dict(source.source_metadata or {})
+    source_metadata["chunk_count"] = len(chunks)
+    source_metadata["embedding_status"] = "queued"
+    source.source_metadata = source_metadata
     source.status = "ready"
     await db.flush()
     await db.refresh(source)
+
+    try:
+        from app.ingestion.queue import enqueue_source_embedding, get_embedding_queue
+        enqueue_source_embedding(source.id, queue=get_embedding_queue())
+    except Exception as exc:  # pragma: no cover - defensive best effort
+        source_metadata = dict(source.source_metadata or {})
+        source_metadata["embedding_queue_error"] = str(exc)
+        source_metadata["embedding_status"] = "queued"
+        source.source_metadata = source_metadata
+        await db.flush()
+        logger.warning(
+            "Could not enqueue source embedding to Redis",
+            source_id=str(source.id),
+            error=str(exc),
+        )
+
     logger.info(
         "Text source ingested",
         source_id=str(source.id),
@@ -234,6 +271,8 @@ async def ingest_document_source(
     filename: str | None,
     mime_type: str,
     language: str,
+    metadata: dict[str, Any] | None = None,
+    classification: str | None = None,
 ) -> Source:
     """Synchronously validate, extract, store, and persist a PDF or DOCX."""
     validated = validate_source(
@@ -252,7 +291,14 @@ async def ingest_document_source(
     if not text:
         raise ValueError("Document contains no usable text.")
 
-    source_metadata: dict[str, Any] = {}
+    source_metadata: dict[str, Any] = dict(metadata or {})
+    source_metadata["classification"] = normalize_classification(
+        classification or source_metadata.get("classification")
+    ).value
+    source_metadata["file_security"] = {
+        "status": "active",
+        "validated_format": validated.source_type,
+    }
     source_metadata.update(_scan_malware(content=content, project_id=project_id))
     pii_scan = scan_source_pii(text)
     if pii_scan["detected"]:
@@ -299,9 +345,29 @@ async def ingest_document_source(
             )
         )
 
+    source_metadata = dict(source.source_metadata or {})
+    source_metadata["chunk_count"] = len(chunks)
+    source_metadata["embedding_status"] = "queued"
+    source.source_metadata = source_metadata
     source.status = "ready"
     await db.flush()
     await db.refresh(source)
+
+    try:
+        from app.ingestion.queue import enqueue_source_embedding, get_embedding_queue
+        enqueue_source_embedding(source.id, queue=get_embedding_queue())
+    except Exception as exc:  # pragma: no cover - defensive best effort
+        source_metadata = dict(source.source_metadata or {})
+        source_metadata["embedding_queue_error"] = str(exc)
+        source_metadata["embedding_status"] = "queued"
+        source.source_metadata = source_metadata
+        await db.flush()
+        logger.warning(
+            "Could not enqueue source embedding to Redis",
+            source_id=str(source.id),
+            error=str(exc),
+        )
+
     logger.info(
         "Document source ingested",
         source_id=str(source.id),
@@ -322,8 +388,14 @@ async def create_source(
     mime_type: str | None,
     language: str,
     metadata: dict[str, Any] | None,
+    classification: str | None = None,
 ) -> Source:
     """Create a new source metadata record."""
+    source_metadata = dict(metadata or {})
+    source_metadata["classification"] = normalize_classification(
+        classification or source_metadata.get("classification")
+    ).value
+
     source = Source(
         id=uuid.uuid4(),
         project_id=project_id,
@@ -333,7 +405,7 @@ async def create_source(
         mime_type=mime_type,
         language=language,
         status="uploaded",
-        source_metadata=metadata,
+        source_metadata=source_metadata,
         created_at=_utcnow(),
     )
     db.add(source)

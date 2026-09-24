@@ -99,12 +99,14 @@ interface ProjectSourceLibraryProps {
   projectId: string;
   selectedSourceId?: string | null;
   onTransformSource?: (sourceId: string) => void;
+  refreshTrigger?: number;
 }
 
 export function ProjectSourceLibrary({
   projectId,
   selectedSourceId,
   onTransformSource,
+  refreshTrigger,
 }: ProjectSourceLibraryProps) {
   const [sources, setSources] = useState<SourceResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +123,7 @@ export function ProjectSourceLibrary({
 
   useEffect(() => {
     void loadSources();
-  }, [loadSources]);
+  }, [loadSources, refreshTrigger]);
 
   return (
     <section
@@ -190,6 +192,10 @@ export function ProjectSourceLibrary({
                       {sourceStatusLabel(source.status)}
                     </StatusBadge>
                     <div className="flex items-center gap-1">
+                      <StatusBadge variant="success">
+                        <ShieldCheck className="mr-1 h-3 w-3" aria-hidden="true" />
+                        File validation ACTIVE
+                      </StatusBadge>
                       <StatusBadge variant={signalVariant(signals.malware)}>
                         <ShieldCheck className="mr-1 h-3 w-3" aria-hidden="true" />
                         Malware {signals.malware}

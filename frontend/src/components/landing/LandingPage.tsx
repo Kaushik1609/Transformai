@@ -6,6 +6,7 @@
  */
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -19,8 +20,13 @@ import {
 import { LogoMark } from "@/components/brand";
 import { ArchitectureDemo } from "@/components/demo/ArchitectureDemo";
 import { LaptopMockup } from "@/components/landing/LaptopMockup";
+import { warmupBackend } from "@/lib/api";
 
 export function LandingPage() {
+  useEffect(() => {
+    warmupBackend();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       {/* Top navigation bar */}

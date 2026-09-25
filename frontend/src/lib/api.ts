@@ -1032,8 +1032,73 @@ async function apiFetchBlob(
 }
 
 // ---------------------------------------------------------------------------
-// Health API
+// Health API & Backend Warm-up
 // ---------------------------------------------------------------------------
+
+let hasWarmedUpInMemory = false;
+
+/**
+ * Non-blocking backend warm-up request.
+ *
+ * Pings GET ${NEXT_PUBLIC_API_URL}/health to wake cold-start backend instances
+ * (such as Render free/starter tiers waking from sleep) before the operator
+ * signs in or creates an account.
+ *
+ * Guarantees:
+ * - Asynchronous, non-blocking background fetch (never blocks render or navigation)
+ * - Uses existing configured NEXT_PUBLIC_API_URL (falls back to API_BASE_URL)
+ * - Silently ignores network errors, HTTP error statuses, sleeping backends, and timeouts
+ * - Never shows error banners or loading spinners
+ * - Never touches auth tokens, headers, or credentials
+ * - Deduplicated per session (sessionStorage + in-memory guard) to avoid redundant pings
+ */
+export function warmupBackend(): void {
+  if (typeof window === "undefined") return;
+
+  // Session-level deduplication guard
+  try {
+    if (sessionStorage.getItem("karyasetu.backend_warmed") === "true") {
+      return;
+    }
+  } catch {
+    // Sandboxed or restricted storage environments
+  }
+
+  if (hasWarmedUpInMemory) return;
+  hasWarmedUpInMemory = true;
+
+  try {
+    sessionStorage.setItem("karyasetu.backend_warmed", "true");
+  } catch {
+    // Ignore storage write failure
+  }
+
+  const rawBase = (process.env.NEXT_PUBLIC_API_URL || API_BASE_URL || "").replace(/\/+$/, "");
+  const warmupUrl = rawBase ? `${rawBase}/health` : "/health";
+
+  try {
+    if (typeof fetch === "function") {
+      fetch(warmupUrl, {
+        method: "GET",
+        cache: "no-store",
+      }).catch(() => {
+        // Silently swallow network / CORS / timeout / cold-start errors
+      });
+    }
+  } catch {
+    // Silently swallow synchronous dispatch failure
+  }
+}
+
+/** Testing helper to reset warm-up deduplication guards across tests. */
+export function _resetWarmupForTesting(): void {
+  hasWarmedUpInMemory = false;
+  try {
+    sessionStorage.removeItem("karyasetu.backend_warmed");
+  } catch {
+    // Ignore
+  }
+}
 
 export const healthApi = {
   /** Liveness check — returns 200 when the backend process is alive. */
@@ -1041,6 +1106,9 @@ export const healthApi = {
 
   /** Readiness check — returns 200 when all dependencies are connected. */
   ready: () => apiFetch<ReadyResponse>("/ready"),
+
+  /** Non-blocking backend warm-up probe for the landing page. */
+  warmup: warmupBackend,
 };
 
 // ---------------------------------------------------------------------------

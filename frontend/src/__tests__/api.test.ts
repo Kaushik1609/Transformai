@@ -70,6 +70,10 @@ describe("healthApi", () => {
   it("exposes a ready method", () => {
     expect(typeof healthApi.ready).toBe("function");
   });
+
+  it("exposes a warmup method", () => {
+    expect(typeof healthApi.warmup).toBe("function");
+  });
 });
 
 // ---------------------------------------------------------------------------

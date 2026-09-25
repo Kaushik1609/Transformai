@@ -144,13 +144,23 @@ export default function SidebarNav({
               collapsed && "justify-center px-0",
             )}
           >
-            <Link
-              href="/"
-              aria-label="KaryaSetu AI home"
-              className={cn("flex items-center gap-2.5", collapsed && "gap-0")}
-            >
-              <LogoMark size={28} />
-              {!collapsed && (
+            {collapsed ? (
+              /* When collapsed: clicking the logo expands the sidebar */
+              <button
+                type="button"
+                onClick={() => setCollapsed(false)}
+                aria-label="Expand sidebar"
+                className="flex items-center justify-center rounded-lg p-2 hover:bg-surface-container transition-colors"
+              >
+                <LogoMark size={28} />
+              </button>
+            ) : (
+              <Link
+                href="/"
+                aria-label="KaryaSetu AI home"
+                className="flex items-center gap-2.5"
+              >
+                <LogoMark size={28} />
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-headline-sm text-headline-sm tracking-tight text-on-surface font-semibold">
                     KaryaSetu
@@ -159,8 +169,8 @@ export default function SidebarNav({
                     AI
                   </span>
                 </div>
-              )}
-            </Link>
+              </Link>
+            )}
 
             {!collapsed && (
               <div className="flex items-center gap-1.5">
@@ -170,10 +180,10 @@ export default function SidebarNav({
                 <button
                   type="button"
                   onClick={() => setCollapsed(true)}
-                  className="rounded p-1 text-muted-foreground hover:bg-surface-container hover:text-foreground transition-colors"
+                  className="rounded-lg p-2 text-muted-foreground hover:bg-surface-container hover:text-foreground transition-colors"
                   aria-label="Collapse sidebar"
                 >
-                  <ChevronsLeft className="h-3.5 w-3.5" />
+                  <ChevronsLeft className="h-5 w-5" />
                 </button>
               </div>
             )}
@@ -250,10 +260,10 @@ export default function SidebarNav({
             <button
               type="button"
               onClick={() => setCollapsed(false)}
-              className="flex w-full items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-surface-container hover:text-foreground transition-colors"
+              className="flex w-full items-center justify-center rounded-lg py-2 px-3 text-muted-foreground hover:bg-surface-container hover:text-foreground transition-colors border border-border/50"
               aria-label="Expand sidebar"
             >
-              <ChevronsRight className="h-4 w-4" />
+              <ChevronsRight className="h-5 w-5" />
             </button>
           )}
         </div>

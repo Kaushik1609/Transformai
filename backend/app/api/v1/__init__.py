@@ -18,8 +18,14 @@ from app.api.v1.transformations import (
 )
 from app.api.v1.content_intelligence import router as content_intelligence_router
 from app.api.v1.operations import router as operations_router
+from app.api.v1.sandbox import router as sandbox_router
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Agent Sandbox Isolation (Theme: CyberSecurity)
+# ---------------------------------------------------------------------------
+router.include_router(sandbox_router)
 
 # ---------------------------------------------------------------------------
 # Auth (Phase 11F — L1 Perimeter & Identity)

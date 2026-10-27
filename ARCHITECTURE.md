@@ -36,6 +36,7 @@ The system is organized into five vertically integrated execution layers backed 
 ┌──────────────────────────────────▼─────────────────────────────────────┐
 │                    AI ENGINE & GENERATION LAYER                        │
 │   RAG Grounding (Dense pgvector) • Prompt-Injection Guard Boundary     │
+│   Docker Agent Sandboxes (Air-gapped, Read-Only, Cap-Drop ALL, Non-Root)│
 │   LLM Gateway (Cloud: Gemini / Local: Gemma 3 / Offline: FakeProvider) │
 │       7 Generators: Summary, LinkedIn, Advisory, PPTX, X,              │
 │                     Infographic (JSON/SVG), Video Package (PDF/SRT)    │

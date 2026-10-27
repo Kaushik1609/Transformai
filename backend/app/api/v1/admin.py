@@ -27,8 +27,8 @@ router = APIRouter(prefix="/admin", tags=["admin"])
     summary="List all registered users (admin only)",
 )
 async def list_users(
-    db: AsyncSession = Depends(get_db),
     admin: CurrentUser = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ) -> AdminUserListResponse:
     """Return every registered account, newest first."""
     stmt = select(User).order_by(User.created_at.desc())
